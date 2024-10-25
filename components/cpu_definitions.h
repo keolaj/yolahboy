@@ -1,8 +1,6 @@
 #pragma once
+#include "global_definitions.h"
 #include <stdbool.h>
-
-typedef unsigned char u8;
-typedef unsigned short u16;
 
 typedef struct {
 	union {

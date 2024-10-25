@@ -21,6 +21,7 @@ typedef unsigned char u8;
 typedef char i8;
 typedef short i16;
 typedef unsigned short u16;
+typedef unsigned int u32;
 
 #define FLAG_ZERO 0b10000000
 #define FLAG_SUB 0b01000000
