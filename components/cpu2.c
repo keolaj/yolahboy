@@ -58,6 +58,9 @@ u8* get_reg_from_type(Cpu* cpu, operand_type type) {
 		return &cpu->registers.h;
 	case L:
 		return &cpu->registers.l;
+	default:
+		assert(false && "Not a register");
+		return NULL;
 	}
 
 }
@@ -76,6 +79,9 @@ u16* get_reg16_from_type(Cpu* cpu, operand_type type) {
 		return &cpu->registers.sp;
 	case PC:
 		return &cpu->registers.pc;
+	default:
+		assert(false && "Not a register");
+		return NULL;
 	}
 }
 
@@ -88,7 +94,7 @@ void write_dest(Cpu* cpu, Memory* mem, address_mode mode, operand_type dest, u8 
 		write8(mem, *get_reg16_from_type(cpu, dest), value);
 		break;
 	case MEM_READ16:
-		write8(mem, read8(mem, cpu->registers.pc));
+		write8(mem, read8(mem, cpu->registers.pc), value);
 		cpu->registers.pc += 2;
 		break;
 	}
@@ -167,6 +173,7 @@ u8 get_source(Cpu* cpu, Memory* mem, Operation op) { // maybe I'll change this t
 
 u8 get_source16(Cpu* cpu, Memory* mem, Operation op) {
 	// TODO
+	return 0;
 }
 
 u8 get_dest(Cpu* cpu, Memory* mem, Operation op) { // nvm I made it it's own function. DONT CALL THIS WITHOUT TESTING
@@ -227,22 +234,22 @@ void LD_impl(Cpu* cpu, Memory* mem, Operation op) {
 bool condition_passed(Cpu* cpu, Operation op) {
 	switch (op.condition) {
 	case CONDITION_Z:
-		if (cpu->registers.f & FLAG_ZERO == FLAG_ZERO) {
+		if ((cpu->registers.f & FLAG_ZERO) == FLAG_ZERO) {
 			return true;
 		}
 		break;
 	case CONDITION_NZ:
-		if (cpu->registers.f & FLAG_ZERO != FLAG_ZERO) {
+		if ((cpu->registers.f & FLAG_ZERO) != FLAG_ZERO) {
 			return true;
 		}
 		break;
 	case CONDITION_C:
-		if (cpu->registers.f & FLAG_CARRY == FLAG_CARRY) {
+		if ((cpu->registers.f & FLAG_CARRY) == FLAG_CARRY) {
 			return true;
 		}
 		break;
 	case CONDITION_NC:
-		if (cpu->registers.f & FLAG_CARRY != FLAG_CARRY) {
+		if ((cpu->registers.f & FLAG_CARRY) != FLAG_CARRY) {
 			return true;
 		}
 		break;
@@ -331,7 +338,7 @@ alu_return run_alu(Cpu* cpu, u8 x, u8 y, instruction_type type, instruction_flag
 		result = x ^ y;
 		break;
 	case BIT:
-		result == x & y;
+		result = x & y;
 		break;
 	}
 
@@ -367,7 +374,6 @@ void XOR_impl(Cpu* cpu, Memory* mem, Operation op) {
 Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op) {
 
 	++cpu->registers.pc;
-	Cycles ret;
 	switch (op.type) {
 	case LD:
 		LD_impl(cpu, mem, op);

@@ -12,6 +12,6 @@ Memory* create_memory(const char* bootrom_path, const char* rom_path);
 void load_bootrom(Memory* mem, const char* path);
 void load_rom(Memory* mem, const char* path);
 u8 read8(Memory* mem, u16 address);
-void write8(Memory* mem, u8 data);
+void write8(Memory* mem, u16 address, u8 data);
 u16 read16(Memory* mem, u16 address);
 void write16(Memory* mem, u16 address, u16 data);
