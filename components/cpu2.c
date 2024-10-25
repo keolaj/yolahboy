@@ -146,7 +146,7 @@ u16 get_source_16(Cpu* cpu, Memory* mem, Operation op) {
 	return sourceVal;
 }
 
-u8 get_source(Cpu* cpu, Memory* mem, Operation op) {
+u8 get_source(Cpu* cpu, Memory* mem, Operation op) { // maybe I'll change this to be able to read dest too at some point. Might make life easier
 	u8 sourceVal;
 	switch (op.source_addr_mode) {
 	case REGISTER:
@@ -164,6 +164,30 @@ u8 get_source(Cpu* cpu, Memory* mem, Operation op) {
 	}
 	return sourceVal;
 }
+
+u8 get_source16(Cpu* cpu, Memory* mem, Operation op) {
+	// TODO
+}
+
+u8 get_dest(Cpu* cpu, Memory* mem, Operation op) { // nvm I made it it's own function. DONT CALL THIS WITHOUT TESTING
+	u8 destVal;
+	switch (op.dest_addr_mode) {
+	case REGISTER:
+		destVal = *get_reg_from_type(cpu, op.source);
+		break;
+	case MEM_READ:
+		destVal = read8(mem, cpu->registers.pc);
+		++cpu->registers.pc;
+		break;
+	default:
+		destVal = 0;
+		printf("unimplemented 8 bit source read\n");
+		print_operation(op);
+		assert(false);
+	}
+	return destVal;
+}
+
 
 void LD_impl(Cpu* cpu, Memory* mem, Operation op) {
 	if (bit_mode_16(op)) {
