@@ -7,10 +7,9 @@ int main(int argc, char* argv[]) {
 
 	while (true) {
 		Operation to_execute = get_operation(emu.cpu, emu.memory);
-		print_operation(to_execute);
 		Cycles clock = step_cpu(emu.cpu, emu.memory, to_execute);
 		step_gpu(emu.gpu, clock.t_cycles);
-		print_registers(emu.cpu);
+		// print_registers(emu.cpu);
 	}
 
 	return 0;

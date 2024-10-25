@@ -29,8 +29,7 @@ typedef enum {
 	REGISTER,			 //	A, B, C, D, E, H, L
 	REGISTER16,			 //	BC, DE, HL, SP
 	ADDRESS_R16,		 //	(HL)
-	MEM_READ,			 //	u8
-	MEM_READ_I8,		 // i8
+	MEM_READ,			 //	u8, i8
 	MEM_READ16,			 //	u16
 	MEM_READ_ADDR,		 //	(u16)
 	MEM_READ_ADDR_OFFSET // (0xFF + u8) // other registers
@@ -50,6 +49,8 @@ typedef enum {
 	DEC_R_1,
 	INC_R_2,
 	DEC_R_2,
+	ADD_T_4,
+	ADD_T_12
 } secondary;
 
 typedef enum {

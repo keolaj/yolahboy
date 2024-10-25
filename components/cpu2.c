@@ -109,25 +109,30 @@ bool bit_mode_16(Operation op) {
 	}
 }
 
-void run_secondary(Cpu* cpu, Operation op) {
+void run_secondary(Cpu* cpu, Operation* op) {
 	u16* reg;
-	switch (op.secondary) {
+	switch (op->secondary) {
 	case INC_R_1:
-		reg = get_reg16_from_type(cpu, op.dest);
+		reg = get_reg16_from_type(cpu, op->dest);
 		*reg += 1;
 		break;
 	case DEC_R_1:
-		reg = get_reg16_from_type(cpu, op.dest);
+		reg = get_reg16_from_type(cpu, op->dest);
 		*reg -= 1;
 		break;
 	case INC_R_2:
-		reg = get_reg16_from_type(cpu, op.source);
+		reg = get_reg16_from_type(cpu, op->source);
 		*reg += 1;
 		break;
 	case DEC_R_2:
-		reg = get_reg16_from_type(cpu, op.source);
+		reg = get_reg16_from_type(cpu, op->source);
 		*reg -= 1;
 		break;
+	case ADD_T_4:
+		op->t_cycles += 4;
+		break;
+	case ADD_T_12:
+		op->t_cycles += 12;
 	default:
 		return;
 	}
@@ -227,7 +232,7 @@ void LD_impl(Cpu* cpu, Memory* mem, Operation op) {
 			break;
 		}
 	}
-	if (op.secondary != SECONDARY_NONE) run_secondary(cpu, op);
+	if (op.secondary != SECONDARY_NONE) run_secondary(cpu, &op);
 
 }
 
@@ -255,7 +260,7 @@ bool condition_passed(Cpu* cpu, Operation op) {
 		break;
 	default:
 		// why get here
-		break;
+		return true;
 	}
 	return false;
 }
@@ -269,9 +274,29 @@ void BIT_impl(Cpu* cpu, Memory* mem, Operation op) {
 
 }
 
+void jump(Cpu* cpu, u16 jump_to) {
+	cpu->registers.pc = jump_to;
+}
+
 void JP_impl(Cpu* cpu, Memory* mem, Operation op) {
 	if (bit_mode_16(op)) {
-
+		u16 addr = get_source_16(cpu, mem, op);			
+		if (condition_passed(cpu, op)) {
+			jump(cpu, addr);
+			run_secondary(cpu, &op);
+		}
+	}
+	else {
+		switch (op.source_addr_mode) {
+		case MEM_READ: {
+			i8 relative = (i8)get_source(cpu, mem, op);
+			if (condition_passed(cpu, op)) {
+				jump(cpu, (u8)(cpu->registers.pc + relative));
+				run_secondary(cpu, &op);
+			}
+			break;
+		}
+		}
 	}
 }
 
@@ -374,6 +399,7 @@ void XOR_impl(Cpu* cpu, Memory* mem, Operation op) {
 Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op) {
 
 	++cpu->registers.pc;
+	// print_operation(op);
 	switch (op.type) {
 	case LD:
 		LD_impl(cpu, mem, op);
@@ -385,6 +411,10 @@ Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op) {
 	case BIT:
 		BIT_impl(cpu, mem, op);
 		break;
+	
+	case JP:
+		JP_impl(cpu, mem, op);
+		break;
 
 	case CB: {
 		Cycles cb_ret = step_cpu(cpu, mem, get_cb_operation(cpu, mem));
@@ -393,6 +423,7 @@ Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op) {
 		break;
 	}
 	default:
+		print_registers(cpu);
 		printf("unimplemented operation type\t");
 		print_operation(op);
 		assert(false);
