@@ -5,13 +5,13 @@
 #include "memory2.h"
 #include "operations.h"
 
-Cpu* create_cpu();
-Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op);
-Operation get_operation(Cpu* cpu, Memory* mem);
-
 typedef struct {
 	u8 result;
 	u8 flags;
 } alu_return;
 
+Cpu* create_cpu();
+Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op);
+Operation get_operation(Cpu* cpu, Memory* mem);
+alu_return run_alu(Cpu* cpu, u8 x, u8 y, instruction_type type, instruction_flags flag_actions);
 void print_registers(Cpu* cpu);

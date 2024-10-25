@@ -16,4 +16,4 @@ typedef struct {
 
 Gpu* create_gpu();
 void init_gpu(Gpu* gpu);
-void step_gpu(Gpu* gpu);
+void step_gpu(Gpu* gpu, u8 cycles);

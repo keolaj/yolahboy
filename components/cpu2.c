@@ -79,6 +79,21 @@ u16* get_reg16_from_type(Cpu* cpu, operand_type type) {
 	}
 }
 
+void write_dest(Cpu* cpu, Memory* mem, address_mode mode, operand_type dest, u8 value) {
+	switch (mode) {
+	case REGISTER:
+		*get_reg_from_type(cpu, dest) = value;
+		break;
+	case ADDRESS_R16:
+		write8(mem, *get_reg16_from_type(cpu, dest), value);
+		break;
+	case MEM_READ16:
+		write8(mem, read8(mem, cpu->registers.pc));
+		cpu->registers.pc += 2;
+		break;
+	}
+}
+
 bool bit_mode_16(Operation op) {
 	if (op.dest_addr_mode == REGISTER16 || op.dest_addr_mode == MEM_READ16) {
 		return true;
@@ -186,7 +201,12 @@ void LD_impl(Cpu* cpu, Memory* mem, Operation op) {
 }
 
 void BIT_impl(Cpu* cpu, Memory* mem, Operation op) {
+
+	u8 test = 1 << op.dest; // for some reason it made sense for me to put the bit here instead of dest. hopefully just this once i do something like this
 	
+	alu_return alu_ret = run_alu(cpu, get_source(cpu, mem, op), test, op.type, op.flag_actions);
+	cpu->registers.f = alu_ret.flags;
+
 }
 
 u8 generate_set_mask(instruction_flags flag_actions) {
@@ -251,6 +271,9 @@ alu_return run_alu(Cpu* cpu, u8 x, u8 y, instruction_type type, instruction_flag
 	case XOR:
 		result = x ^ y;
 		break;
+	case BIT:
+		result == x & y;
+		break;
 	}
 
 	if (result == 0) {
@@ -260,7 +283,7 @@ alu_return run_alu(Cpu* cpu, u8 x, u8 y, instruction_type type, instruction_flag
 	new_flags |= (generate_ignore_mask(flag_actions) & cpu->registers.f);
 	new_flags &= generate_reset_mask(flag_actions);
 
-
+ 
 	return (alu_return) { result, new_flags };
 }
 
@@ -293,6 +316,9 @@ Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op) {
 
 	case XOR:
 		XOR_impl(cpu, mem, op);
+		break;
+	case BIT:
+		BIT_impl(cpu, mem, op);
 		break;
 
 	case CB: {

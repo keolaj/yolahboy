@@ -9,7 +9,7 @@ int main(int argc, char* argv[]) {
 		Operation to_execute = get_operation(emu.cpu, emu.memory);
 		print_operation(to_execute);
 		Cycles _clock = step_cpu(emu.cpu, emu.memory, to_execute);
-		step_gpu(emu.gpu);
+		step_gpu(emu.gpu, );
 		print_registers(emu.cpu);
 	}
 
