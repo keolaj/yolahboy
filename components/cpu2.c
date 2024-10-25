@@ -224,13 +224,48 @@ void LD_impl(Cpu* cpu, Memory* mem, Operation op) {
 
 }
 
+bool condition_passed(Cpu* cpu, Operation op) {
+	switch (op.condition) {
+	case CONDITION_Z:
+		if (cpu->registers.f & FLAG_ZERO == FLAG_ZERO) {
+			return true;
+		}
+		break;
+	case CONDITION_NZ:
+		if (cpu->registers.f & FLAG_ZERO != FLAG_ZERO) {
+			return true;
+		}
+		break;
+	case CONDITION_C:
+		if (cpu->registers.f & FLAG_CARRY == FLAG_CARRY) {
+			return true;
+		}
+		break;
+	case CONDITION_NC:
+		if (cpu->registers.f & FLAG_CARRY != FLAG_CARRY) {
+			return true;
+		}
+		break;
+	default:
+		// why get here
+		break;
+	}
+	return false;
+}
+
 void BIT_impl(Cpu* cpu, Memory* mem, Operation op) {
 
 	u8 test = 1 << op.dest; // for some reason it made sense for me to put the bit here instead of dest. hopefully just this once i do something like this
-	
+
 	alu_return alu_ret = run_alu(cpu, get_source(cpu, mem, op), test, op.type, op.flag_actions);
 	cpu->registers.f = alu_ret.flags;
 
+}
+
+void JP_impl(Cpu* cpu, Memory* mem, Operation op) {
+	if (bit_mode_16(op)) {
+
+	}
 }
 
 u8 generate_set_mask(instruction_flags flag_actions) {
@@ -307,7 +342,7 @@ alu_return run_alu(Cpu* cpu, u8 x, u8 y, instruction_type type, instruction_flag
 	new_flags |= (generate_ignore_mask(flag_actions) & cpu->registers.f);
 	new_flags &= generate_reset_mask(flag_actions);
 
- 
+
 	return (alu_return) { result, new_flags };
 }
 
