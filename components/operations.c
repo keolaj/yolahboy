@@ -4,6 +4,81 @@ Operation operations[0x100] = {
 	[0x00] = {"NOP", NOP, OPERAND_NONE, OPERAND_NONE, ADDR_MODE_NONE, ADDR_MODE_NONE, 0, 0, 1, 4, },
 
 	// 8 bit loads
+	// 
+	// LD A, R
+	[0x7F] = {"LD A, A", LD, REGISTER, REGISTER, A, A, 0, 0, 1, 4},
+	[0x78] = {"LD A, B", LD, REGISTER, REGISTER, A, B, 0, 0, 1, 4},
+	[0x79] = {"LD A, C", LD, REGISTER, REGISTER, A, C, 0, 0, 1, 4},
+	[0x7A] = {"LD A, D", LD, REGISTER, REGISTER, A, D, 0, 0, 1, 4},
+	[0x7B] = {"LD A, E", LD, REGISTER, REGISTER, A, E, 0, 0, 1, 4},
+	[0x7C] = {"LD A, H", LD, REGISTER, REGISTER, A, H, 0, 0, 1, 4},
+	[0x7D] = {"LD A, L", LD, REGISTER, REGISTER, A, L, 0, 0, 1, 4},
+	[0x7E] = {"LD A, (HL)", LD, REGISTER, MEM_READ_ADDR, A, HL, 0, 0, 1, 8},
+	
+	[0x47] = {"LD B, A", LD, REGISTER, REGISTER, B, A, 0, 0, 1, 4},
+	[0x40] = {"LD A, B", LD, REGISTER, REGISTER, B, B, 0, 0, 1, 4},
+	[0x41] = {"LD A, C", LD, REGISTER, REGISTER, B, C, 0, 0, 1, 4},
+	[0x42] = {"LD A, D", LD, REGISTER, REGISTER, B, D, 0, 0, 1, 4},
+	[0x43] = {"LD A, E", LD, REGISTER, REGISTER, B, E, 0, 0, 1, 4},
+	[0x44] = {"LD A, H", LD, REGISTER, REGISTER, B, H, 0, 0, 1, 4},
+	[0x45] = {"LD A, L", LD, REGISTER, REGISTER, B, L, 0, 0, 1, 4},
+	[0x46] = {"LD A, (HL)", LD, REGISTER, MEM_READ_ADDR, B, HL, 0, 0, 1, 8},
+
+	[0x4F] = {"LD C, A", LD, REGISTER, REGISTER, C, A, 0, 0, 1, 4},
+	[0x48] = {"LD C, B", LD, REGISTER, REGISTER, C, B, 0, 0, 1, 4},
+	[0x49] = {"LD C, C", LD, REGISTER, REGISTER, C, C, 0, 0, 1, 4},
+	[0x4A] = {"LD C, D", LD, REGISTER, REGISTER, C, D, 0, 0, 1, 4},
+	[0x4B] = {"LD C, E", LD, REGISTER, REGISTER, C, E, 0, 0, 1, 4},
+	[0x4C] = {"LD C, H", LD, REGISTER, REGISTER, C, H, 0, 0, 1, 4},
+	[0x4D] = {"LD C, L", LD, REGISTER, REGISTER, C, L, 0, 0, 1, 4},
+	[0x4E] = {"LD C, (HL)", LD, REGISTER, MEM_READ_ADDR, C, HL, 0, 0, 1, 8},
+
+	[0x57] = {"LD D, A", LD, REGISTER, REGISTER, D, A, 0, 0, 1, 4},
+	[0x50] = {"LD D, B", LD, REGISTER, REGISTER, D, B, 0, 0, 1, 4},
+	[0x51] = {"LD D, C", LD, REGISTER, REGISTER, D, C, 0, 0, 1, 4},
+	[0x52] = {"LD D, D", LD, REGISTER, REGISTER, D, D, 0, 0, 1, 4},
+	[0x53] = {"LD D, E", LD, REGISTER, REGISTER, D, E, 0, 0, 1, 4},
+	[0x54] = {"LD D, H", LD, REGISTER, REGISTER, D, H, 0, 0, 1, 4},
+	[0x55] = {"LD D, L", LD, REGISTER, REGISTER, D, L, 0, 0, 1, 4},
+	[0x56] = {"LD D, (HL)", LD, REGISTER, MEM_READ_ADDR, D, HL, 0, 0, 1, 8},
+
+	[0x5F] = {"LD E, A", LD, REGISTER, REGISTER, E, A, 0, 0, 1, 4},
+	[0x58] = {"LD E, B", LD, REGISTER, REGISTER, E, B, 0, 0, 1, 4},
+	[0x59] = {"LD E, C", LD, REGISTER, REGISTER, E, C, 0, 0, 1, 4},
+	[0x5A] = {"LD E, D", LD, REGISTER, REGISTER, E, D, 0, 0, 1, 4},
+	[0x5B] = {"LD E, E", LD, REGISTER, REGISTER, E, E, 0, 0, 1, 4},
+	[0x5C] = {"LD E, H", LD, REGISTER, REGISTER, E, H, 0, 0, 1, 4},
+	[0x5D] = {"LD E, L", LD, REGISTER, REGISTER, E, L, 0, 0, 1, 4},
+	[0x5E] = {"LD E, (HL)", LD, REGISTER, MEM_READ_ADDR, E, HL, 0, 0, 1, 8},
+	
+	[0x67] = {"LD H, A", LD, REGISTER, REGISTER, H, A, 0, 0, 1, 4},
+	[0x60] = {"LD H, B", LD, REGISTER, REGISTER, H, B, 0, 0, 1, 4},
+	[0x61] = {"LD H, C", LD, REGISTER, REGISTER, H, C, 0, 0, 1, 4},
+	[0x62] = {"LD H, D", LD, REGISTER, REGISTER, H, D, 0, 0, 1, 4},
+	[0x63] = {"LD H, E", LD, REGISTER, REGISTER, H, E, 0, 0, 1, 4},
+	[0x64] = {"LD H, H", LD, REGISTER, REGISTER, H, H, 0, 0, 1, 4},
+	[0x65] = {"LD H, L", LD, REGISTER, REGISTER, H, L, 0, 0, 1, 4},
+	[0x66] = {"LD H, (HL)", LD, REGISTER, MEM_READ_ADDR, H, HL, 0, 0, 1, 8},
+
+	[0x6F] = {"LD L, A", LD, REGISTER, REGISTER, L, A, 0, 0, 1, 4},
+	[0x68] = {"LD L, B", LD, REGISTER, REGISTER, L, B, 0, 0, 1, 4},
+	[0x69] = {"LD L, C", LD, REGISTER, REGISTER, L, C, 0, 0, 1, 4},
+	[0x6A] = {"LD L, D", LD, REGISTER, REGISTER, L, D, 0, 0, 1, 4},
+	[0x6B] = {"LD L, E", LD, REGISTER, REGISTER, L, E, 0, 0, 1, 4},
+	[0x6C] = {"LD L, H", LD, REGISTER, REGISTER, L, H, 0, 0, 1, 4},
+	[0x6D] = {"LD L, L", LD, REGISTER, REGISTER, L, L, 0, 0, 1, 4},
+	[0x6E] = {"LD L, (HL)", LD, REGISTER, MEM_READ_ADDR, L, HL, 0, 0, 1, 8},
+
+	// 
+	// 
+	// LD X, u8
+	[0x3E] = {"LD A, u8", LD, REGISTER, MEM_READ, A, U8, 0, 0, 2, 8},
+	[0x06] = {"LD B, u8", LD, REGISTER, MEM_READ, B, U8, 0, 0, 2, 8},
+	[0x0E] = {"LD C, u8", LD, REGISTER, MEM_READ, C, U8, 0, 0, 2, 8},
+	[0x16] = {"LD D, u8", LD, REGISTER, MEM_READ, D, U8, 0, 0, 2, 8},
+	[0x1E] = {"LD E, u8", LD, REGISTER, MEM_READ, E, U8, 0, 0, 2, 8},
+	[0x26] = {"LD H, u8", LD, REGISTER, MEM_READ, H, U8, 0, 0, 2, 8},
+	[0x2E] = {"LD L, u8", LD, REGISTER, MEM_READ, L, U8, 0, 0, 2, 8},
 
 	// LD (HL)
 	[0x32] = {"LD (HL-), A", LD, ADDRESS_R16, REGISTER, HL, A, 0, DEC_R_1, 1, 8 },
