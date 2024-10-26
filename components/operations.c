@@ -13,7 +13,8 @@ Operation operations[0x100] = {
 	[0x7B] = {"LD A, E", LD, REGISTER, REGISTER, A, E, 0, 0, 1, 4},
 	[0x7C] = {"LD A, H", LD, REGISTER, REGISTER, A, H, 0, 0, 1, 4},
 	[0x7D] = {"LD A, L", LD, REGISTER, REGISTER, A, L, 0, 0, 1, 4},
-	[0x7E] = {"LD A, (HL)", LD, REGISTER, MEM_READ_ADDR, A, HL, 0, 0, 1, 8},
+	[0x7E] = {"LD A, (HL)", LD, REGISTER, ADDRESS_R16, A, HL, 0, 0, 1, 8},
+	[0x1A] = {"LD A, (DE)", LD, REGISTER, ADDRESS_R16, A, DE, 0, 0, 1, 8},
 	
 	[0x47] = {"LD B, A", LD, REGISTER, REGISTER, B, A, 0, 0, 1, 4},
 	[0x40] = {"LD A, B", LD, REGISTER, REGISTER, B, B, 0, 0, 1, 4},
@@ -22,7 +23,7 @@ Operation operations[0x100] = {
 	[0x43] = {"LD A, E", LD, REGISTER, REGISTER, B, E, 0, 0, 1, 4},
 	[0x44] = {"LD A, H", LD, REGISTER, REGISTER, B, H, 0, 0, 1, 4},
 	[0x45] = {"LD A, L", LD, REGISTER, REGISTER, B, L, 0, 0, 1, 4},
-	[0x46] = {"LD A, (HL)", LD, REGISTER, MEM_READ_ADDR, B, HL, 0, 0, 1, 8},
+	[0x46] = {"LD A, (HL)", LD, REGISTER, ADDRESS_R16, B, HL, 0, 0, 1, 8},
 
 	[0x4F] = {"LD C, A", LD, REGISTER, REGISTER, C, A, 0, 0, 1, 4},
 	[0x48] = {"LD C, B", LD, REGISTER, REGISTER, C, B, 0, 0, 1, 4},
@@ -31,7 +32,7 @@ Operation operations[0x100] = {
 	[0x4B] = {"LD C, E", LD, REGISTER, REGISTER, C, E, 0, 0, 1, 4},
 	[0x4C] = {"LD C, H", LD, REGISTER, REGISTER, C, H, 0, 0, 1, 4},
 	[0x4D] = {"LD C, L", LD, REGISTER, REGISTER, C, L, 0, 0, 1, 4},
-	[0x4E] = {"LD C, (HL)", LD, REGISTER, MEM_READ_ADDR, C, HL, 0, 0, 1, 8},
+	[0x4E] = {"LD C, (HL)", LD, REGISTER, ADDRESS_R16, C, HL, 0, 0, 1, 8},
 
 	[0x57] = {"LD D, A", LD, REGISTER, REGISTER, D, A, 0, 0, 1, 4},
 	[0x50] = {"LD D, B", LD, REGISTER, REGISTER, D, B, 0, 0, 1, 4},
@@ -40,7 +41,7 @@ Operation operations[0x100] = {
 	[0x53] = {"LD D, E", LD, REGISTER, REGISTER, D, E, 0, 0, 1, 4},
 	[0x54] = {"LD D, H", LD, REGISTER, REGISTER, D, H, 0, 0, 1, 4},
 	[0x55] = {"LD D, L", LD, REGISTER, REGISTER, D, L, 0, 0, 1, 4},
-	[0x56] = {"LD D, (HL)", LD, REGISTER, MEM_READ_ADDR, D, HL, 0, 0, 1, 8},
+	[0x56] = {"LD D, (HL)", LD, REGISTER, ADDRESS_R16, D, HL, 0, 0, 1, 8},
 
 	[0x5F] = {"LD E, A", LD, REGISTER, REGISTER, E, A, 0, 0, 1, 4},
 	[0x58] = {"LD E, B", LD, REGISTER, REGISTER, E, B, 0, 0, 1, 4},
@@ -49,7 +50,7 @@ Operation operations[0x100] = {
 	[0x5B] = {"LD E, E", LD, REGISTER, REGISTER, E, E, 0, 0, 1, 4},
 	[0x5C] = {"LD E, H", LD, REGISTER, REGISTER, E, H, 0, 0, 1, 4},
 	[0x5D] = {"LD E, L", LD, REGISTER, REGISTER, E, L, 0, 0, 1, 4},
-	[0x5E] = {"LD E, (HL)", LD, REGISTER, MEM_READ_ADDR, E, HL, 0, 0, 1, 8},
+	[0x5E] = {"LD E, (HL)", LD, REGISTER, ADDRESS_R16, E, HL, 0, 0, 1, 8},
 	
 	[0x67] = {"LD H, A", LD, REGISTER, REGISTER, H, A, 0, 0, 1, 4},
 	[0x60] = {"LD H, B", LD, REGISTER, REGISTER, H, B, 0, 0, 1, 4},
@@ -58,7 +59,7 @@ Operation operations[0x100] = {
 	[0x63] = {"LD H, E", LD, REGISTER, REGISTER, H, E, 0, 0, 1, 4},
 	[0x64] = {"LD H, H", LD, REGISTER, REGISTER, H, H, 0, 0, 1, 4},
 	[0x65] = {"LD H, L", LD, REGISTER, REGISTER, H, L, 0, 0, 1, 4},
-	[0x66] = {"LD H, (HL)", LD, REGISTER, MEM_READ_ADDR, H, HL, 0, 0, 1, 8},
+	[0x66] = {"LD H, (HL)", LD, REGISTER, ADDRESS_R16, H, HL, 0, 0, 1, 8},
 
 	[0x6F] = {"LD L, A", LD, REGISTER, REGISTER, L, A, 0, 0, 1, 4},
 	[0x68] = {"LD L, B", LD, REGISTER, REGISTER, L, B, 0, 0, 1, 4},
@@ -67,8 +68,9 @@ Operation operations[0x100] = {
 	[0x6B] = {"LD L, E", LD, REGISTER, REGISTER, L, E, 0, 0, 1, 4},
 	[0x6C] = {"LD L, H", LD, REGISTER, REGISTER, L, H, 0, 0, 1, 4},
 	[0x6D] = {"LD L, L", LD, REGISTER, REGISTER, L, L, 0, 0, 1, 4},
-	[0x6E] = {"LD L, (HL)", LD, REGISTER, MEM_READ_ADDR, L, HL, 0, 0, 1, 8},
+	[0x6E] = {"LD L, (HL)", LD, REGISTER, ADDRESS_R16, L, HL, 0, 0, 1, 8},
 
+	[0xE2] = {"LD (FF00 + C), A", LD, ADDRESS_R8_OFFSET, REGISTER, C, A, 0, 0, 1, 8},
 	// 
 	// 
 	// LD X, u8
@@ -85,6 +87,9 @@ Operation operations[0x100] = {
 
 	// 16 bit loads
 
+	// LD DE
+	[0x11] = {"LD DE, u16", LD, REGISTER16, MEM_READ16, DE, U16, 0, 0, 3, 12},
+
 	// LD SP
 	[0x31] = {"LD SP, u16", LD, REGISTER16, MEM_READ16, SP, U16, 0, 0, 3, 12, },
 	[0xF9] = {"LD SP, HL", LD, REGISTER16, REGISTER16, SP, HL, 0, 0, 1, 8, },
@@ -92,8 +97,23 @@ Operation operations[0x100] = {
 	// LD HL
 	[0x21] = {"LD HL, u16", LD, REGISTER16, MEM_READ16, HL, U16, 0, 0, 3, 12, },
 
+	// 8 BIT ALU
+	// INC
+	[0x3C] = {"INC A", INC, REGISTER, ADDR_MODE_NONE, A, OPERAND_NONE, 0, 0, 1, 4, {DEPENDENT, RESET, DEPENDENT, IGNORE}},
+	[0x04] = {"INC B", INC, REGISTER, ADDR_MODE_NONE, B, OPERAND_NONE, 0, 0, 1, 4, {DEPENDENT, RESET, DEPENDENT, IGNORE}},
+	[0x0C] = {"INC C", INC, REGISTER, ADDR_MODE_NONE, C, OPERAND_NONE, 0, 0, 1, 4, {DEPENDENT, RESET, DEPENDENT, IGNORE}},
+	[0x14] = {"INC D", INC, REGISTER, ADDR_MODE_NONE, D, OPERAND_NONE, 0, 0, 1, 4, {DEPENDENT, RESET, DEPENDENT, IGNORE}},
+	[0x1C] = {"INC E", INC, REGISTER, ADDR_MODE_NONE, E, OPERAND_NONE, 0, 0, 1, 4, {DEPENDENT, RESET, DEPENDENT, IGNORE}},
+	[0x24] = {"INC H", INC, REGISTER, ADDR_MODE_NONE, H, OPERAND_NONE, 0, 0, 1, 4, {DEPENDENT, RESET, DEPENDENT, IGNORE}},
+	[0x2C] = {"INC L", INC, REGISTER, ADDR_MODE_NONE, L, OPERAND_NONE, 0, 0, 1, 4, {DEPENDENT, RESET, DEPENDENT, IGNORE}},
+
+
 	// XOR
 	[0xAF] = {"XOR A, A", XOR, REGISTER, REGISTER, A, A, 0, 0, 1, 4, {DEPENDENT, RESET, RESET, RESET} },
+
+	// PUSH
+	[0xC5] = {"PUSH BC", PUSH, ADDR_MODE_NONE, REGISTER16, OPERAND_NONE, BC, 0, 0, 1, 16},
+
 
 	// JUMPS
 
@@ -109,6 +129,10 @@ Operation operations[0x100] = {
 	[0xD2] = {"JP NC u16", JP, ADDR_MODE_NONE, MEM_READ16, OPERAND_NONE, U16, CONDITION_NC, ADD_T_4, 3, 12 },
 	[0xDA] = {"JP C u16", JP, ADDR_MODE_NONE, MEM_READ16, OPERAND_NONE, U16, CONDITION_C, ADD_T_4, 3, 12 },
 	[0xEA] = {"JP HL", JP, ADDR_MODE_NONE, REGISTER, OPERAND_NONE, HL, CONDITION_NONE, SECONDARY_NONE, 1, 4 },
+
+	// CALLS
+	[0xCD] = {"CALL u16", CALL, ADDR_MODE_NONE, MEM_READ16, OPERAND_NONE, U16, CONDITION_NONE, SECONDARY_NONE, 3, 24},
+	
 	// MISC
 	[0xCB] = {"PREFIX CB", CB, MEM_READ, ADDR_MODE_NONE, OPERAND_NONE, OPERAND_NONE, 0, 0, 1, 4},
 };
@@ -179,7 +203,8 @@ Operation cb_operations[0x100] = {
 	[0x76] = { "BIT 6, (HL)", BIT, ADDR_MODE_NONE, ADDRESS_R16, 6, HL, 0, 0, 2, 8, {DEPENDENT, RESET, SET, IGNORE} },
 
 
-	[0x7F] = { "BIT 7, A", BIT, ADDR_MODE_NONE, REGISTER, 7, A, 0, 0, 2, 8, {DEPENDENT, RESET, SET, IGNORE} }, [0x78] = { "BIT 7, B", BIT, ADDR_MODE_NONE, REGISTER, 7, B, 0, 0, 2, 8, {DEPENDENT, RESET, SET, IGNORE} },
+	[0x7F] = { "BIT 7, A", BIT, ADDR_MODE_NONE, REGISTER, 7, A, 0, 0, 2, 8, {DEPENDENT, RESET, SET, IGNORE} }, 
+	[0x78] = { "BIT 7, B", BIT, ADDR_MODE_NONE, REGISTER, 7, B, 0, 0, 2, 8, {DEPENDENT, RESET, SET, IGNORE} },
 	[0x78] = { "BIT 7, B", BIT, ADDR_MODE_NONE, REGISTER, 7, B, 0, 0, 2, 8, {DEPENDENT, RESET, SET, IGNORE} },
 	[0x79] = { "BIT 7, C", BIT, ADDR_MODE_NONE, REGISTER, 7, C, 0, 0, 2, 8, {DEPENDENT, RESET, SET, IGNORE} },
 	[0x7A] = { "BIT 7, D", BIT, ADDR_MODE_NONE, REGISTER, 7, D, 0, 0, 2, 8, {DEPENDENT, RESET, SET, IGNORE} },

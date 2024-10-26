@@ -7,6 +7,7 @@ Memory* create_memory(const char* bootrom_path, const char* rom_path) {
 	Memory* ret = (Memory*)malloc(sizeof(Memory));
 	assert(ret != NULL && "Cannot allocate Memory");
 	load_bootrom(ret, bootrom_path);
+	load_rom(ret, rom_path);
 	return ret;
 }
 
@@ -37,13 +38,13 @@ void write8(Memory* mem, u16 address, u8 data) {
 
 void load_bootrom(Memory* mem, const char* path) {
 	FILE* fp;
-	fp = fopen(path, "r");
+	fp = fopen(path, "r+b");
 	assert(fp != NULL && "error opening bootrom");
 	fread(mem->bios, sizeof(u8), 0x100, fp);
 }
 void load_rom(Memory* mem, const char* path) {
 	FILE* fp;
-	fp = fopen(path, "r");
+	fp = fopen(path, "r+b");
 	assert(fp != NULL && "error opening rom");
 	fread(mem->memory, sizeof(u8), 0x8000, fp);
 }

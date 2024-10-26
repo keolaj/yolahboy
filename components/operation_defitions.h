@@ -29,10 +29,11 @@ typedef enum {
 	REGISTER,			 //	A, B, C, D, E, H, L
 	REGISTER16,			 //	BC, DE, HL, SP
 	ADDRESS_R16,		 //	(HL)
+	ADDRESS_R8_OFFSET,   // (0xFF + C)
 	MEM_READ,			 //	u8, i8
 	MEM_READ16,			 //	u16
 	MEM_READ_ADDR,		 //	(u16)
-	MEM_READ_ADDR_OFFSET // (0xFF + u8) // other registers
+	MEM_READ_ADDR_OFFSET // (0xFF + u8)
 } address_mode;
 
 typedef enum {
@@ -68,10 +69,22 @@ typedef enum {
 	OR,
 	XOR,
 	BIT,
+	RR,
+	RL,
+	RRC,
+	RLC,
+	SLA,
+	SRA,
+	SRL,
+	SWAP,
+	RES,
+	SET,
 	JP,
 	JR,
 	RET,
 	CALL,
+	PUSH,
+	POP,
 	RST,
 	CB,
 	DI,
@@ -107,7 +120,6 @@ typedef struct {
 	u8 t_cycles;
 	instruction_flags flag_actions;
 	u8 opcode;
-
 } Operation;
 
 extern Operation operations[0x100];

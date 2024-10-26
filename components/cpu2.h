@@ -14,4 +14,5 @@ Cpu* create_cpu();
 Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op);
 Operation get_operation(Cpu* cpu, Memory* mem);
 alu_return run_alu(Cpu* cpu, u8 x, u8 y, instruction_type type, instruction_flags flag_actions);
+void jump(Cpu* cpu, u16 address);
 void print_registers(Cpu* cpu);
