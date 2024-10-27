@@ -71,6 +71,7 @@ typedef enum {
 	BIT,
 	RR,
 	RL,
+	RLA,
 	RRC,
 	RLC,
 	SLA,
@@ -78,7 +79,7 @@ typedef enum {
 	SRL,
 	SWAP,
 	RES,
-	SET,
+	SET_OP,
 	JP,
 	JR,
 	RET,
@@ -90,7 +91,6 @@ typedef enum {
 	DI,
 	EI,
 	DAA
-
 } instruction_type;
 
 typedef enum {

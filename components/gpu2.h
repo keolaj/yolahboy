@@ -1,19 +1,10 @@
 #pragma once
 #include "global_definitions.h"
 #include "gpu_definitions.h"
-#include "SDL.h"
+#include "memory2.h"
 
-typedef u8** Tile;
 
-typedef struct {
-	u8 line;
-	int clock;
-	u32 framebuffer[23040];
-	Tile* tiles;
-	SDL_Surface* screen;
-	SDL_Surface* tile_screen;
-} Gpu;
-
-Gpu* create_gpu();
-void init_gpu(Gpu* gpu);
+Gpu* create_gpu(Memory* mem);
+void init_gpu(Gpu* gpu, Memory* mem);
+void destroy_gpu(Gpu* gpu);
 void step_gpu(Gpu* gpu, u8 cycles);

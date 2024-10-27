@@ -144,7 +144,7 @@ void run_secondary(Cpu* cpu, Operation* op) {
 	switch (op->secondary) {
 	case INC_R_1:
 		reg = get_reg16_from_type(cpu, op->dest);
-		*reg += 1;
+		*reg = *reg + 1;
 		break;
 	case DEC_R_1:
 		reg = get_reg16_from_type(cpu, op->dest);
@@ -200,6 +200,10 @@ u8 get_source(Cpu* cpu, Memory* mem, Operation* op) { // maybe I'll change this 
 	case ADDRESS_R16:
 		sourceVal = read8(mem, *get_reg16_from_type(cpu, op->source));
 		break;
+	case ADDRESS_R8_OFFSET:
+		sourceVal = read8(mem, read8(mem, cpu->registers.pc));
+		++cpu->registers.pc;
+		break;
 	default:
 		sourceVal = 0;
 		printf("unimplemented 8 bit source read\n");
@@ -218,18 +222,16 @@ u8 get_dest(Cpu* cpu, Memory* mem, Operation* op) { // nvm I made it it's own fu
 	u8 destVal;
 	switch (op->dest_addr_mode) {
 	case REGISTER:
-		destVal = *get_reg_from_type(cpu, op->source);
+		destVal = *get_reg_from_type(cpu, op->dest);
 		break;
 	case MEM_READ_ADDR_OFFSET:
 	case MEM_READ:
 		destVal = read8(mem, cpu->registers.pc);
 		++cpu->registers.pc;
 		break;
-
-
 	default:
 		destVal = 0;
-		printf("unimplemented 8 bit source read\n");
+		printf("unimplemented 8 bit dest read\n");
 		print_operation(*op);
 		assert(false);
 	}
@@ -281,6 +283,10 @@ void LD_impl(Cpu* cpu, Memory* mem, Operation* op) {
 void push(Cpu* cpu, Memory* mem, u16 value) {
 	write16(mem, cpu->registers.sp - 2, value);
 	cpu->registers.sp -= 2;
+}
+void pop(Cpu* cpu, Memory* mem, u16* reg) {
+	*reg = read16(mem, cpu->registers.sp);
+	cpu->registers.sp += 2;
 }
 
 void CALL_impl(Cpu* cpu, Memory* mem, Operation* op) {
@@ -397,8 +403,42 @@ alu_return run_alu(Cpu* cpu, u8 x, u8 y, instruction_type type, instruction_flag
 	case INC:
 	case ADD:
 		result = x + y;
+		if (((x & 0x0f) + (y & 0x0f)) > 0x0f) { //  half carry			
+			new_flags |= FLAG_HALFCARRY;
+		}
+		if ((int)x + (int)y > 255) {
+			new_flags |= FLAG_CARRY;
+		}
+
+		break;
+	case SUB:
+	case CP:
+	case DEC:
+		result = x - y;
+		// new_flags |= FLAG_HALFCARRY | FLAG_CARRY;
+		if ((y & 0x0f) > (x & 0x0f)) { //  half carry (there is a lot of different documentation on this so idk, this matches bgb) 
+			new_flags |= FLAG_HALFCARRY;
+		}
+		if ((int)x - (int)y < 0) { //  carry
+			new_flags |= FLAG_CARRY;
+		}
+		break;
+
+	case SWAP:
+		result = (x << 4) | (x >> 4);
+		break;
+		
+	case RL:
+	{
+		u8 new_carry = x & 0b10000000;
+		result = x << 1;
+		result |= ((cpu->registers.f & FLAG_CARRY) >> 4);
+		new_flags |= (new_carry >> 3);
 		break;
 	}
+	}
+
+
 
 	if (result == 0) {
 		new_flags |= FLAG_ZERO;
@@ -420,25 +460,61 @@ void INC_impl(Cpu* cpu, Memory* mem, Operation* op) {
 		cpu->registers.f = alu_ret.flags;
 		break;
 	}
+	case REGISTER16: {
+		u16* dest_addr = get_reg16_from_type(cpu, op->dest);
+		*dest_addr += 1;
+		break;
+	}
+	}
+}
+
+void DEC_impl(Cpu* cpu, Memory* mem, Operation* op) {
+	switch (op->dest_addr_mode) {
+	case REGISTER: {
+		u8* dest_addr = get_reg_from_type(cpu, op->dest);
+		alu_return alu_ret = run_alu(cpu, *dest_addr, 1, op->type, op->flag_actions);
+		*dest_addr = alu_ret.result;
+		cpu->registers.f = alu_ret.flags;
+		break;
+	}
 	}
 }
 
 void XOR_impl(Cpu* cpu, Memory* mem, Operation* op) {
 	u8 source = get_source(cpu, mem, op);
 
-	switch (op->dest_addr_mode) {
-	case REGISTER: {
-		u8* dest_addr = get_reg_from_type(cpu, op->dest);
-		alu_return alu_ret = run_alu(cpu, *dest_addr, source, op->type, op->flag_actions);
-		*dest_addr = alu_ret.result;
-		cpu->registers.f = alu_ret.flags;
-		break;
-	}
-	default:
-		printf("unimplemented dest_addr_mode\t");
-		print_operation(*op);
-		assert(false);
-	}
+	//switch (op->dest_addr_mode) {
+	//case REGISTER: {
+	//	u8* dest_addr = get_reg_from_type(cpu, op->dest);
+	//	alu_return alu_ret = run_alu(cpu, *dest_addr, source, op->type, op->flag_actions);
+	//	*dest_addr = alu_ret.result;
+	//	cpu->registers.f = alu_ret.flags;
+
+
+	//	break;
+	//}
+	//default:
+	//	printf("unimplemented dest_addr_mode\t");
+	//	print_operation(*op);
+	//	assert(false);
+	//}
+
+	alu_return alu_ret = run_alu(cpu, get_dest(cpu, mem, op), source, op->type, op->flag_actions);
+	write_dest(cpu, mem, op->dest_addr_mode, op->dest_addr_mode, alu_ret.result);
+	cpu->registers.f = alu_ret.flags;
+
+}
+
+void SWAP_impl(Cpu* cpu, Memory* mem, Operation* op) {
+	alu_return alu_ret = run_alu(cpu, get_dest(cpu, mem, op), 0, op->type, op->flag_actions);
+	write_dest(cpu, mem, op->dest_addr_mode, op->dest_addr_mode, alu_ret.result);
+	cpu->registers.f = alu_ret.flags;
+
+}
+
+void CP_impl(Cpu* cpu, Memory* mem, Operation* op) {
+	alu_return alu_ret = run_alu(cpu, get_dest(cpu, mem, op), get_source(cpu, mem, op), op->type, op->flag_actions);
+	cpu->registers.f = alu_ret.flags;
 }
 
 void PUSH_impl(Cpu* cpu, Memory* mem, Operation* op) {
@@ -446,10 +522,25 @@ void PUSH_impl(Cpu* cpu, Memory* mem, Operation* op) {
 	push(cpu, mem, to_push);
 }
 
+void POP_impl(Cpu* cpu, Memory* mem, Operation* op) {
+	u16* reg = get_reg16_from_type(cpu, op->dest);
+	pop(cpu, mem, reg);
+}
+
+void RL_impl(Cpu* cpu, Memory* mem, Operation* op) {
+	alu_return alu_ret = run_alu(cpu, get_dest(cpu, mem, op), 0, op->type, op->flag_actions);
+	write_dest(cpu, mem, op->dest_addr_mode, op->dest, alu_ret.result);
+	cpu->registers.f = alu_ret.flags;
+}
+
+void RET_impl(Cpu* cpu, Memory* mem, Operation* op) {
+	pop(cpu, mem, get_reg16_from_type(cpu, PC));
+}
+
 Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op) {
 	++cpu->registers.pc;
 
-	if (cpu->registers.pc - 1 == 0xBD) {
+	if (cpu->registers.pc - 1 == 0x7e) {
 		printf("BREAKPOINT!!! REGISTERS: \n");
 		--cpu->registers.pc;
 		print_registers(cpu);
@@ -468,8 +559,14 @@ Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op) {
 	case INC:
 		INC_impl(cpu, mem, &op);
 		break;
+	case DEC:
+		DEC_impl(cpu, mem, &op);
+		break;
 	case BIT:
 		BIT_impl(cpu, mem, &op);
+		break;
+	case CP:
+		CP_impl(cpu, mem, &op);
 		break;
 
 	case JP:
@@ -479,9 +576,23 @@ Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op) {
 	case CALL:
 		CALL_impl(cpu, mem, &op);
 		break;
-	
+	case RET:
+		RET_impl(cpu, mem, &op);
+		break;
 	case PUSH:
 		PUSH_impl(cpu, mem, &op);
+		break;
+	case POP:
+		POP_impl(cpu, mem, &op);
+		break;
+	
+	case RLA:
+	case RL:
+		RL_impl(cpu, mem, &op);
+		break;
+
+	case SWAP:
+		SWAP_impl(cpu, mem, &op);
 		break;
 	case CB: {
 		Cycles cb_ret = step_cpu(cpu, mem, get_cb_operation(cpu, mem));

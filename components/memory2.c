@@ -11,6 +11,12 @@ Memory* create_memory(const char* bootrom_path, const char* rom_path) {
 	return ret;
 }
 
+
+
+void set_gpu(Memory* mem, Gpu* gpu) {
+	mem->gpu = gpu;
+}
+
 u8 read8(Memory* mem, u16 address) {
 	if (address < 0x100) {
 		if (mem->in_bios) {
@@ -34,6 +40,10 @@ void write16(Memory* mem, u16 address, u16 value) {
 
 void write8(Memory* mem, u16 address, u8 data) {
 	mem->memory[address] = data;
+
+	if (address > 0x8000 && address <= 0x97FF) {
+		update_tile(mem->gpu, address, data);
+	}
 }
 
 void load_bootrom(Memory* mem, const char* path) {
