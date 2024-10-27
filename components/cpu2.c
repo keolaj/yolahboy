@@ -394,6 +394,9 @@ alu_return run_alu(Cpu* cpu, u8 x, u8 y, instruction_type type, instruction_flag
 
 	u8 result = 0;
 	switch (type) {
+	case OR:
+		result = x | y;
+		break;
 	case XOR:
 		result = x ^ y;
 		break;
@@ -500,14 +503,14 @@ void XOR_impl(Cpu* cpu, Memory* mem, Operation* op) {
 	//}
 
 	alu_return alu_ret = run_alu(cpu, get_dest(cpu, mem, op), source, op->type, op->flag_actions);
-	write_dest(cpu, mem, op->dest_addr_mode, op->dest_addr_mode, alu_ret.result);
+	write_dest(cpu, mem, op->dest_addr_mode, op->dest, alu_ret.result);
 	cpu->registers.f = alu_ret.flags;
 
 }
 
 void SWAP_impl(Cpu* cpu, Memory* mem, Operation* op) {
 	alu_return alu_ret = run_alu(cpu, get_dest(cpu, mem, op), 0, op->type, op->flag_actions);
-	write_dest(cpu, mem, op->dest_addr_mode, op->dest_addr_mode, alu_ret.result);
+	write_dest(cpu, mem, op->dest_addr_mode, op->dest, alu_ret.result);
 	cpu->registers.f = alu_ret.flags;
 
 }
@@ -515,6 +518,19 @@ void SWAP_impl(Cpu* cpu, Memory* mem, Operation* op) {
 void CP_impl(Cpu* cpu, Memory* mem, Operation* op) {
 	alu_return alu_ret = run_alu(cpu, get_dest(cpu, mem, op), get_source(cpu, mem, op), op->type, op->flag_actions);
 	cpu->registers.f = alu_ret.flags;
+}
+
+void SUB_impl(Cpu* cpu, Memory* mem, Operation* op) {
+	alu_return alu_ret = run_alu(cpu, get_dest(cpu, mem, op), get_source(cpu, mem, op), op->type, op->flag_actions);
+	write_dest(cpu, mem, op->dest_addr_mode, op->dest, alu_ret.result);
+	cpu->registers.f = alu_ret.flags;
+}
+
+void ALU_impl(Cpu* cpu, Memory* mem, Operation* op) {
+	alu_return alu_ret = run_alu(cpu, get_dest(cpu, mem, op), get_source(cpu, mem, op), op->type, op->flag_actions);
+	write_dest(cpu, mem, op->dest_addr_mode, op->dest, alu_ret.result);
+	cpu->registers.f = alu_ret.flags;
+
 }
 
 void PUSH_impl(Cpu* cpu, Memory* mem, Operation* op) {
@@ -540,7 +556,7 @@ void RET_impl(Cpu* cpu, Memory* mem, Operation* op) {
 Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op) {
 	++cpu->registers.pc;
 
-	if (cpu->registers.pc - 1 && false) {
+	if (cpu->registers.pc - 1 == 0x5f && false) {
 		printf("BREAKPOINT!!! REGISTERS: \n");
 		--cpu->registers.pc;
 		print_registers(cpu);
@@ -568,6 +584,11 @@ Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op) {
 	case CP:
 		CP_impl(cpu, mem, &op);
 		break;
+
+
+	case SUB:
+	case OR:
+		ALU_impl(cpu, mem, &op);
 
 	case JP:
 		JP_impl(cpu, mem, &op);

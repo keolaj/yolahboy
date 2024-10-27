@@ -18,7 +18,7 @@ void init_gpu(Gpu* gpu, Memory* mem) {
 	memset(gpu->framebuffer, 0, sizeof(gpu->framebuffer));
 	gpu->screen = SDL_CreateRGBSurface(0, SCREEN_WIDTH, SCREEN_HEIGHT, 32, 0xFF000000, 0x00FF0000, 0x0000FF00, 0x000000FF);
 	gpu->tile_screen = SDL_CreateRGBSurface(0, 32 * 8, 64 * 8, 32, 0xFF000000, 0x00FF0000, 0x0000FF00, 0x000000FF);
-	
+
 	// setup Tiles array
 	gpu->tiles = (Tile*)malloc(NUM_TILES * sizeof(Tile));
 	if (gpu->tiles == NULL) {

@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include "memory2.h"
+#include <string.h>
 
 Memory* create_memory(const char* bootrom_path, const char* rom_path) {
 	Memory* ret = (Memory*)malloc(sizeof(Memory));
@@ -48,14 +49,15 @@ void write8(Memory* mem, u16 address, u8 data) {
 
 void load_bootrom(Memory* mem, const char* path) {
 	FILE* fp;
-	fp = fopen(path, "r+b");
+	fp = fopen(path, "rb");
 	assert(fp != NULL && "error opening bootrom");
 	fread(mem->bios, sizeof(u8), 0x100, fp);
 }
 void load_rom(Memory* mem, const char* path) {
 	FILE* fp;
-	fp = fopen(path, "r+b");
+	fp = fopen(path, "rb");
 	assert(fp != NULL && "error opening rom");
+	memset(mem->memory, 0, sizeof(mem->memory));
 	fread(mem->memory, sizeof(u8), 0x8000, fp);
 }
 

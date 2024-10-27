@@ -1,4 +1,5 @@
 #include "yolahboy.h"
+#include <Windows.h>
 
 void updateWindow(SDL_Surface* source, SDL_Window* dest) {
 	SDL_BlitSurface(source, NULL, SDL_GetWindowSurface(dest), NULL);
@@ -52,8 +53,9 @@ int main(int argc, char* argv[]) {
 		step_gpu(emu.gpu, clock.t_cycles);
 		if (c > 29780) {
 			updateWindow(emu.gpu->screen, window);
-			updateWindow(emu.gpu->tile_screen, window);
+			updateWindow(emu.gpu->tile_screen, tile_window);
 			c = 0;
+			Sleep(7);
 		}
 
 	}

@@ -52,7 +52,7 @@ typedef struct {
 	int clock;
 	u32 framebuffer[23040];
 
-	struct Memory* mem;
+	Memory* mem;
 
 	Tile* tiles;
 	SDL_Surface* screen;
