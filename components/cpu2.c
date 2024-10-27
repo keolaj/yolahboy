@@ -201,7 +201,7 @@ u8 get_source(Cpu* cpu, Memory* mem, Operation* op) { // maybe I'll change this 
 		sourceVal = read8(mem, *get_reg16_from_type(cpu, op->source));
 		break;
 	case ADDRESS_R8_OFFSET:
-		sourceVal = read8(mem, read8(mem, cpu->registers.pc));
+		sourceVal = read8(mem, 0xff00 + read8(mem, cpu->registers.pc));
 		++cpu->registers.pc;
 		break;
 	default:
@@ -427,7 +427,7 @@ alu_return run_alu(Cpu* cpu, u8 x, u8 y, instruction_type type, instruction_flag
 	case SWAP:
 		result = (x << 4) | (x >> 4);
 		break;
-		
+
 	case RL:
 	{
 		u8 new_carry = x & 0b10000000;
@@ -540,7 +540,7 @@ void RET_impl(Cpu* cpu, Memory* mem, Operation* op) {
 Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op) {
 	++cpu->registers.pc;
 
-	if (cpu->registers.pc - 1 == 0x7e) {
+	if (cpu->registers.pc - 1 && false) {
 		printf("BREAKPOINT!!! REGISTERS: \n");
 		--cpu->registers.pc;
 		print_registers(cpu);
@@ -585,7 +585,7 @@ Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op) {
 	case POP:
 		POP_impl(cpu, mem, &op);
 		break;
-	
+
 	case RLA:
 	case RL:
 		RL_impl(cpu, mem, &op);

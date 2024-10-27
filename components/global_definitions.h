@@ -48,7 +48,7 @@ typedef enum {
 } gpu_mode;
 
 typedef struct {
-	u8 line;
+	int line;
 	int clock;
 	u32 framebuffer[23040];
 
