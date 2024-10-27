@@ -10,6 +10,11 @@ typedef struct {
 	u8 flags;
 } alu_return;
 
+typedef struct {
+	u16 result;
+	u8 flags;
+} alu16_return;
+
 Cpu* create_cpu();
 Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op);
 Operation get_operation(Cpu* cpu, Memory* mem);

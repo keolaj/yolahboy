@@ -55,7 +55,6 @@ int main(int argc, char* argv[]) {
 			updateWindow(emu.gpu->screen, window);
 			updateWindow(emu.gpu->tile_screen, tile_window);
 			c = 0;
-			Sleep(7);
 		}
 
 	}

@@ -55,6 +55,7 @@ typedef enum {
 } secondary;
 
 typedef enum {
+	UNIMPLEMENTED,
 	NOP,
 	STOP,
 	LD,

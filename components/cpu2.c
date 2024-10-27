@@ -130,8 +130,20 @@ void write_dest(Cpu* cpu, Memory* mem, address_mode mode, operand_type dest, u8 
 	}
 }
 
+void write_dest16(Cpu* cpu, Memory* mem, address_mode mode, operand_type dest, u16 value) {
+	switch (mode) {
+	case REGISTER16:
+		*get_reg16_from_type(cpu, dest) = value;
+		break;
+	default:
+		printf("unimplemented write dest16 type");
+		assert(false);
+		break;
+	}
+}
+
 bool bit_mode_16(Operation* op) {
-	if (op->dest_addr_mode == REGISTER16 || op->dest_addr_mode == MEM_READ16) {
+	if (op->dest_addr_mode == REGISTER16 || op->dest_addr_mode == MEM_READ16 || op->source_addr_mode == MEM_READ16) {
 		return true;
 	}
 	else {
@@ -237,7 +249,18 @@ u8 get_dest(Cpu* cpu, Memory* mem, Operation* op) { // nvm I made it it's own fu
 	}
 	return destVal;
 }
-
+u16 get_dest16(Cpu* cpu, Memory* mem, Operation* op) {
+	u16 dest_val;
+	switch (op->dest_addr_mode) {
+	case REGISTER16:
+		dest_val = *get_reg16_from_type(cpu, op->dest);
+		break;
+	default:
+		printf("unimplemented get_dest16");
+		assert(false);
+		break;
+	}
+}
 
 void LD_impl(Cpu* cpu, Memory* mem, Operation* op) {
 	if (bit_mode_16(op)) {
@@ -324,9 +347,18 @@ void JP_impl(Cpu* cpu, Memory* mem, Operation* op) {
 	else {
 		switch (op->source_addr_mode) {
 		case MEM_READ: {
-			i8 relative = (i8)get_source(cpu, mem, op);
+			u8 relative = get_source(cpu, mem, op);
+			u16 jump_to = cpu->registers.pc;
+			if (relative > 127) {
+				relative = ~relative + 1;
+				jump_to -= relative;
+			}
+			else {
+				jump_to += relative;
+			}
+
 			if (condition_passed(cpu, op)) {
-				jump(cpu, (u8)(cpu->registers.pc + relative));
+				jump(cpu, jump_to);
 				run_secondary(cpu, op);
 			}
 			break;
@@ -394,6 +426,9 @@ alu_return run_alu(Cpu* cpu, u8 x, u8 y, instruction_type type, instruction_flag
 
 	u8 result = 0;
 	switch (type) {
+	case AND:
+		result = x & y;
+		break;
 	case OR:
 		result = x | y;
 		break;
@@ -454,6 +489,28 @@ alu_return run_alu(Cpu* cpu, u8 x, u8 y, instruction_type type, instruction_flag
 	return (alu_return) { result, new_flags };
 }
 
+alu16_return run_alu16(Cpu* cpu, u16 x, u16 y, instruction_type type, instruction_flags flag_actions) {
+	u8 new_flags = 0;
+	new_flags |= generate_set_mask(flag_actions);
+	u16 result;
+	switch (type) {
+	case ADD:
+		result = x + y;
+		if ((int)x + (int)y > 0xFFFF) {
+			new_flags |= FLAG_CARRY;
+		}
+		printf("TODO: Finish half carry flag ADD 16 bit mode");
+		break;
+	}
+	if (result == 0) {
+		new_flags |= FLAG_ZERO;
+	}
+	new_flags |= (generate_ignore_mask(flag_actions) & cpu->registers.f);
+	new_flags &= generate_reset_mask(flag_actions);
+
+	return (alu16_return) { result, new_flags };
+}
+
 void INC_impl(Cpu* cpu, Memory* mem, Operation* op) {
 	switch (op->dest_addr_mode) {
 	case REGISTER: {
@@ -480,6 +537,13 @@ void DEC_impl(Cpu* cpu, Memory* mem, Operation* op) {
 		cpu->registers.f = alu_ret.flags;
 		break;
 	}
+	case REGISTER16: {
+		u16* dest_addr = get_reg16_from_type(cpu, op->dest);
+		*dest_addr = *dest_addr - 1;
+		break;
+	}
+	default:
+		printf("unimplemented dec");
 	}
 }
 
@@ -527,10 +591,17 @@ void SUB_impl(Cpu* cpu, Memory* mem, Operation* op) {
 }
 
 void ALU_impl(Cpu* cpu, Memory* mem, Operation* op) {
-	alu_return alu_ret = run_alu(cpu, get_dest(cpu, mem, op), get_source(cpu, mem, op), op->type, op->flag_actions);
-	write_dest(cpu, mem, op->dest_addr_mode, op->dest, alu_ret.result);
-	cpu->registers.f = alu_ret.flags;
+	if (bit_mode_16(op)) {
+		alu16_return alu_ret = run_alu16(cpu, get_dest16(cpu, mem, op), get_source_16(cpu, mem, op), op->type, op->flag_actions);
+		write_dest16(cpu, mem, op->dest_addr_mode, op->dest, alu_ret.result);
+		cpu->registers.f = alu_ret.flags;
+	}
+	else {
+		alu_return alu_ret = run_alu(cpu, get_dest(cpu, mem, op), get_source(cpu, mem, op), op->type, op->flag_actions);
+		write_dest(cpu, mem, op->dest_addr_mode, op->dest, alu_ret.result);
+		cpu->registers.f = alu_ret.flags;
 
+	}
 }
 
 void PUSH_impl(Cpu* cpu, Memory* mem, Operation* op) {
@@ -556,15 +627,20 @@ void RET_impl(Cpu* cpu, Memory* mem, Operation* op) {
 Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op) {
 	++cpu->registers.pc;
 
-	if (cpu->registers.pc - 1 == 0x5f && false) {
+	if (cpu->registers.pc - 1 == 0x208) {
 		printf("BREAKPOINT!!! REGISTERS: \n");
 		--cpu->registers.pc;
 		print_registers(cpu);
 		++cpu->registers.pc;
 	}
 
+	if (cpu->registers.pc - 1 == 0x100) {
+		mem->in_bios = false;
+	}
 
 	switch (op.type) {
+	case NOP:
+		break;
 	case LD:
 		LD_impl(cpu, mem, &op);
 		break;
@@ -585,11 +661,12 @@ Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op) {
 		CP_impl(cpu, mem, &op);
 		break;
 
-
+	case ADD:
 	case SUB:
 	case OR:
+	case AND:
 		ALU_impl(cpu, mem, &op);
-
+		break;
 	case JP:
 		JP_impl(cpu, mem, &op);
 		break;
@@ -621,6 +698,7 @@ Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op) {
 		op.t_cycles += cb_ret.t_cycles;
 		break;
 	}
+	case UNIMPLEMENTED:
 	default:
 		--cpu->registers.pc;
 		print_registers(cpu);
