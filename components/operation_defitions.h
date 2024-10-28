@@ -85,6 +85,7 @@ typedef enum {
 	JP,
 	JR,
 	RET,
+	RETI,
 	CALL,
 	PUSH,
 	POP,

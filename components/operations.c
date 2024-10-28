@@ -154,6 +154,12 @@ Operation operations[0x100] = {
 
 	// AND
 	[0xA7] = { "AND A, A", AND, REGISTER, REGISTER, A, A, 0, 0, 2, 8, {DEPENDENT, RESET, SET, RESET} },
+	[0xA0] = { "AND A, B", AND, REGISTER, REGISTER, A, B, 0, 0, 2, 8, {DEPENDENT, RESET, SET, RESET} },
+	[0xA1] = { "AND A, C", AND, REGISTER, REGISTER, A, C, 0, 0, 2, 8, {DEPENDENT, RESET, SET, RESET} },
+	[0xA2] = { "AND A, D", AND, REGISTER, REGISTER, A, D, 0, 0, 2, 8, {DEPENDENT, RESET, SET, RESET} },
+	[0xA3] = { "AND A, E", AND, REGISTER, REGISTER, A, E, 0, 0, 2, 8, {DEPENDENT, RESET, SET, RESET} },
+	[0xA4] = { "AND A, H", AND, REGISTER, REGISTER, A, H, 0, 0, 2, 8, {DEPENDENT, RESET, SET, RESET} },
+	[0xA5] = { "AND A, L", AND, REGISTER, REGISTER, A, L, 0, 0, 2, 8, {DEPENDENT, RESET, SET, RESET} },
 	[0xE6] = { "AND A, u8", AND, REGISTER, MEM_READ, A, U8, 0, 0, 2, 8, {DEPENDENT, RESET, SET, RESET} },
 
 	// OR
@@ -162,6 +168,9 @@ Operation operations[0x100] = {
 	[0xB3] = { "OR A, E", OR, REGISTER, REGISTER, A, E, 0, 0, 1, 4, {DEPENDENT, RESET, RESET, RESET} },
 	// XOR
 	[0xAF] = {"XOR A, A", XOR, REGISTER, REGISTER, A, A, 0, 0, 1, 4, {DEPENDENT, RESET, RESET, RESET} },
+	[0xA8] = {"XOR A, B", XOR, REGISTER, REGISTER, A, B, 0, 0, 1, 4, {DEPENDENT, RESET, RESET, RESET} },
+	[0xA9] = {"XOR A, C", XOR, REGISTER, REGISTER, A, C, 0, 0, 1, 4, {DEPENDENT, RESET, RESET, RESET} },
+	[0xAA] = {"XOR A, D", XOR, REGISTER, REGISTER, A, D, 0, 0, 1, 4, {DEPENDENT, RESET, RESET, RESET} },
 
 	[0x2F] = { "CPL A", CPL, REGISTER, ADDR_MODE_NONE, A, OPERAND_NONE, 0, 0, 1, 4, {IGNORE, SET, SET, IGNORE} },
 
@@ -201,6 +210,7 @@ Operation operations[0x100] = {
 	[0xC8] = {"RET Z", RET, ADDR_MODE_NONE, ADDR_MODE_NONE, OPERAND_NONE, OPERAND_NONE, CONDITION_Z, SECONDARY_NONE, 1, 16},
 	[0xC0] = {"RET NZ", RET, ADDR_MODE_NONE, ADDR_MODE_NONE, OPERAND_NONE, OPERAND_NONE, CONDITION_NZ, SECONDARY_NONE, 1, 16},
 
+	[0xD9] = {"RETI", RETI, ADDR_MODE_NONE, ADDR_MODE_NONE, OPERAND_NONE, OPERAND_NONE, CONDITION_NONE, SECONDARY_NONE, 1, 16},
 	// MISC
 	[0xCB] = {"PREFIX CB", CB, MEM_READ, ADDR_MODE_NONE, OPERAND_NONE, OPERAND_NONE, 0, 0, 1, 4},
 
@@ -340,6 +350,7 @@ u16 interrupt_priority(Cpu* cpu, Memory* mem, u8 interrupt_flag) {
 void run_interrupt(Cpu* cpu, Memory* mem) {
 	push(cpu, mem, cpu->registers.pc);
 	jump(cpu, interrupt_priority(cpu, mem, read8(mem, IF)));
+	cpu->IME = false;
 }
 
 bool condition_passed(Cpu* cpu, Operation* op) {

@@ -338,7 +338,7 @@ bool should_run_interrupt(Cpu* cpu, Memory* mem) {
 Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op) {
 	++cpu->registers.pc;
 
-	if (cpu->registers.pc - 1 == 0x1FE) {
+	if (cpu->registers.pc - 1 == 0x2BC) {
 		printf("BREAKPOINT!!! REGISTERS: \n");
 		--cpu->registers.pc;
 		print_registers(cpu);
@@ -389,6 +389,11 @@ Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op) {
 	case RET:
 		RET_impl(cpu, mem, &op);
 		break;
+	case RETI:
+		RET_impl(cpu, mem, &op);
+		cpu->IME = true;
+		break;
+
 	case PUSH:
 		PUSH_impl(cpu, mem, &op);
 		break;
