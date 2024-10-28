@@ -67,30 +67,25 @@ void LD_impl(Cpu* cpu, Memory* mem, Operation* op) {
 	else {
 		u8 source = get_source(cpu, mem, op);
 
-		switch (op->dest_addr_mode) {
-		case REGISTER:
-			*get_reg_from_type(cpu, op->dest) = source;
-			break;
-		case ADDRESS_R16:
-			write8(mem, *get_reg16_from_type(cpu, op->dest), source);
-			break;
-		case ADDRESS_R8_OFFSET:
-			write8(mem, (0xFF00 + get_dest(cpu, mem, op)), source);
-			break;
-		case MEM_READ_ADDR:
-			write8(mem, read16(mem, cpu->registers.pc), source);
-			cpu->registers.pc += 2;
-			break;
-		case MEM_READ_ADDR_OFFSET: {
-			u8 reg_value = get_dest(cpu, mem, op);
-			u16 addr = 0xFF00 + reg_value;
-			write8(mem, addr, source);
-			break;
-		default:
-			printf("unimplemented dest write LD");
-			assert(false);
-		}
-		}
+		//case REGISTER:
+		//	*get_reg_from_type(cpu, op->dest) = source;
+		//	break;
+		//case ADDRESS_R16:
+		//	write8(mem, *get_reg16_from_type(cpu, op->dest), source);
+		//	break;
+		//case ADDRESS_R8_OFFSET:
+		//	write8(mem, (0xFF00 + get_dest(cpu, mem, op)), source);
+		//	break;
+		//case MEM_READ_ADDR:
+		//	write8(mem, read16(mem, cpu->registers.pc), source);
+		//	cpu->registers.pc += 2;
+		//	break;
+		//case MEM_READ_ADDR_OFFSET: {
+		//	u8 reg_value = get_dest(cpu, mem, op);
+		//	u16 addr = 0xFF00 + reg_value;
+		//	write8(mem, addr, source);
+		//	break;
+		write_dest(cpu, mem, op->dest_addr_mode, op->dest, source);
 	}
 	if (op->secondary != SECONDARY_NONE) run_secondary(cpu, op);
 
