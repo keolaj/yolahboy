@@ -69,6 +69,7 @@ typedef enum {
 	AND,
 	OR,
 	XOR,
+	CPL,
 	BIT,
 	RR,
 	RL,
@@ -107,6 +108,17 @@ typedef struct {
 	flag_action halfcarry;
 	flag_action carry;
 } instruction_flags;
+
+typedef struct {
+	u8 result;
+	u8 flags;
+} alu_return;
+
+typedef struct {
+	u16 result;
+	u8 flags;
+} alu16_return;
+
 
 typedef struct {
 	char* mnemonic;

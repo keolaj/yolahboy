@@ -1,4 +1,5 @@
 #pragma once
+
 #include <stdbool.h>
 #include "SDL.h"
 #include <stdlib.h>
@@ -37,6 +38,54 @@ typedef struct {
 	bool in_bios;
 	struct Gpu* gpu;
 } Memory;
+
+typedef struct {
+	union {
+		struct {
+			u8 f;
+			u8 a;
+		};
+		u16 af;
+	};
+	union {
+		struct {
+			u8 c;
+			u8 b;
+		};
+		u16 bc;
+	};
+	union {
+		struct {
+			u8 e;
+			u8 d;
+		};
+		u16 de;
+	};
+	union {
+		struct {
+			u8 l;
+			u8 h;
+		};
+		u16 hl;
+	};
+	u16 sp;
+	u16 pc;
+} Registers;
+
+typedef struct {
+	Registers registers;
+	bool IME;
+	bool should_update_IME;
+	bool update_IME_value;
+	int update_IME_counter;
+
+} Cpu;
+
+typedef struct {
+	u8 m_cycles;
+	u8 t_cycles;
+} Cycles;
+
 
 typedef u8** Tile;
 

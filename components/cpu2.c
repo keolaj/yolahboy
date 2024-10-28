@@ -2,6 +2,7 @@
 #include <assert.h>
 #include "cpu2.h"
 
+
 void init_cpu(Cpu* cpu) {
 	cpu->registers.af = 0;
 	cpu->registers.bc = 0;
@@ -10,6 +11,7 @@ void init_cpu(Cpu* cpu) {
 	cpu->registers.sp = 0;
 	cpu->registers.pc = 0;
 	cpu->IME = false;
+	cpu->should_update_IME = false;
 }
 
 Cpu* create_cpu() {
@@ -27,35 +29,11 @@ void print_registers(Cpu* cpu) {
 	printf("pc: 0x%04X\n", cpu->registers.pc);
 }
 
-bool condition_passed(Cpu* cpu, Operation* op) {
-	switch (op->condition) {
-	case CONDITION_Z:
-		if ((cpu->registers.f & FLAG_ZERO) == FLAG_ZERO) {
-			return true;
-		}
-		break;
-	case CONDITION_NZ:
-		if ((cpu->registers.f & FLAG_ZERO) != FLAG_ZERO) {
-			return true;
-		}
-		break;
-	case CONDITION_C:
-		if ((cpu->registers.f & FLAG_CARRY) == FLAG_CARRY) {
-			return true;
-		}
-		break;
-	case CONDITION_NC:
-		if ((cpu->registers.f & FLAG_CARRY) != FLAG_CARRY) {
-			return true;
-		}
-		break;
-	default:
-		// why get here
-		return true;
-	}
-	return false;
+void update_IME(Cpu* cpu, bool value) {
+	cpu->should_update_IME = true;
+	cpu->update_IME_value = value;
+	cpu->update_IME_counter = 1;
 }
-
 
 Operation get_operation(Cpu* cpu, Memory* mem) {
 	u8 opcode = read8(mem, cpu->registers.pc);
@@ -69,197 +47,6 @@ Operation get_cb_operation(Cpu* cpu, Memory* mem) {
 	Operation ret = cb_operations[cb_opcode];
 	ret.opcode = cb_opcode;
 	return ret;
-}
-
-u8* get_reg_from_type(Cpu* cpu, operand_type type) {
-
-	switch (type) {
-	case A:
-		return &cpu->registers.a;
-	case B:
-		return &cpu->registers.b;
-	case C:
-		return &cpu->registers.c;
-	case D:
-		return &cpu->registers.d;
-	case E:
-		return &cpu->registers.e;
-	case H:
-		return &cpu->registers.h;
-	case L:
-		return &cpu->registers.l;
-	default:
-		assert(false && "Not a register");
-		return NULL;
-	}
-
-}
-
-u16* get_reg16_from_type(Cpu* cpu, operand_type type) {
-	switch (type) {
-	case AF:
-		return &cpu->registers.af;
-	case BC:
-		return &cpu->registers.bc;
-	case DE:
-		return &cpu->registers.de;
-	case HL:
-		return &cpu->registers.hl;
-	case SP:
-		return &cpu->registers.sp;
-	case PC:
-		return &cpu->registers.pc;
-	default:
-		assert(false && "Not a register");
-		return NULL;
-	}
-}
-
-void write_dest(Cpu* cpu, Memory* mem, address_mode mode, operand_type dest, u8 value) {
-	switch (mode) {
-	case REGISTER:
-		*get_reg_from_type(cpu, dest) = value;
-		break;
-	case ADDRESS_R16:
-		write8(mem, *get_reg16_from_type(cpu, dest), value);
-		break;
-	case MEM_READ16:
-		write8(mem, read8(mem, cpu->registers.pc), value);
-		cpu->registers.pc += 2;
-		break;
-	}
-}
-
-void write_dest16(Cpu* cpu, Memory* mem, address_mode mode, operand_type dest, u16 value) {
-	switch (mode) {
-	case REGISTER16:
-		*get_reg16_from_type(cpu, dest) = value;
-		break;
-	default:
-		printf("unimplemented write dest16 type");
-		assert(false);
-		break;
-	}
-}
-
-bool bit_mode_16(Operation* op) {
-	if (op->dest_addr_mode == REGISTER16 || op->dest_addr_mode == MEM_READ16 || op->source_addr_mode == MEM_READ16) {
-		return true;
-	}
-	else {
-		return false;
-	}
-}
-
-void run_secondary(Cpu* cpu, Operation* op) {
-	u16* reg;
-	switch (op->secondary) {
-	case INC_R_1:
-		reg = get_reg16_from_type(cpu, op->dest);
-		*reg = *reg + 1;
-		break;
-	case DEC_R_1:
-		reg = get_reg16_from_type(cpu, op->dest);
-		*reg -= 1;
-		break;
-	case INC_R_2:
-		reg = get_reg16_from_type(cpu, op->source);
-		*reg += 1;
-		break;
-	case DEC_R_2:
-		reg = get_reg16_from_type(cpu, op->source);
-		*reg -= 1;
-		break;
-	case ADD_T_4:
-		op->t_cycles += 4;
-		break;
-	case ADD_T_12:
-		op->t_cycles += 12;
-	default:
-		return;
-	}
-}
-
-u16 get_source_16(Cpu* cpu, Memory* mem, Operation* op) {
-	u16 sourceVal;
-	switch (op->source_addr_mode) {
-	case REGISTER16:
-		sourceVal = *get_reg16_from_type(cpu, op->source);
-		break;
-	case MEM_READ16:
-		sourceVal = read16(mem, cpu->registers.pc);
-		cpu->registers.pc += 2;
-		break;
-	default:
-		sourceVal = 0;
-		printf("unimplemented 16 bit source read\n");
-		print_operation(*op);
-		assert(false);
-	}
-	return sourceVal;
-}
-
-u8 get_source(Cpu* cpu, Memory* mem, Operation* op) { // maybe I'll change this to be able to read dest too at some point. Might make life easier
-	u8 sourceVal;
-	switch (op->source_addr_mode) {
-	case REGISTER:
-		sourceVal = *get_reg_from_type(cpu, op->source);
-		break;
-	case MEM_READ:
-		sourceVal = read8(mem, cpu->registers.pc);
-		++cpu->registers.pc;
-		break;
-	case ADDRESS_R16:
-		sourceVal = read8(mem, *get_reg16_from_type(cpu, op->source));
-		break;
-	case ADDRESS_R8_OFFSET:
-		sourceVal = read8(mem, 0xff00 + read8(mem, cpu->registers.pc));
-		++cpu->registers.pc;
-		break;
-	default:
-		sourceVal = 0;
-		printf("unimplemented 8 bit source read\n");
-		print_operation(*op);
-		assert(false);
-	}
-	return sourceVal;
-}
-
-u8 get_source16(Cpu* cpu, Memory* mem, Operation* op) {
-	// TODO
-	return 0;
-}
-
-u8 get_dest(Cpu* cpu, Memory* mem, Operation* op) { // nvm I made it it's own function. DONT CALL THIS WITHOUT TESTING
-	u8 destVal;
-	switch (op->dest_addr_mode) {
-	case REGISTER:
-		destVal = *get_reg_from_type(cpu, op->dest);
-		break;
-	case MEM_READ_ADDR_OFFSET:
-	case MEM_READ:
-		destVal = read8(mem, cpu->registers.pc);
-		++cpu->registers.pc;
-		break;
-	default:
-		destVal = 0;
-		printf("unimplemented 8 bit dest read\n");
-		print_operation(*op);
-		assert(false);
-	}
-	return destVal;
-}
-u16 get_dest16(Cpu* cpu, Memory* mem, Operation* op) {
-	u16 dest_val;
-	switch (op->dest_addr_mode) {
-	case REGISTER16:
-		dest_val = *get_reg16_from_type(cpu, op->dest);
-		break;
-	default:
-		printf("unimplemented get_dest16");
-		assert(false);
-		break;
-	}
 }
 
 void LD_impl(Cpu* cpu, Memory* mem, Operation* op) {
@@ -287,6 +74,9 @@ void LD_impl(Cpu* cpu, Memory* mem, Operation* op) {
 		case ADDRESS_R16:
 			write8(mem, *get_reg16_from_type(cpu, op->dest), source);
 			break;
+		case ADDRESS_R8_OFFSET:
+			write8(mem, (0xFF00 + get_dest(cpu, mem, op)), source);
+			break;
 		case MEM_READ_ADDR:
 			write8(mem, read16(mem, cpu->registers.pc), source);
 			cpu->registers.pc += 2;
@@ -296,6 +86,9 @@ void LD_impl(Cpu* cpu, Memory* mem, Operation* op) {
 			u16 addr = 0xFF00 + reg_value;
 			write8(mem, addr, source);
 			break;
+		default:
+			printf("unimplemented dest write LD");
+			assert(false);
 		}
 		}
 	}
@@ -303,14 +96,6 @@ void LD_impl(Cpu* cpu, Memory* mem, Operation* op) {
 
 }
 
-void push(Cpu* cpu, Memory* mem, u16 value) {
-	write16(mem, cpu->registers.sp - 2, value);
-	cpu->registers.sp -= 2;
-}
-void pop(Cpu* cpu, Memory* mem, u16* reg) {
-	*reg = read16(mem, cpu->registers.sp);
-	cpu->registers.sp += 2;
-}
 
 void CALL_impl(Cpu* cpu, Memory* mem, Operation* op) {
 	// Calls should only be u16 address mode
@@ -332,9 +117,6 @@ void BIT_impl(Cpu* cpu, Memory* mem, Operation* op) {
 
 }
 
-void jump(Cpu* cpu, u16 jump_to) {
-	cpu->registers.pc = jump_to;
-}
 
 void JP_impl(Cpu* cpu, Memory* mem, Operation* op) {
 	if (bit_mode_16(op)) {
@@ -416,100 +198,8 @@ u8 generate_ignore_mask(instruction_flags flag_actions) {
 		ret |= FLAG_CARRY;
 	}
 	return ret;
-
 }
 
-alu_return run_alu(Cpu* cpu, u8 x, u8 y, instruction_type type, instruction_flags flag_actions) {
-	u8 new_flags = 0;
-
-	new_flags |= generate_set_mask(flag_actions);
-
-	u8 result = 0;
-	switch (type) {
-	case AND:
-		result = x & y;
-		break;
-	case OR:
-		result = x | y;
-		break;
-	case XOR:
-		result = x ^ y;
-		break;
-	case BIT:
-		result = x & y;
-		break;
-	case INC:
-	case ADD:
-		result = x + y;
-		if (((x & 0x0f) + (y & 0x0f)) > 0x0f) { //  half carry			
-			new_flags |= FLAG_HALFCARRY;
-		}
-		if ((int)x + (int)y > 255) {
-			new_flags |= FLAG_CARRY;
-		}
-
-		break;
-	case SUB:
-	case CP:
-	case DEC:
-		result = x - y;
-		// new_flags |= FLAG_HALFCARRY | FLAG_CARRY;
-		if ((y & 0x0f) > (x & 0x0f)) { //  half carry (there is a lot of different documentation on this so idk, this matches bgb) 
-			new_flags |= FLAG_HALFCARRY;
-		}
-		if ((int)x - (int)y < 0) { //  carry
-			new_flags |= FLAG_CARRY;
-		}
-		break;
-
-	case SWAP:
-		result = (x << 4) | (x >> 4);
-		break;
-
-	case RL:
-	{
-		u8 new_carry = x & 0b10000000;
-		result = x << 1;
-		result |= ((cpu->registers.f & FLAG_CARRY) >> 4);
-		new_flags |= (new_carry >> 3);
-		break;
-	}
-	}
-
-
-
-	if (result == 0) {
-		new_flags |= FLAG_ZERO;
-	}
-
-	new_flags |= (generate_ignore_mask(flag_actions) & cpu->registers.f);
-	new_flags &= generate_reset_mask(flag_actions);
-
-
-	return (alu_return) { result, new_flags };
-}
-
-alu16_return run_alu16(Cpu* cpu, u16 x, u16 y, instruction_type type, instruction_flags flag_actions) {
-	u8 new_flags = 0;
-	new_flags |= generate_set_mask(flag_actions);
-	u16 result;
-	switch (type) {
-	case ADD:
-		result = x + y;
-		if ((int)x + (int)y > 0xFFFF) {
-			new_flags |= FLAG_CARRY;
-		}
-		printf("TODO: Finish half carry flag ADD 16 bit mode");
-		break;
-	}
-	if (result == 0) {
-		new_flags |= FLAG_ZERO;
-	}
-	new_flags |= (generate_ignore_mask(flag_actions) & cpu->registers.f);
-	new_flags &= generate_reset_mask(flag_actions);
-
-	return (alu16_return) { result, new_flags };
-}
 
 void INC_impl(Cpu* cpu, Memory* mem, Operation* op) {
 	switch (op->dest_addr_mode) {
@@ -525,6 +215,14 @@ void INC_impl(Cpu* cpu, Memory* mem, Operation* op) {
 		*dest_addr += 1;
 		break;
 	}
+	case ADDRESS_R16: {
+		u8 prev = get_dest(cpu, mem, op);
+		write_dest(cpu, mem, op->dest_addr_mode, op->dest, prev + 1);
+		break;
+	}
+	default:
+		printf("unimplemented increment");
+		assert(false);
 	}
 }
 
@@ -621,13 +319,26 @@ void RL_impl(Cpu* cpu, Memory* mem, Operation* op) {
 }
 
 void RET_impl(Cpu* cpu, Memory* mem, Operation* op) {
-	pop(cpu, mem, get_reg16_from_type(cpu, PC));
+	if (condition_passed(cpu, op)) {
+		pop(cpu, mem, get_reg16_from_type(cpu, PC));
+	}
 }
+
+bool should_run_interrupt(Cpu* cpu, Memory* mem) {
+	if (cpu->IME && read8(mem, IF)) {
+		return true;
+	}
+	else {
+		return false;
+	}
+}
+
+
 
 Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op) {
 	++cpu->registers.pc;
 
-	if (cpu->registers.pc - 1 == 0x208) {
+	if (cpu->registers.pc - 1 == 0x1FE) {
 		printf("BREAKPOINT!!! REGISTERS: \n");
 		--cpu->registers.pc;
 		print_registers(cpu);
@@ -665,6 +376,7 @@ Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op) {
 	case SUB:
 	case OR:
 	case AND:
+	case CPL:
 		ALU_impl(cpu, mem, &op);
 		break;
 	case JP:
@@ -692,12 +404,19 @@ Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op) {
 	case SWAP:
 		SWAP_impl(cpu, mem, &op);
 		break;
+
 	case CB: {
 		Cycles cb_ret = step_cpu(cpu, mem, get_cb_operation(cpu, mem));
 		op.m_cycles += cb_ret.m_cycles;
 		op.t_cycles += cb_ret.t_cycles;
 		break;
 	}
+	case EI:
+		update_IME(cpu, true);
+		break;
+	case DI:
+		update_IME(cpu, false);
+		break;
 	case UNIMPLEMENTED:
 	default:
 		--cpu->registers.pc;
@@ -706,6 +425,20 @@ Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op) {
 		print_operation(op);
 		assert(false);
 
+	}
+
+	if (cpu->should_update_IME) {
+		if (cpu->update_IME_counter == 0) {
+			cpu->IME = cpu->update_IME_value;
+			cpu->should_update_IME = false;
+		}
+		else {
+			--cpu->update_IME_counter;
+		}
+	}
+
+	if (should_run_interrupt(cpu, mem)) {
+		run_interrupt(cpu, mem);
 	}
 
 	return (Cycles) { op.m_cycles, op.t_cycles };

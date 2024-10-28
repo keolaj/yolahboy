@@ -40,7 +40,10 @@ void write16(Memory* mem, u16 address, u16 value) {
 }
 
 void write8(Memory* mem, u16 address, u8 data) {
-	mem->memory[address] = data;
+
+	if (address)
+
+		mem->memory[address] = data;
 
 	if (address > 0x8000 && address <= 0x97FF) {
 		update_tile(mem->gpu, address, data);
