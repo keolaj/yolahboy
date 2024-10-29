@@ -140,6 +140,13 @@ void JP_impl(Cpu* cpu, Memory* mem, Operation* op) {
 			}
 			break;
 		}
+		case REGISTER16: {
+			jump(cpu, cpu->registers.hl);
+			break;
+		}
+		default:
+			printf("unimplemented jump");
+			assert(false);
 		}
 	}
 }
@@ -329,11 +336,16 @@ bool should_run_interrupt(Cpu* cpu, Memory* mem) {
 }
 
 
+void RST_impl(Cpu* cpu, Memory* mem, Operation* op) {
+	push(cpu, mem, cpu->registers.pc);
+	jump(cpu, op->dest);
+}
+
 
 Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op) {
 	++cpu->registers.pc;
 
-	if (cpu->registers.pc - 1 == 0x2BC) {
+	if (cpu->registers.pc - 1 == 0x2825) { // works to here
 		printf("BREAKPOINT!!! REGISTERS: \n");
 		--cpu->registers.pc;
 		print_registers(cpu);
@@ -372,6 +384,7 @@ Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op) {
 	case OR:
 	case AND:
 	case CPL:
+	case RES:
 		ALU_impl(cpu, mem, &op);
 		break;
 	case JP:
@@ -387,6 +400,10 @@ Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op) {
 	case RETI:
 		RET_impl(cpu, mem, &op);
 		cpu->IME = true;
+		break;
+
+	case RST:
+		RST_impl(cpu, mem, &op);
 		break;
 
 	case PUSH:

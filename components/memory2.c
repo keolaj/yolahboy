@@ -24,6 +24,7 @@ u8 read8(Memory* mem, u16 address) {
 			return mem->bios[(u8)address];
 		}
 	}
+	if (address == 0xFF00) return 0xEF; // joypad emulation for now
 	return mem->memory[address];
 }
 
