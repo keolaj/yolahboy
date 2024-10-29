@@ -530,18 +530,34 @@ u16* get_reg16_from_type(Cpu* cpu, operand_type type) {
 	}
 }
 
-void write_dest(Cpu* cpu, Memory* mem, address_mode mode, operand_type dest, u8 value) {
-	switch (mode) {
+void write_dest(Cpu* cpu, Memory* mem, Operation* op, u8 value) {
+	switch (op->dest_addr_mode) {
 	case REGISTER:
-		*get_reg_from_type(cpu, dest) = value;
+		*get_reg_from_type(cpu, op->dest) = value;
 		break;
 	case ADDRESS_R16:
-		write8(mem, *get_reg16_from_type(cpu, dest), value);
+		write8(mem, *get_reg16_from_type(cpu, op->dest), value);
 		break;
-	case MEM_READ16:
-		write8(mem, read8(mem, cpu->registers.pc), value);
+		//case MEM_READ16:
+		//	write8(mem, read8(mem, cpu->registers.pc), value);
+		//	cpu->registers.pc += 2;
+		//	break;
+	case ADDRESS_R8_OFFSET:
+		write8(mem, (0xFF00 + get_dest(cpu, mem, op)), value);
+		break;
+	case MEM_READ_ADDR:
+		write8(mem, read16(mem, cpu->registers.pc), value);
 		cpu->registers.pc += 2;
 		break;
+	case MEM_READ_ADDR_OFFSET: {
+		u8 offset = read8(mem, cpu->registers.pc);
+		++cpu->registers.pc;
+		write8(mem, (0xFF00 + offset), value);
+		break;
+	}
+	default:
+		printf("unimplemented write dest addr mode");
+		assert(false);
 	}
 }
 

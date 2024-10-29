@@ -85,7 +85,7 @@ void LD_impl(Cpu* cpu, Memory* mem, Operation* op) {
 		//	u16 addr = 0xFF00 + reg_value;
 		//	write8(mem, addr, source);
 		//	break;
-		write_dest(cpu, mem, op->dest_addr_mode, op->dest, source);
+		write_dest(cpu, mem, op, source);
 	}
 	if (op->secondary != SECONDARY_NONE) run_secondary(cpu, op);
 
@@ -212,7 +212,7 @@ void INC_impl(Cpu* cpu, Memory* mem, Operation* op) {
 	}
 	case ADDRESS_R16: {
 		u8 prev = get_dest(cpu, mem, op);
-		write_dest(cpu, mem, op->dest_addr_mode, op->dest, prev + 1);
+		write_dest(cpu, mem, op, prev + 1);
 		break;
 	}
 	default:
@@ -260,14 +260,14 @@ void XOR_impl(Cpu* cpu, Memory* mem, Operation* op) {
 	//}
 
 	alu_return alu_ret = run_alu(cpu, get_dest(cpu, mem, op), source, op->type, op->flag_actions);
-	write_dest(cpu, mem, op->dest_addr_mode, op->dest, alu_ret.result);
+	write_dest(cpu, mem, op, alu_ret.result);
 	cpu->registers.f = alu_ret.flags;
 
 }
 
 void SWAP_impl(Cpu* cpu, Memory* mem, Operation* op) {
 	alu_return alu_ret = run_alu(cpu, get_dest(cpu, mem, op), 0, op->type, op->flag_actions);
-	write_dest(cpu, mem, op->dest_addr_mode, op->dest, alu_ret.result);
+	write_dest(cpu, mem, op, alu_ret.result);
 	cpu->registers.f = alu_ret.flags;
 
 }
@@ -279,7 +279,7 @@ void CP_impl(Cpu* cpu, Memory* mem, Operation* op) {
 
 void SUB_impl(Cpu* cpu, Memory* mem, Operation* op) {
 	alu_return alu_ret = run_alu(cpu, get_dest(cpu, mem, op), get_source(cpu, mem, op), op->type, op->flag_actions);
-	write_dest(cpu, mem, op->dest_addr_mode, op->dest, alu_ret.result);
+	write_dest(cpu, mem, op, alu_ret.result);
 	cpu->registers.f = alu_ret.flags;
 }
 
@@ -291,7 +291,7 @@ void ALU_impl(Cpu* cpu, Memory* mem, Operation* op) {
 	}
 	else {
 		alu_return alu_ret = run_alu(cpu, get_dest(cpu, mem, op), get_source(cpu, mem, op), op->type, op->flag_actions);
-		write_dest(cpu, mem, op->dest_addr_mode, op->dest, alu_ret.result);
+		write_dest(cpu, mem, op, alu_ret.result);
 		cpu->registers.f = alu_ret.flags;
 
 	}
@@ -309,7 +309,7 @@ void POP_impl(Cpu* cpu, Memory* mem, Operation* op) {
 
 void RL_impl(Cpu* cpu, Memory* mem, Operation* op) {
 	alu_return alu_ret = run_alu(cpu, get_dest(cpu, mem, op), 0, op->type, op->flag_actions);
-	write_dest(cpu, mem, op->dest_addr_mode, op->dest, alu_ret.result);
+	write_dest(cpu, mem, op, alu_ret.result);
 	cpu->registers.f = alu_ret.flags;
 }
 

@@ -20,7 +20,7 @@ u8 get_source(Cpu* cpu, Memory* mem, Operation* op);
 u8 get_source16(Cpu* cpu, Memory* mem, Operation* op);
 u8 get_dest(Cpu* cpu, Memory* mem, Operation* op);
 u16 get_dest16(Cpu* cpu, Memory* mem, Operation* op);
-void write_dest(Cpu* cpu, Memory* mem, address_mode mode, operand_type dest, u8 value);
+void write_dest(Cpu* cpu, Memory* mem, Operation*, u8 value);
 void run_interrupt(Cpu* cpu, Memory* mem);
 alu_return run_alu(Cpu* cpu, u8 x, u8 y, instruction_type type, instruction_flags flag_actions);
 alu16_return run_alu16(Cpu* cpu, u16 x, u16 y, instruction_type type, instruction_flags flag_actions);
