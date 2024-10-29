@@ -183,7 +183,8 @@ void handle_vram(Gpu* gpu) {
 void handle_hblank(Gpu* gpu) {
 	if (gpu->clock >= 204) {
 		gpu->clock = 0;
-		write8(gpu->mem, LY, ++gpu->line);
+		++gpu->line;
+		write8(gpu->mem, LY, gpu->line);
 
 		if (gpu->line == 143) {
 			u8 interrupt = read8(gpu->mem, IF);
@@ -201,11 +202,13 @@ void handle_hblank(Gpu* gpu) {
 void handle_vblank(Gpu* gpu) {
 	if (gpu->clock >= 456) {
 		gpu->clock = 0;
-		write8(gpu->mem, LY, ++gpu->line);
+		++gpu->line;
+		write8(gpu->mem, LY, gpu->line);
 
 		if (gpu->line > 153) {
 			gpu->mode = OAM_ACCESS;
 			gpu->line = 0;
+			write8(gpu->mem, LY, 0);
 		}
 	}
 

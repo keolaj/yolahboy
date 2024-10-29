@@ -355,18 +355,24 @@ u16 interrupt_address_from_flag(u8 flag) {
 
 u16 interrupt_priority(Cpu* cpu, Memory* mem, u8 interrupt_flag) {
 	for (int i = 0; i < 8; ++i) {
-		u8 itX = interrupt_flag & 1 << i;
+		u8 itX = interrupt_flag & (1 << i);
+		itX &= (read8(mem, IE) & itX);
 		if (itX) {
 			write8(mem, IF, interrupt_flag & ~itX);
 			return interrupt_address_from_flag(itX);
 		}
 	}
+	return 0;
 }
 
 void run_interrupt(Cpu* cpu, Memory* mem) {
-	push(cpu, mem, cpu->registers.pc);
-	jump(cpu, interrupt_priority(cpu, mem, read8(mem, IF)));
-	cpu->IME = false;
+	u16 jump_to = interrupt_priority(cpu, mem, read8(mem, IF));
+	if (jump_to != 0) {
+
+		push(cpu, mem, cpu->registers.pc);
+		jump(cpu, jump_to);
+		cpu->IME = false;
+	}
 }
 
 bool condition_passed(Cpu* cpu, Operation* op) {

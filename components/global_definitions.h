@@ -5,6 +5,8 @@
 #include <stdlib.h>
 
 #define IF 0xFF0F
+#define IE 0xFFFF
+
 
 #define VBLANK_INTERRUPT 1
 #define VBLANK_ADDRESS 0x40
