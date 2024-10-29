@@ -219,7 +219,9 @@ void INC_impl(Cpu* cpu, Memory* mem, Operation* op) {
 	}
 	case ADDRESS_R16: {
 		u8 prev = get_dest(cpu, mem, op);
-		write_dest(cpu, mem, op, prev + 1);
+		alu_return alu_ret = run_alu(cpu, prev, 1, op->type, op->flag_actions);
+		write_dest(cpu, mem, op, alu_ret.result);
+		cpu->registers.f = alu_ret.flags;
 		break;
 	}
 	default:
@@ -240,6 +242,13 @@ void DEC_impl(Cpu* cpu, Memory* mem, Operation* op) {
 	case REGISTER16: {
 		u16* dest_addr = get_reg16_from_type(cpu, op->dest);
 		*dest_addr = *dest_addr - 1;
+		break;
+	}
+	case ADDRESS_R16: {
+		u8 prev = get_dest(cpu, mem, op);
+		alu_return alu_ret = run_alu(cpu, prev, 1, op->type, op->flag_actions);
+		write_dest(cpu, mem, op, alu_ret.result);
+		cpu->registers.f = alu_ret.flags;
 		break;
 	}
 	default:
