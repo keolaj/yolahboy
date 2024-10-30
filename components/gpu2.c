@@ -87,9 +87,6 @@ void update_tile(Gpu* gpu, int address, u8 value) {
 		itX = 1 << (7 - x);
 		// ((read8(gpu->mem, address) & itX) ? 1 : 0) + ((read8(gpu->mem, address + 1) & itX) ? 2 : 0);
 		u8 tile_id = ((gpu->mem->memory[address] & itX) ? 1 : 0) + ((gpu->mem->memory[address + 1] & itX) ? 2 : 0);
-		if (tile_id == 3) {
-			printf("breakpoint");
-		}
 		gpu->tiles[tileIndex][y][x] = tile_id;
 	}
 }

@@ -354,7 +354,7 @@ void RST_impl(Cpu* cpu, Memory* mem, Operation* op) {
 Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op) {
 	++cpu->registers.pc;
 
-	if (cpu->registers.pc - 1 == 0x27A) { // works to here
+	if (cpu->registers.pc - 1 == 0x27A && false) { // works to here
 		printf("BREAKPOINT!!! REGISTERS: \n");
 		--cpu->registers.pc;
 		print_registers(cpu);
