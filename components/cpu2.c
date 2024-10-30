@@ -86,6 +86,7 @@ void LD_impl(Cpu* cpu, Memory* mem, Operation* op) {
 		//	write8(mem, addr, source);
 		//	break;
 		write_dest(cpu, mem, op, source);
+
 	}
 	if (op->secondary != SECONDARY_NONE) run_secondary(cpu, op);
 
@@ -150,58 +151,6 @@ void JP_impl(Cpu* cpu, Memory* mem, Operation* op) {
 		}
 	}
 }
-
-u8 generate_set_mask(instruction_flags flag_actions) {
-	u8 ret = 0;
-	if (flag_actions.zero == SET) {
-		ret |= FLAG_ZERO;
-	}
-	if (flag_actions.sub == SET) {
-		ret |= FLAG_SUB;
-	}
-	if (flag_actions.halfcarry == SET) {
-		ret |= FLAG_HALFCARRY;
-	}
-	if (flag_actions.carry == SET) {
-		ret |= FLAG_CARRY;
-	}
-	return ret;
-}
-
-u8 generate_reset_mask(instruction_flags flag_actions) {
-	u8 ret = 0xFF;
-	if (flag_actions.zero == RESET) {
-		ret &= ~FLAG_ZERO;
-	}
-	if (flag_actions.sub == RESET) {
-		ret &= ~FLAG_SUB;
-	}
-	if (flag_actions.halfcarry == RESET) {
-		ret &= ~FLAG_HALFCARRY;
-	}
-	if (flag_actions.carry == RESET) {
-		ret &= ~FLAG_CARRY;
-	}
-	return ret;
-}
-
-u8 generate_ignore_mask(instruction_flags flag_actions) {
-	u8 ret = 0;
-	if (flag_actions.zero == IGNORE) {
-		ret |= FLAG_ZERO;
-	}
-	if (flag_actions.sub == IGNORE) {
-		ret |= FLAG_SUB;
-	}
-	if (flag_actions.halfcarry == IGNORE) {
-		ret |= FLAG_HALFCARRY;
-	}
-	if (flag_actions.carry == IGNORE) {
-		ret |= FLAG_CARRY;
-	}
-	return ret;
-}
-
 
 void INC_impl(Cpu* cpu, Memory* mem, Operation* op) {
 	switch (op->dest_addr_mode) {
@@ -350,11 +299,36 @@ void RST_impl(Cpu* cpu, Memory* mem, Operation* op) {
 	jump(cpu, op->dest);
 }
 
+void DAA_impl(Cpu* cpu, Memory* mem, Operation* op) {
+	u8 a = cpu->registers.a;
+	u8 flags = cpu->registers.f;
+	if (flags & FLAG_SUB) {
+		if (flags & FLAG_HALFCARRY) a = (a - 0x06) & 0xFF;
+		if (flags & FLAG_CARRY) a -= 0x60;
+	}
+	else {
+		if (flags & FLAG_HALFCARRY || (a & 0xf) > 9) a += 0x06;
+		if (flags & FLAG_CARRY || a > 0x9F) a += 0x60;
+	}
+	cpu->registers.a = a;
+	cpu->registers.f &= ~FLAG_HALFCARRY;
+
+	if (a) cpu->registers.f &= ~FLAG_ZERO;
+	else cpu->registers.f |= FLAG_ZERO;
+
+	if (a >= 0x100) cpu->registers.f |= FLAG_CARRY;
+}
+
+void CCF_impl(Cpu* cpu, Memory* mem, Operation* op) {
+	u8 new_carry = ~cpu->registers.f & FLAG_CARRY;
+	u8 old_zero = cpu->registers.f & FLAG_ZERO;
+	cpu->registers.f |= new_carry | old_zero;
+}
 
 Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op) {
 	++cpu->registers.pc;
 
-	if (cpu->registers.pc - 1 == 0x27A && false) { // works to here
+	if (cpu->registers.pc - 1 == 0x2cd && false) { // works to here
 		printf("BREAKPOINT!!! REGISTERS: \n");
 		--cpu->registers.pc;
 		print_registers(cpu);
@@ -391,11 +365,15 @@ Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op) {
 		break;
 
 	case ADD:
+	case ADC:
 	case SUB:
 	case OR:
 	case AND:
 	case CPL:
 	case RES:
+	case SLA:
+	case SRL:
+	case RR:
 		ALU_impl(cpu, mem, &op);
 		break;
 	case JP:
@@ -444,6 +422,13 @@ Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op) {
 		break;
 	case DI:
 		update_IME(cpu, false);
+		break;
+
+	case DAA:
+		DAA_impl(cpu, mem, &op);
+		break;
+	case CCF:
+		CCF_impl(cpu, mem, &op);
 		break;
 	case UNIMPLEMENTED:
 	default:

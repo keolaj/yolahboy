@@ -17,7 +17,7 @@ bool bit_mode_16(Operation* op);
 void run_secondary(Cpu* cpu, Operation* op);
 u16 get_source_16(Cpu* cpu, Memory* mem, Operation* op);
 u8 get_source(Cpu* cpu, Memory* mem, Operation* op);
-u8 get_source16(Cpu* cpu, Memory* mem, Operation* op);
+u16 get_source16(Cpu* cpu, Memory* mem, Operation* op);
 u8 get_dest(Cpu* cpu, Memory* mem, Operation* op);
 u16 get_dest16(Cpu* cpu, Memory* mem, Operation* op);
 void write_dest(Cpu* cpu, Memory* mem, Operation*, u8 value);

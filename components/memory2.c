@@ -24,7 +24,7 @@ u8 read8(Memory* mem, u16 address) {
 			return mem->bios[(u8)address];
 		}
 	}
-	if (address == 0xFF00) return 0xEF; // joypad emulation for now
+	if (address == 0xFF00) return 0xFF; // joypad emulation for now
 	return mem->memory[address];
 }
 
@@ -49,6 +49,9 @@ void write8(Memory* mem, u16 address, u8 data) {
 	if (address > 0x8000 && address <= 0x97FF) {
 		if (mem->in_bios) update_tile(mem->gpu, address, data);
 		if (address % 2 != 0) update_tile(mem->gpu, address - 1, data);
+	}
+	if (address == IE) {
+		printf("IE write: 0x%02X\n", data);
 	}
 }
 

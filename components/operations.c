@@ -1,5 +1,6 @@
 #include "operations.h"
 #include "memory2.h"
+#include <stdio.h>
 
 Operation operations[0x100] = {
 	[0x00] = {"NOP", NOP, OPERAND_NONE, OPERAND_NONE, ADDR_MODE_NONE, ADDR_MODE_NONE, 0, 0, 1, 4, },
@@ -17,6 +18,7 @@ Operation operations[0x100] = {
 	[0x0A] = {"LD A, (BC)", LD, REGISTER, ADDRESS_R16, A, BC, 0, 0, 1, 8},
 	[0x7E] = {"LD A, (HL)", LD, REGISTER, ADDRESS_R16, A, HL, 0, 0, 1, 8},
 	[0x2A] = {"LD A, (HL+)", LD, REGISTER, ADDRESS_R16, A, HL, 0, INC_R_2, 1, 8},
+	[0x3A] = {"LD A, (HL-)", LD, REGISTER, ADDRESS_R16, A, HL, 0, DEC_R_2, 1, 8},
 	[0x1A] = {"LD A, (DE)", LD, REGISTER, ADDRESS_R16, A, DE, 0, 0, 1, 8},
 	[0xFA] = {"LD A, (u16)", LD, REGISTER, MEM_READ_ADDR, A, U16, 0, 0, 3, 16},
 
@@ -95,11 +97,16 @@ Operation operations[0x100] = {
 	[0x77] = {"LD (HL), A", LD, ADDRESS_R16, REGISTER, HL, A, 0, SECONDARY_NONE, 1, 8 },
 	[0x32] = {"LD (HL-), A", LD, ADDRESS_R16, REGISTER, HL, A, 0, DEC_R_1, 1, 8 },
 	[0x22] = {"LD (HL+), A", LD, ADDRESS_R16, REGISTER, HL, A, 0, INC_R_1, 1, 8 },
+	[0x70] = {"LD (HL), B", LD, ADDRESS_R16, REGISTER, HL, B, 0, SECONDARY_NONE, 1, 8 },
+	[0x71] = {"LD (HL), C", LD, ADDRESS_R16, REGISTER, HL, C, 0, SECONDARY_NONE, 1, 8 },
+	[0x72] = {"LD (HL), D", LD, ADDRESS_R16, REGISTER, HL, D, 0, SECONDARY_NONE, 1, 8 },
+	[0x73] = {"LD (HL), E", LD, ADDRESS_R16, REGISTER, HL, E, 0, SECONDARY_NONE, 1, 8 },
 	[0x36] = {"LD (HL), u8", LD, ADDRESS_R16, MEM_READ, HL, U8, 0, 0, 2, 12},
 
 	// 16 bit loads
 
 	[0xEA] = {"LD (u16), A", LD, MEM_READ_ADDR, REGISTER, U16, A, 0, 0, 3, 16},
+	[0x08] = {"LD (u16), SP", LD, MEM_READ_ADDR, REGISTER16, U16, SP, 0, 0, 3, 16},
 
 	[0x01] = {"LD BC, u16", LD, REGISTER16, MEM_READ16, BC, U16, 0, 0, 3, 12},
 	[0x11] = {"LD DE, u16", LD, REGISTER16, MEM_READ16, DE, U16, 0, 0, 3, 12},
@@ -128,6 +135,8 @@ Operation operations[0x100] = {
 [0x0D] = { "DEC C", DEC, REGISTER, ADDR_MODE_NONE, C, OPERAND_NONE, 0, 0, 1, 4, {DEPENDENT, SET, DEPENDENT, IGNORE} },
 [0x15] = { "DEC D", DEC, REGISTER, ADDR_MODE_NONE, D, OPERAND_NONE, 0, 0, 1, 4, {DEPENDENT, SET, DEPENDENT, IGNORE} },
 [0x1D] = { "DEC E", DEC, REGISTER, ADDR_MODE_NONE, E, OPERAND_NONE, 0, 0, 1, 4, {DEPENDENT, SET, DEPENDENT, IGNORE} },
+[0x25] = { "DEC H", DEC, REGISTER, ADDR_MODE_NONE, H, OPERAND_NONE, 0, 0, 1, 4, {DEPENDENT, SET, DEPENDENT, IGNORE} },
+[0x2D] = { "DEC L", DEC, REGISTER, ADDR_MODE_NONE, L, OPERAND_NONE, 0, 0, 1, 4, {DEPENDENT, SET, DEPENDENT, IGNORE} },
 
 [0x35] = { "DEC (HL)", DEC, ADDRESS_R16, ADDR_MODE_NONE, HL, OPERAND_NONE, 0, 0, 1, 4, {DEPENDENT, SET, DEPENDENT, IGNORE} },
 
@@ -139,11 +148,14 @@ Operation operations[0x100] = {
 [0x83] = { "ADD A, E", ADD, REGISTER, REGISTER, A, E, 0, 0, 1, 4, {DEPENDENT, RESET, DEPENDENT, DEPENDENT} },
 [0x84] = { "ADD A, H", ADD, REGISTER, REGISTER, A, H, 0, 0, 1, 4, {DEPENDENT, RESET, DEPENDENT, DEPENDENT} },
 [0x85] = { "ADD A, L", ADD, REGISTER, REGISTER, A, L, 0, 0, 1, 4, {DEPENDENT, RESET, DEPENDENT, DEPENDENT} },
+[0x86] = { "ADD A, (HL)", ADD, REGISTER, ADDRESS_R16, A, HL, 0, 0, 1, 8, {DEPENDENT, RESET, DEPENDENT, DEPENDENT} },
 [0xC6] = { "ADD A, u8", ADD, REGISTER, MEM_READ, A, U8, 0, 0, 2, 8, {DEPENDENT, RESET, DEPENDENT, DEPENDENT} },
 
+[0xCE] = { "ADC A, u8", ADC, REGISTER, MEM_READ, A, U8, 0, 0, 2, 8, {DEPENDENT, RESET, DEPENDENT, DEPENDENT} },
 // SUB
 [0x97] = { "SUB A, A", SUB, REGISTER, REGISTER, A, A, 0, 0, 1, 4, {DEPENDENT, SET, DEPENDENT, DEPENDENT} },
 [0x90] = { "SUB A, B", SUB, REGISTER, REGISTER, A, B, 0, 0, 1, 4, {DEPENDENT, SET, DEPENDENT, DEPENDENT} },
+[0xD6] = { "SUB A, u8", SUB, REGISTER, MEM_READ, A, U8, 0, 0, 2, 8, {DEPENDENT, SET, DEPENDENT, DEPENDENT} },
 
 // CP
 [0xFE] = { "CP A, u8", CP, REGISTER, MEM_READ, A, U8, 0, 0, 2, 8, {DEPENDENT, SET, DEPENDENT, DEPENDENT} },
@@ -159,6 +171,7 @@ Operation operations[0x100] = {
 
 [0x09] = { "ADD HL, BC", ADD, REGISTER16, REGISTER16, HL, BC, 0, 0, 1, 8, {IGNORE, RESET, DEPENDENT, DEPENDENT} },
 [0x19] = { "ADD HL, DE", ADD, REGISTER16, REGISTER16, HL, DE, 0, 0, 1, 8, {IGNORE, RESET, DEPENDENT, DEPENDENT} },
+[0x29] = { "ADD HL, HL", ADD, REGISTER16, REGISTER16, HL, HL, 0, 0, 1, 8, {IGNORE, RESET, DEPENDENT, DEPENDENT} },
 
 [0x17] = { "RLA", RL, REGISTER, ADDR_MODE_NONE, A, OPERAND_NONE, 0, 0, 1, 4, {DEPENDENT, RESET, RESET, DEPENDENT} },
 
@@ -173,14 +186,19 @@ Operation operations[0x100] = {
 [0xE6] = { "AND A, u8", AND, REGISTER, MEM_READ, A, U8, 0, 0, 2, 8, {DEPENDENT, RESET, SET, RESET} },
 
 // OR
+[0xB7] = { "OR A, A", OR, REGISTER, REGISTER, A, A, 0, 0, 1, 4, {DEPENDENT, RESET, RESET, RESET} },
 [0xB0] = { "OR A, B", OR, REGISTER, REGISTER, A, B, 0, 0, 1, 4, {DEPENDENT, RESET, RESET, RESET} },
 [0xB1] = { "OR A, C", OR, REGISTER, REGISTER, A, C, 0, 0, 1, 4, {DEPENDENT, RESET, RESET, RESET} },
 [0xB3] = { "OR A, E", OR, REGISTER, REGISTER, A, E, 0, 0, 1, 4, {DEPENDENT, RESET, RESET, RESET} },
+[0xB6] = { "OR A, (HL)", OR, REGISTER, ADDRESS_R16, A, HL, 0, 0, 1, 8, {DEPENDENT, RESET, RESET, RESET} },
+[0xF6] = { "OR A, U8", OR, REGISTER, MEM_READ, A, U8, 0, 0, 1, 4, {DEPENDENT, RESET, RESET, RESET} },
 // XOR
 [0xAF] = { "XOR A, A", XOR, REGISTER, REGISTER, A, A, 0, 0, 1, 4, {DEPENDENT, RESET, RESET, RESET} },
 [0xA8] = { "XOR A, B", XOR, REGISTER, REGISTER, A, B, 0, 0, 1, 4, {DEPENDENT, RESET, RESET, RESET} },
 [0xA9] = { "XOR A, C", XOR, REGISTER, REGISTER, A, C, 0, 0, 1, 4, {DEPENDENT, RESET, RESET, RESET} },
 [0xAA] = { "XOR A, D", XOR, REGISTER, REGISTER, A, D, 0, 0, 1, 4, {DEPENDENT, RESET, RESET, RESET} },
+[0xAE] = { "XOR A, (HL)", XOR, REGISTER, ADDRESS_R16, A, HL, 0, 0, 1, 8, {DEPENDENT, RESET, RESET, RESET} },
+[0xEE] = { "XOR A, u8", XOR, REGISTER, MEM_READ, A, U8, 0, 0, 2, 8, {DEPENDENT, RESET, RESET, RESET} },
 
 [0x2F] = { "CPL A", CPL, REGISTER, ADDR_MODE_NONE, A, OPERAND_NONE, 0, 0, 1, 4, {IGNORE, SET, SET, IGNORE} },
 
@@ -214,6 +232,7 @@ Operation operations[0x100] = {
 
 // CALLS
 [0xCD] = { "CALL u16", CALL, ADDR_MODE_NONE, MEM_READ16, OPERAND_NONE, U16, CONDITION_NONE, SECONDARY_NONE, 3, 24 },
+[0xC4] = { "CALL NZ u16", CALL, ADDR_MODE_NONE, MEM_READ16, OPERAND_NONE, U16, CONDITION_NONE, ADD_T_12, 3, 12 },
 
 // RST (store rst jump in dest)
 [0xCF] = { "RST 08", RST, ADDR_MODE_NONE, ADDR_MODE_NONE, 0x8, OPERAND_NONE, CONDITION_NONE, SECONDARY_NONE, 1, 16 },
@@ -225,10 +244,15 @@ Operation operations[0x100] = {
 [0xC9] = {"RET", RET, ADDR_MODE_NONE, ADDR_MODE_NONE, OPERAND_NONE, OPERAND_NONE, CONDITION_NONE, SECONDARY_NONE, 1, 16},
 [0xC8] = {"RET Z", RET, ADDR_MODE_NONE, ADDR_MODE_NONE, OPERAND_NONE, OPERAND_NONE, CONDITION_Z, SECONDARY_NONE, 1, 16},
 [0xC0] = {"RET NZ", RET, ADDR_MODE_NONE, ADDR_MODE_NONE, OPERAND_NONE, OPERAND_NONE, CONDITION_NZ, SECONDARY_NONE, 1, 16},
+[0xD8] = {"RET C", RET, ADDR_MODE_NONE, ADDR_MODE_NONE, OPERAND_NONE, OPERAND_NONE, CONDITION_C, SECONDARY_NONE, 1, 16},
+[0xD0] = {"RET NC", RET, ADDR_MODE_NONE, ADDR_MODE_NONE, OPERAND_NONE, OPERAND_NONE, CONDITION_NC, SECONDARY_NONE, 1, 16},
 
 [0xD9] = {"RETI", RETI, ADDR_MODE_NONE, ADDR_MODE_NONE, OPERAND_NONE, OPERAND_NONE, CONDITION_NONE, SECONDARY_NONE, 1, 16},
 // MISC
 [0xCB] = {"PREFIX CB", CB, MEM_READ, ADDR_MODE_NONE, OPERAND_NONE, OPERAND_NONE, 0, 0, 1, 4},
+[0x27] = {"DAA", DAA, 0, 0, 0, 0, 0, 0, 1, 4}, 
+[0x3F] = {"CCF", CCF, 0, 0, 0, 0, 0, 0, 1, 4}, 
+[0x1F] = {"RRA", RR, REGISTER, ADDR_MODE_NONE, A, OPERAND_NONE, 0, 0, 1, 4, {RESET, RESET, RESET, DEPENDENT}}, 
 
 [0xFB] = {"EI", EI, 0, 0, 0, 0, 0, 0, 1, 4},
 [0xF3] = {"DI", DI, 0, 0, 0, 0, 0, 0, 1, 4},
@@ -313,8 +337,24 @@ Operation cb_operations[0x100] = {
 	// RL
 	[0x10] = {"RL B", RL, REGISTER, ADDR_MODE_NONE, B, OPERAND_NONE, 0, 0, 2, 8, {DEPENDENT, RESET, RESET, DEPENDENT}},
 
+	[0x1F] = {"RR A", RR, REGISTER, ADDR_MODE_NONE, A, OPERAND_NONE, 0, 0, 2, 8, {DEPENDENT, RESET, RESET, DEPENDENT}},
+	[0x19] = {"RR C", RR, REGISTER, ADDR_MODE_NONE, C, OPERAND_NONE, 0, 0, 2, 8, {DEPENDENT, RESET, RESET, DEPENDENT}},
+	[0x1A] = {"RR D", RR, REGISTER, ADDR_MODE_NONE, D, OPERAND_NONE, 0, 0, 2, 8, {DEPENDENT, RESET, RESET, DEPENDENT}},
+	[0x1B] = {"RR E", RR, REGISTER, ADDR_MODE_NONE, E, OPERAND_NONE, 0, 0, 2, 8, {DEPENDENT, RESET, RESET, DEPENDENT}},
+
+	// SLA
+	[0x27] = {"SLA A", SLA, REGISTER, ADDR_MODE_NONE, A, OPERAND_NONE, 0, 0, 2, 8, {DEPENDENT, RESET, RESET, DEPENDENT}},
+	
+	// SRA
+	[0x3A] = {"SRA D", SRA, REGISTER, ADDR_MODE_NONE, D, OPERAND_NONE, 0, 0, 2, 8, {DEPENDENT, RESET, RESET, DEPENDENT}}, 
+
+	// SRL
+	[0x3F] = {"SRL A", SRL, REGISTER, ADDR_MODE_NONE, A, OPERAND_NONE, 0, 0, 2, 8, {DEPENDENT, RESET, RESET, DEPENDENT}}, 
+	[0x38] = {"SRL B", SRL, REGISTER, ADDR_MODE_NONE, B, OPERAND_NONE, 0, 0, 2, 8, {DEPENDENT, RESET, RESET, DEPENDENT}}, 
+
 	// RES
 	[0x87] = {"RES 0, A", RES, REGISTER, ADDR_MODE_NONE, A, 0, 0, 0, 2, 8, {IGNORE, IGNORE, IGNORE, IGNORE}},
+	[0x86] = {"RES 0, (HL)", RES, ADDRESS_R16, ADDR_MODE_NONE, HL, 0, 0, 0, 2, 16, {IGNORE, IGNORE, IGNORE, IGNORE}},
 
 	// SWAP
 	[0x37] = {"SWAP A", SWAP, REGISTER, ADDR_MODE_NONE, A, OPERAND_NONE, 0, 0, 2, 8, {DEPENDENT, RESET, RESET, RESET}},
@@ -351,13 +391,13 @@ u16 interrupt_address_from_flag(u8 flag) {
 	case JOYPAD_INTERRUPT:
 		return JOYPAD_ADDRESS;
 	default:
-		printf("how did we get here");
-		assert(false);
+		printf("how did we get here: 0x%02X", flag);
+		return 0;
 	}
 }
 
 u16 interrupt_priority(Cpu* cpu, Memory* mem, u8 interrupt_flag) {
-	for (int i = 0; i < 8; ++i) {
+	for (int i = 0; i < 5; ++i) {
 		u8 itX = interrupt_flag & (1 << i);
 		itX &= (read8(mem, IE) & itX);
 		if (itX) {
@@ -377,6 +417,57 @@ void run_interrupt(Cpu* cpu, Memory* mem) {
 		cpu->IME = false;
 	}
 }
+
+u8 generate_set_mask(instruction_flags flag_actions) {
+	u8 ret = 0;
+	if (flag_actions.zero == SET) {
+		ret |= FLAG_ZERO;
+	}
+	if (flag_actions.sub == SET) {
+		ret |= FLAG_SUB;
+	}
+	if (flag_actions.halfcarry == SET) {
+		ret |= FLAG_HALFCARRY;
+	}
+	if (flag_actions.carry == SET) {
+		ret |= FLAG_CARRY;
+	}
+	return ret;
+}
+
+u8 generate_reset_mask(instruction_flags flag_actions) {
+	u8 ret = 0xFF;
+	if (flag_actions.zero == RESET) {
+		ret &= ~FLAG_ZERO;
+	}
+	if (flag_actions.sub == RESET) {
+		ret &= ~FLAG_SUB;
+	}
+	if (flag_actions.halfcarry == RESET) {
+		ret &= ~FLAG_HALFCARRY;
+	}
+	if (flag_actions.carry == RESET) {
+		ret &= ~FLAG_CARRY;
+	}
+	return ret;
+}
+u8 generate_ignore_mask(instruction_flags flag_actions) {
+	u8 ret = 0;
+	if (flag_actions.zero == IGNORE) {
+		ret |= FLAG_ZERO;
+	}
+	if (flag_actions.sub == IGNORE) {
+		ret |= FLAG_SUB;
+	}
+	if (flag_actions.halfcarry == IGNORE) {
+		ret |= FLAG_HALFCARRY;
+	}
+	if (flag_actions.carry == IGNORE) {
+		ret |= FLAG_CARRY;
+	}
+	return ret;
+}
+
 
 bool condition_passed(Cpu* cpu, Operation* op) {
 	switch (op->condition) {
@@ -440,6 +531,18 @@ alu_return run_alu(Cpu* cpu, u8 x, u8 y, instruction_type type, instruction_flag
 		}
 
 		break;
+	case ADC:
+		result = x + y;
+		if (cpu->registers.f & FLAG_CARRY) {
+			result += 1;
+		}
+		if (((x & 0x0f) + (y & 0x0f)) > 0x0f) { //  half carry			
+			new_flags |= FLAG_HALFCARRY;
+		}
+		if ((int)x + (int)y > 255) {
+			new_flags |= FLAG_CARRY;
+		}
+		break;
 	case SUB:
 	case CP:
 	case DEC:
@@ -465,9 +568,37 @@ alu_return run_alu(Cpu* cpu, u8 x, u8 y, instruction_type type, instruction_flag
 		new_flags |= (new_carry >> 3);
 		break;
 	}
+	case RR:
+	{
+		u8 new_carry = x & 0b00000001;
+		result = x > 1;
+		result |= ((cpu->registers.f & FLAG_CARRY) << 3);
+		new_flags |= (new_carry << 4);
+		break;
+	}
+
 	case RES:
 		result = x & ~(1 << y);
 		break;
+	
+	case SLA: {
+		if (x & 0b10000000) cpu->registers.f |= FLAG_CARRY;
+		result = x << 1;
+		break;
+	}
+	case SRA: {
+		if (cpu->registers.f & FLAG_CARRY) result |= 0b10000000;
+		if (x & 0b00000001) cpu->registers.f |= FLAG_CARRY;
+		result |= (x >> 1);
+		break;
+	}
+	case SRL: {
+		if (x & 0b00000001) cpu->registers.f |= FLAG_CARRY;
+		result = x >> 1;
+		break;
+	}
+
+
 	}
 
 
@@ -604,7 +735,7 @@ void write_dest16(Cpu* cpu, Memory* mem, address_mode mode, operand_type dest, u
 }
 
 bool bit_mode_16(Operation* op) {
-	if (op->dest_addr_mode == REGISTER16 || op->dest_addr_mode == MEM_READ16 || op->source_addr_mode == MEM_READ16) {
+	if (op->dest_addr_mode == REGISTER16 || op->dest_addr_mode == MEM_READ16 || op->source_addr_mode == MEM_READ16 || op->source_addr_mode == REGISTER16) {
 		return true;
 	}
 	else {
@@ -693,8 +824,11 @@ u8 get_source(Cpu* cpu, Memory* mem, Operation* op) { // maybe I'll change this 
 	return sourceVal;
 }
 
-u8 get_source16(Cpu* cpu, Memory* mem, Operation* op) {
-	// TODO
+u16 get_source16(Cpu* cpu, Memory* mem, Operation* op) {
+	switch (op->source_addr_mode) {
+	case REGISTER16:
+		return *get_reg_from_type(cpu, op->source);
+	}
 	return 0;
 }
 
