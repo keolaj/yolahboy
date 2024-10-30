@@ -354,11 +354,12 @@ void RST_impl(Cpu* cpu, Memory* mem, Operation* op) {
 Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op) {
 	++cpu->registers.pc;
 
-	if (cpu->registers.pc - 1 == 0x282C && read8(mem, LY) == 0x8e) { // works to here
+	if (cpu->registers.pc - 1 == 0x27A) { // works to here
 		printf("BREAKPOINT!!! REGISTERS: \n");
 		--cpu->registers.pc;
 		print_registers(cpu);
-		printf("IE: 0x%04X", read8(mem, IE));
+		printf("IE: 0x%04X\n", read8(mem, IE));
+		printf("BGP: 0x%04X\n", read8(mem, BGP));
 		++cpu->registers.pc;
 	}
 

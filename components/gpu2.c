@@ -85,7 +85,12 @@ void update_tile(Gpu* gpu, int address, u8 value) {
 	uint8_t itX = 1;
 	for (int x = 0; x < 8; ++x) { // higher nibble is stored in next address. could use read16 but this works
 		itX = 1 << (7 - x);
-		gpu->tiles[tileIndex][y][x] = ((read8(gpu->mem, address) & itX) ? 1 : 0) + ((read8(gpu->mem, address + 1) & itX) ? 2 : 0);
+		// ((read8(gpu->mem, address) & itX) ? 1 : 0) + ((read8(gpu->mem, address + 1) & itX) ? 2 : 0);
+		u8 tile_id = ((gpu->mem->memory[address] & itX) ? 1 : 0) + ((gpu->mem->memory[address + 1] & itX) ? 2 : 0);
+		if (tile_id == 3) {
+			printf("breakpoint");
+		}
+		gpu->tiles[tileIndex][y][x] = tile_id;
 	}
 }
 

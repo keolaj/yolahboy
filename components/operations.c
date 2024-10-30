@@ -493,7 +493,9 @@ alu16_return run_alu16(Cpu* cpu, u16 x, u16 y, instruction_type type, instructio
 		if ((int)x + (int)y > 0xFFFF) {
 			new_flags |= FLAG_CARRY;
 		}
-		printf("TODO: Finish half carry flag ADD 16 bit mode");
+		if (((x & 0xff) + (y & 0xff)) > 0xff) {
+			new_flags |= FLAG_HALFCARRY;
+		}
 		break;
 
 	default:
