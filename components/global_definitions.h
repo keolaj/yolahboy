@@ -40,10 +40,25 @@ typedef unsigned int u32;
 #define FLAG_CARRY 0b00010000
 
 typedef struct {
+	bool up;
+	bool down;
+	bool left;
+	bool right;
+
+	bool start;
+	bool select;
+
+	bool a;
+	bool b;
+} Controller;
+
+
+typedef struct {
 	u8 bios[0x100];
 	u8 memory[0x10000];
 	bool in_bios;
 	struct Gpu* gpu;
+	Controller controller;
 } Memory;
 
 typedef struct {
@@ -116,4 +131,3 @@ typedef struct {
 
 	gpu_mode mode;
 } Gpu;
-

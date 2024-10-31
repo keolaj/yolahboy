@@ -17,8 +17,9 @@ int main(int argc, char* argv[]) {
 
 	SDL_Window* tile_window;
 	SDL_Renderer* tile_renderer;
+	SDL_GameController* game_controller;
 
-	if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER) < 0) {
 		assert(false && "COULDNT INIT SDL");
 	}
 
@@ -42,9 +43,31 @@ int main(int argc, char* argv[]) {
 		assert(false);
 	}
 
-	int c = 0;
+	if (SDL_NumJoysticks < 1) {
+		printf("no joystick connected!");
+	}
+	else {
+		game_controller = SDL_GameControllerOpen(0);
+		if (game_controller == NULL) {
+			printf("Unable to open game controller! SDL Error: %s", SDL_GetError());
+		}
+	}
 
-	while (true) {
+	
+
+	int c = 0;
+	bool quit = false;
+	while (!quit) {
+		SDL_Event e;
+		while (SDL_PollEvent(&e)) {
+			if (e.type == SDL_QUIT) {
+				quit = true;
+			}
+			else {
+				update_emu_controller(&emu, get_controller_state(game_controller));
+			}
+		}
+
 		Operation to_execute = get_operation(emu.cpu, emu.memory);
 		// print_operation(to_execute);
 		Cycles clock = step_cpu(emu.cpu, emu.memory, to_execute);
@@ -60,6 +83,7 @@ int main(int argc, char* argv[]) {
 
 	}
 
+	SDL_Quit();
 	destroy_emulator(&emu);
 
 	return 0;

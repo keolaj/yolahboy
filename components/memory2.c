@@ -1,14 +1,16 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
-#include "memory2.h"
 #include <string.h>
+#include "memory2.h"
+#include "controller.h"
 
 Memory* create_memory(const char* bootrom_path, const char* rom_path) {
 	Memory* ret = (Memory*)malloc(sizeof(Memory));
 	assert(ret != NULL && "Cannot allocate Memory");
 	load_bootrom(ret, bootrom_path);
 	load_rom(ret, rom_path);
+	memset((void*)&ret->controller, 0, sizeof(Controller));
 	return ret;
 }
 
@@ -17,6 +19,9 @@ Memory* create_memory(const char* bootrom_path, const char* rom_path) {
 void set_gpu(Memory* mem, Gpu* gpu) {
 	mem->gpu = gpu;
 }
+void set_mem_controller(Memory* mem, Controller controller) {
+	mem->controller = controller;
+}
 
 u8 read8(Memory* mem, u16 address) {
 	if (address < 0x100) {
@@ -24,7 +29,7 @@ u8 read8(Memory* mem, u16 address) {
 			return mem->bios[(u8)address];
 		}
 	}
-	if (address == 0xFF00) return 0xFF; // joypad emulation for now
+	if (address == 0xFF00) return joypad_return(mem->controller, mem->memory[address]); // joypad emulation for now
 	return mem->memory[address];
 }
 
