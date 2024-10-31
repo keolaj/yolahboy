@@ -545,10 +545,10 @@ alu_return run_alu(Cpu* cpu, u8 x, u8 y, instruction_type type, instruction_flag
 
 		break;
 	case ADC:
-		result = x + y;
 		if (cpu->registers.f & FLAG_CARRY) {
-			result += 1;
+			y += 1;
 		}
+		result = x + y;
 		if (((x & 0x0f) + (y & 0x0f)) > 0x0f) { //  half carry			
 			new_flags |= FLAG_HALFCARRY;
 		}
@@ -568,6 +568,18 @@ alu_return run_alu(Cpu* cpu, u8 x, u8 y, instruction_type type, instruction_flag
 			new_flags |= FLAG_CARRY;
 		}
 		break;
+
+	case SBC:
+		if (cpu->registers.f & FLAG_CARRY) {
+			y -= 1;
+		}
+		result = x - y;
+		if ((y & 0x0f) > (x & 0x0f)) { //  half carry (there is a lot of different documentation on this so idk, this matches bgb) 
+			new_flags |= FLAG_HALFCARRY;
+		}
+		if ((int)x - (int)y < 0) { //  carry
+			new_flags |= FLAG_CARRY;
+		}
 
 	case SWAP:
 		result = (x << 4) | (x >> 4);
