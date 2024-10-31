@@ -41,10 +41,10 @@ void write16(Memory* mem, u16 address, u16 value) {
 }
 
 void write8(Memory* mem, u16 address, u8 data) {
-
-	if (address)
-
-		mem->memory[address] = data;
+	if (address < 0x8000) {
+		return;
+	}
+	mem->memory[address] = data;
 
 	if (address > 0x8000 && address <= 0x97FF) {
 		if (mem->in_bios) update_tile(mem->gpu, address, data);
@@ -52,6 +52,9 @@ void write8(Memory* mem, u16 address, u8 data) {
 	}
 	if (address == IE) {
 		printf("IE write: 0x%02X\n", data);
+	}
+	if (address == 0xFF02 && data == 0x81) {
+		printf("%c", read8(mem, 0xff01));
 	}
 }
 

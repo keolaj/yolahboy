@@ -16,6 +16,7 @@ typedef enum {
 	L,
 	HL,
 	SP,
+	SP_ADD_I8,
 	PC,
 	U8,
 	U16,

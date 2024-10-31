@@ -117,6 +117,7 @@ Operation operations[0x100] = {
 
 	// LD HL
 [0x21] = { "LD HL, u16", LD, REGISTER16, MEM_READ16, HL, U16, 0, 0, 3, 12, },
+[0xF8] = { "LD HL, SP + i8", LD, REGISTER16, REGISTER16, HL, SP_ADD_I8, 0, 0, 3, 12, },
 
 // ALU
 // INC r8
@@ -164,14 +165,20 @@ Operation operations[0x100] = {
 [0x03] = { "INC BC", INC, REGISTER16, ADDR_MODE_NONE, BC, OPERAND_NONE, 0, 0, 1, 8 },
 [0x13] = { "INC DE", INC, REGISTER16, ADDR_MODE_NONE, DE, OPERAND_NONE, 0, 0, 1, 8 },
 [0x23] = { "INC HL", INC, REGISTER16, ADDR_MODE_NONE, HL, OPERAND_NONE, 0, 0, 1, 8 },
+[0x33] = { "INC SP", INC, REGISTER16, ADDR_MODE_NONE, SP, OPERAND_NONE, 0, 0, 1, 8 },
 
 // DEC r16
 [0x0B] = { "DEC BC", DEC, REGISTER16, ADDR_MODE_NONE, BC, OPERAND_NONE, 0, 0, 1, 8 },
 [0x1B] = { "DEC DE", DEC, REGISTER16, ADDR_MODE_NONE, DE, OPERAND_NONE, 0, 0, 1, 8 },
+[0x2B] = { "DEC HL", DEC, REGISTER16, ADDR_MODE_NONE, HL, OPERAND_NONE, 0, 0, 1, 8 },
+[0x3B] = { "DEC SP", DEC, REGISTER16, ADDR_MODE_NONE, SP, OPERAND_NONE, 0, 0, 1, 8 },
 
 [0x09] = { "ADD HL, BC", ADD, REGISTER16, REGISTER16, HL, BC, 0, 0, 1, 8, {IGNORE, RESET, DEPENDENT, DEPENDENT} },
 [0x19] = { "ADD HL, DE", ADD, REGISTER16, REGISTER16, HL, DE, 0, 0, 1, 8, {IGNORE, RESET, DEPENDENT, DEPENDENT} },
 [0x29] = { "ADD HL, HL", ADD, REGISTER16, REGISTER16, HL, HL, 0, 0, 1, 8, {IGNORE, RESET, DEPENDENT, DEPENDENT} },
+[0x39] = { "ADD HL, SP", ADD, REGISTER16, REGISTER16, HL, SP, 0, 0, 1, 8, {IGNORE, RESET, DEPENDENT, DEPENDENT} },
+
+[0xE8] = { "ADD SP, i8", LD, REGISTER16, REGISTER16, SP, SP_ADD_I8, 0, 0, 2, 16, {RESET, RESET, DEPENDENT, DEPENDENT} }, // TRUST ME THIS IS THE EASIEST WAY
 
 [0x17] = { "RLA", RL, REGISTER, ADDR_MODE_NONE, A, OPERAND_NONE, 0, 0, 1, 4, {DEPENDENT, RESET, RESET, DEPENDENT} },
 
@@ -197,6 +204,9 @@ Operation operations[0x100] = {
 [0xA8] = { "XOR A, B", XOR, REGISTER, REGISTER, A, B, 0, 0, 1, 4, {DEPENDENT, RESET, RESET, RESET} },
 [0xA9] = { "XOR A, C", XOR, REGISTER, REGISTER, A, C, 0, 0, 1, 4, {DEPENDENT, RESET, RESET, RESET} },
 [0xAA] = { "XOR A, D", XOR, REGISTER, REGISTER, A, D, 0, 0, 1, 4, {DEPENDENT, RESET, RESET, RESET} },
+[0xAB] = { "XOR A, E", XOR, REGISTER, REGISTER, A, E, 0, 0, 1, 4, {DEPENDENT, RESET, RESET, RESET} },
+[0xAC] = { "XOR A, H", XOR, REGISTER, REGISTER, A, H, 0, 0, 1, 4, {DEPENDENT, RESET, RESET, RESET} },
+[0xAD] = { "XOR A, L", XOR, REGISTER, REGISTER, A, L, 0, 0, 1, 4, {DEPENDENT, RESET, RESET, RESET} },
 [0xAE] = { "XOR A, (HL)", XOR, REGISTER, ADDRESS_R16, A, HL, 0, 0, 1, 8, {DEPENDENT, RESET, RESET, RESET} },
 [0xEE] = { "XOR A, u8", XOR, REGISTER, MEM_READ, A, U8, 0, 0, 2, 8, {DEPENDENT, RESET, RESET, RESET} },
 
@@ -682,6 +692,7 @@ u16* get_reg16_from_type(Cpu* cpu, operand_type type) {
 	case HL:
 		return &cpu->registers.hl;
 	case SP:
+	case SP_ADD_I8:
 		return &cpu->registers.sp;
 	case PC:
 		return &cpu->registers.pc;
@@ -776,12 +787,42 @@ u16 get_source_16(Cpu* cpu, Memory* mem, Operation* op) {
 	u16 sourceVal;
 	switch (op->source_addr_mode) {
 	case REGISTER16:
+		if (op->source == SP_ADD_I8) {
+			u8 value = read8(mem, cpu->registers.pc++);
+			if (value > 127) {
+				sourceVal = *get_reg16_from_type(cpu, op->source) - (~value + 1);
+			}
+			else {
+				sourceVal = *get_reg16_from_type(cpu, op->source) + value;
+			}
+			break;
+		}
 		sourceVal = *get_reg16_from_type(cpu, op->source);
 		break;
 	case MEM_READ16:
 		sourceVal = read16(mem, cpu->registers.pc);
 		cpu->registers.pc += 2;
 		break;
+	case MEM_READ: {
+		switch (op->source) {
+		case I8: {
+			u8 value = read8(mem, cpu->registers.pc++);
+			i8 relative;
+			if (value > 127) {
+				relative = -(~value + 1);
+			}
+			else {
+				relative = value;
+			}
+			sourceVal = (u16)relative;
+			break;
+		}
+		default:
+			printf("What are we doing here");
+			assert(false);
+		}
+		break;
+	}
 	default:
 		sourceVal = 0;
 		printf("unimplemented 16 bit source read\n");
@@ -822,14 +863,6 @@ u8 get_source(Cpu* cpu, Memory* mem, Operation* op) { // maybe I'll change this 
 		assert(false);
 	}
 	return sourceVal;
-}
-
-u16 get_source16(Cpu* cpu, Memory* mem, Operation* op) {
-	switch (op->source_addr_mode) {
-	case REGISTER16:
-		return *get_reg_from_type(cpu, op->source);
-	}
-	return 0;
 }
 
 u8 get_dest(Cpu* cpu, Memory* mem, Operation* op) {
