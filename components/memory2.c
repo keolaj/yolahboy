@@ -50,8 +50,10 @@ void write8(Memory* mem, u16 address, u8 data) {
 		if (mem->in_bios) update_tile(mem->gpu, address, data);
 		if (address % 2 != 0) update_tile(mem->gpu, address - 1, data);
 	}
-	if (address == IE) {
-		printf("IE write: 0x%02X\n", data);
+	if (address == DMA && data <= 0xDF) {
+		for (int i = 0; i < 0x100; ++i) {
+			mem->memory[0xFE00 + i] = mem->memory[(data << 8) + i];
+		}
 	}
 	if (address == 0xFF02 && data == 0x81) {
 		printf("%c", read8(mem, 0xff01));

@@ -7,6 +7,8 @@
 #define IF 0xFF0F
 #define IE 0xFFFF
 
+#define DMA 0xFF46
+
 
 #define VBLANK_INTERRUPT 1
 #define VBLANK_ADDRESS 0x40
