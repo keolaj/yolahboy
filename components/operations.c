@@ -592,19 +592,27 @@ alu_return run_alu(Cpu* cpu, u8 x, u8 y, instruction_type type, instruction_flag
 		break;
 	
 	case SLA: {
-		if (x & 0b10000000) cpu->registers.f |= FLAG_CARRY;
+		if (x & 0b10000000) new_flags |= FLAG_CARRY;
 		result = x << 1;
 		break;
 	}
 	case SRA: {
 		if (cpu->registers.f & FLAG_CARRY) result |= 0b10000000;
-		if (x & 0b00000001) cpu->registers.f |= FLAG_CARRY;
+		if (x & 0b00000001) new_flags |= FLAG_CARRY;
 		result |= (x >> 1);
 		break;
 	}
 	case SRL: {
-		if (x & 0b00000001) cpu->registers.f |= FLAG_CARRY;
+		if (x & 0b00000001) new_flags |= FLAG_CARRY;
 		result = x >> 1;
+		break;
+	}
+	case RLC: {
+		result = x << 1;
+		if (x & 0b10000000) {
+			result |= 0b00000001;
+			new_flags |= FLAG_CARRY;
+		}
 		break;
 	}
 
@@ -830,6 +838,16 @@ u16 get_source_16(Cpu* cpu, Memory* mem, Operation* op) {
 		assert(false);
 	}
 	return sourceVal;
+}
+
+i16 unsigned_to_relative16(u8 x) {
+	i8 relative;
+	if (x > 127) {
+		relative = -(~x + 1);
+	}
+	else relative = x;
+
+	return (i16)relative;
 }
 
 u8 get_source(Cpu* cpu, Memory* mem, Operation* op) { // maybe I'll change this to be able to read dest too at some point. Might make life easier
