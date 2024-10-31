@@ -285,6 +285,8 @@ void RET_impl(Cpu* cpu, Memory* mem, Operation* op) {
 }
 
 bool should_run_interrupt(Cpu* cpu, Memory* mem) {
+	u8 j_ret = joypad_return(mem->controller, mem->memory[0xFF00]);
+	if ((~j_ret & 0b00001111)) mem->memory[IF] = mem->memory[IF] | JOYPAD_INTERRUPT; // I think this is right
 	if (cpu->IME && read8(mem, IF)) {
 		return true;
 	}

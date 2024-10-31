@@ -29,7 +29,10 @@ u8 read8(Memory* mem, u16 address) {
 			return mem->bios[(u8)address];
 		}
 	}
-	if (address == 0xFF00) return joypad_return(mem->controller, mem->memory[address]); // joypad emulation for now
+	if (address == 0xFF00) {
+		u8 j_ret = joypad_return(mem->controller, mem->memory[address]);
+		return j_ret; // joypad emulation for now
+	}
 	return mem->memory[address];
 }
 
