@@ -374,6 +374,7 @@ Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op) {
 	case SLA:
 	case SRL:
 	case RR:
+	case RLC:
 		ALU_impl(cpu, mem, &op);
 		break;
 	case JP:

@@ -152,6 +152,36 @@ void draw_line(Gpu* gpu) {
 			if (BGTileAddressMode && tile < 128) tile += 256;
 		}
 	}
+	
+	// draw sprites
+	bool eight_by_16_mode = read8(gpu->mem, LCD_CONTROL) & (1 << 2);
+	u16 current_OAM_address = 0xFE00;
+	
+	while (current_OAM_address <= 0xFE9F) {
+		u8 sprite_pos_y = read8(gpu->mem, current_OAM_address);
+		u8 sprite_pos_x = read8(gpu->mem, current_OAM_address + 1);
+		u8 tile_index = read8(gpu->mem, current_OAM_address + 2);
+		u8 attributes = read8(gpu->mem, current_OAM_address + 3);
+
+		if (sprite_pos_y != 0) {
+			printf("breakpoint!!");
+		}
+
+		// draw sprite
+		if (gpu->line < (sprite_pos_y - 16 + (eight_by_16_mode ? 16 : 8)) && (gpu->line >= sprite_pos_y - 16)) { // if current line within sprite (i think this is right, no way to check until I implement OAM dma and HBLANK interrupt)
+			u8 sprite_line = 16 - sprite_pos_y + gpu->line;
+			if (sprite_line >= 8) {
+				sprite_line -= 8;
+				tile_index += 1;
+			}
+			for (int i = 0; i < 8; ++i) {
+				if (sprite_pos_x - 8 + i < 0) continue;
+				u32 pixel = createPixelFromPaletteId(gpu->mem, gpu->tiles[tile_index][sprite_line][i]);
+				gpu->framebuffer[gpu->line * SCREEN_WIDTH + sprite_pos_x - 8] = pixel;
+			}
+		}
+		current_OAM_address += 4;
+	}
 
 }
 
