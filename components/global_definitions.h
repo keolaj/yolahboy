@@ -9,6 +9,9 @@
 
 #define DMA 0xFF46
 
+#define OBP0 0xFF48
+#define OBP1 0xFF49
+
 
 #define VBLANK_INTERRUPT 1
 #define VBLANK_ADDRESS 0x40

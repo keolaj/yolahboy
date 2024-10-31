@@ -67,7 +67,7 @@ void write_tile_buffer_to_screen(Gpu* gpu) {
 					int tile = y * TILES_X + x;
 					int pixelY = y * TILE_HEIGHT + tiley;
 					int pixelX = x * TILE_WIDTH + tilex;
-					writePixel(gpu->tile_screen, pixelX, pixelY, createPixelFromPaletteId(gpu->mem, gpu->tiles[tile][tiley][tilex]));
+					writePixel(gpu->tile_screen, pixelX, pixelY, createPixelFromPaletteId(read8(gpu->mem, BGP), gpu->tiles[tile][tiley][tilex]));
 
 				}
 			}
@@ -92,8 +92,7 @@ void update_tile(Gpu* gpu, int address, u8 value) {
 }
 
 
-u32 createPixelFromPaletteId(Memory* mem, u8 id) {
-	uint8_t palette = read8(mem, BGP);
+u32 createPixelFromPaletteId(u8 palette, u8 id) {
 	uint8_t value = 0;
 	switch (id) { // read palette and assign value for id
 	case 0:
@@ -138,10 +137,10 @@ void draw_line(Gpu* gpu) {
 
 	int tile = read8(gpu->mem, mapAddress + lineOffset);
 
-	if (BGTileAddressMode && tile < 128) tile += 256;
+	// if (BGTileAddressMode && tile < 128) tile += 256;
 
 	for (int i = 0; i < SCREEN_WIDTH; ++i) {
-		uint32_t pixel = createPixelFromPaletteId(gpu->mem, gpu->tiles[tile][tileY][tileX]);
+		uint32_t pixel = createPixelFromPaletteId(read8(gpu->mem, BGP), gpu->tiles[tile][tileY][tileX]);
 		gpu->framebuffer[gpu->line * SCREEN_WIDTH + i] = pixel;
 
 		++tileX;
@@ -152,32 +151,37 @@ void draw_line(Gpu* gpu) {
 			if (BGTileAddressMode && tile < 128) tile += 256;
 		}
 	}
-	
+
 	// draw sprites
 	bool eight_by_16_mode = read8(gpu->mem, LCD_CONTROL) & (1 << 2);
 	u16 current_OAM_address = 0xFE00;
-	
-	while (current_OAM_address <= 0xFE9F) {
+	int sprite_count_for_line = 0;
+
+	while (current_OAM_address <= 0xFE9F && sprite_count_for_line < 10) {
 		u8 sprite_pos_y = read8(gpu->mem, current_OAM_address);
 		u8 sprite_pos_x = read8(gpu->mem, current_OAM_address + 1);
 		u8 tile_index = read8(gpu->mem, current_OAM_address + 2);
 		u8 attributes = read8(gpu->mem, current_OAM_address + 3);
 
-		if (sprite_pos_y != 0) {
-			printf("breakpoint!!");
-		}
-
+		int sprite_bottom = sprite_pos_y - 16 + (eight_by_16_mode ? 16 : 8);
+		int sprite_top = sprite_pos_y - 16;
 		// draw sprite
-		if (gpu->line < (sprite_pos_y - 16 + (eight_by_16_mode ? 16 : 8)) && (gpu->line >= sprite_pos_y - 16)) { // if current line within sprite (i think this is right, no way to check until I implement OAM dma and HBLANK interrupt)
-			u8 sprite_line = 16 - sprite_pos_y + gpu->line;
-			if (sprite_line >= 8) {
+		if (gpu->line < sprite_bottom && gpu->line >= sprite_top) { // if current line within sprite (i think this is right, no way to check until I implement OAM dma and HBLANK interrupt)
+			++sprite_count_for_line;
+			int sprite_line = gpu->line - sprite_top;
+
+			if (sprite_line >= 8) { // address next tile if we are in 16 bit mode
 				sprite_line -= 8;
 				tile_index += 1;
 			}
+
+			bool palette_mode = attributes & (1 << 4);
+			u8 palette = read8(gpu->mem, (palette_mode ? OBP1 : OBP0));
+
 			for (int i = 0; i < 8; ++i) {
 				if (sprite_pos_x - 8 + i < 0) continue;
-				u32 pixel = createPixelFromPaletteId(gpu->mem, gpu->tiles[tile_index][sprite_line][i]);
-				gpu->framebuffer[gpu->line * SCREEN_WIDTH + sprite_pos_x - 8] = pixel;
+				u32 pixel = createPixelFromPaletteId(palette, gpu->tiles[tile_index][sprite_line][i]);
+				gpu->framebuffer[gpu->line * SCREEN_WIDTH + sprite_pos_x - 8 + i] = pixel;
 			}
 		}
 		current_OAM_address += 4;
