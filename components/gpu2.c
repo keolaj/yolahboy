@@ -157,7 +157,7 @@ void draw_line(Gpu* gpu) {
 	u16 current_OAM_address = 0xFE00;
 	int sprite_count_for_line = 0;
 
-	while (current_OAM_address <= 0xFE9F && sprite_count_for_line < 10) {
+	while (current_OAM_address <= 0xFE9F) {
 		u8 sprite_pos_y = read8(gpu->mem, current_OAM_address);
 		u8 sprite_pos_x = read8(gpu->mem, current_OAM_address + 1);
 		u8 tile_index = read8(gpu->mem, current_OAM_address + 2);

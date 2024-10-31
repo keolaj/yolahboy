@@ -367,6 +367,8 @@ Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op) {
 	case ADD:
 	case ADC:
 	case SUB:
+	case SBC:
+	case SET_OP:
 	case OR:
 	case AND:
 	case CPL:
