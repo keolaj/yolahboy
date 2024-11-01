@@ -211,8 +211,10 @@ void handle_vram(Gpu* gpu) {
 	if (gpu->clock >= 172) {
 		gpu->mode = HBLANK;
 		gpu->clock = 0;
-
 		draw_line(gpu);
+		if (read8(gpu->mem, LCD_STATUS) & (1 << 3)) {
+			write8(gpu->mem, IF, read8(gpu->mem, IF) | LCDSTAT_INTERRUPT);
+		}
 	}
 }
 
@@ -221,6 +223,17 @@ void handle_hblank(Gpu* gpu) {
 		gpu->clock = 0;
 		++gpu->line;
 		write8(gpu->mem, LY, gpu->line);
+		if (read8(gpu->mem, LYC) == gpu->line) {
+			write8(gpu->mem, LCD_STATUS, read8(gpu->mem, LCD_STATUS) | (1 << 2));
+			if (read8(gpu->mem, LCD_STATUS) & (1 << 6)) {
+				write8(gpu->mem, IF, read8(gpu->mem, IF) | LCDSTAT_INTERRUPT);
+			}
+		}
+		else {
+			write8(gpu->mem, LCD_STATUS, read8(gpu->mem, LCD_STATUS) & ~(1 << 2));
+		}
+
+
 
 		if (gpu->line == 143) {
 			u8 interrupt = read8(gpu->mem, IF);
@@ -228,9 +241,16 @@ void handle_hblank(Gpu* gpu) {
 			gpu->mode = VBLANK;
 			write_buffer_to_screen(gpu);
 			write_tile_buffer_to_screen(gpu);
+			if (read8(gpu->mem, LCD_STATUS) & (1 << 4)) {
+				write8(gpu->mem, IF, read8(gpu->mem, IF) | LCDSTAT_INTERRUPT);
+			}
+
 		}
 		else {
 			gpu->mode = OAM_ACCESS;
+			if (read8(gpu->mem, LCD_STATUS) & (1 << 5)) {
+				write8(gpu->mem, IF, read8(gpu->mem, IF) | LCDSTAT_INTERRUPT);
+			}
 		}
 	}
 }
@@ -245,6 +265,9 @@ void handle_vblank(Gpu* gpu) {
 			gpu->mode = OAM_ACCESS;
 			gpu->line = 0;
 			write8(gpu->mem, LY, 0);
+			if (read8(gpu->mem, LCD_STATUS) & (1 << 5)) {
+				write8(gpu->mem, IF, read8(gpu->mem, IF) | LCDSTAT_INTERRUPT);
+			}
 		}
 	}
 
