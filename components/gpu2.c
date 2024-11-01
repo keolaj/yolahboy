@@ -1,5 +1,6 @@
 #include "gpu2.h"
 #include <stdlib.h>
+#include <stdio.h>
 #include <assert.h>
 #include <string.h>
 
@@ -35,6 +36,42 @@ void init_gpu(Gpu* gpu, Memory* mem) {
 	}
 }
 
+u32 createPixelFromPaletteId(u8 palette, u8 id) {
+	uint8_t value = 0;
+	switch (id) { // read palette and assign value for id
+	case 0:
+		value = (palette & 0b00000011);
+		break;
+	case 1:
+		value = (palette & 0b00001100) >> 2;
+		break;
+	case 2:
+		value = (palette & 0b00110000) >> 4;
+		break;
+	case 3:
+		value = (palette & 0b11000000) >> 6;
+		break;
+	default:
+		value = 0;
+		printf("createPixelFromPalette bad value");
+		assert(false);
+	}
+	switch (value) {
+	case 0:
+		return WHITE;
+	case 1:
+		return LIGHT;
+	case 2:
+		return DARK;
+	case 3:
+		return BLACK;
+	default:
+		printf("invalid color");
+		assert(false);
+		return 0;
+	}
+}
+
 void writePixel(SDL_Surface* surface, int x, int y, u32 pixel) {
 	uint32_t* const target = (u32*)((u8*)surface->pixels + y * surface->pitch + x * surface->format->BytesPerPixel); // for some reason I need to cast to uint8
 	*target = pixel;
@@ -42,7 +79,8 @@ void writePixel(SDL_Surface* surface, int x, int y, u32 pixel) {
 
 void write_buffer_to_screen(Gpu* gpu) {
 	if (SDL_LockSurface(gpu->screen) < 0) {
-		return false;
+		printf("could not lock screen surface");
+		assert(false);
 	}
 
 	for (int x = 0; x < SCREEN_WIDTH; ++x) {
@@ -52,12 +90,11 @@ void write_buffer_to_screen(Gpu* gpu) {
 	}
 
 	SDL_UnlockSurface(gpu->screen);
-	return true;
-
 }
 void write_tile_buffer_to_screen(Gpu* gpu) {
 	if (SDL_LockSurface(gpu->tile_screen) < 0) {
-		return false;
+		printf("could not lock tile screen");
+		assert(false);
 	}
 
 	for (int y = 0; y < TILES_Y; ++y) {
@@ -91,34 +128,6 @@ void update_tile(Gpu* gpu, int address, u8 value) {
 	}
 }
 
-
-u32 createPixelFromPaletteId(u8 palette, u8 id) {
-	uint8_t value = 0;
-	switch (id) { // read palette and assign value for id
-	case 0:
-		value = (palette & 0b00000011);
-		break;
-	case 1:
-		value = (palette & 0b00001100) >> 2;
-		break;
-	case 2:
-		value = (palette & 0b00110000) >> 4;
-		break;
-	case 3:
-		value = (palette & 0b11000000) >> 6;
-		break;
-	}
-	switch (value) {
-	case 0:
-		return WHITE;
-	case 1:
-		return LIGHT;
-	case 2:
-		return DARK;
-	case 3:
-		return BLACK;
-	}
-}
 
 
 void draw_line(Gpu* gpu) {

@@ -48,6 +48,8 @@ void write16(Memory* mem, u16 address, u16 value) {
 	write8(mem, address + 1, value >> 8);
 }
 
+void update_tile(Gpu* gpu, int address, u8 value);
+
 void write8(Memory* mem, u16 address, u8 data) {
 	if (address < 0x8000) {
 		return;

@@ -52,12 +52,25 @@ typedef struct {
 	bool b;
 } Controller;
 
+typedef enum {
+	ROM_ONLY,
+	MBC1,
+} MBC_TYPE;
 
 typedef struct {
+	u8* rom;
+	u8* ram;
+} Cartridge;
+
+typedef struct mem_ctx Memory;
+typedef struct gpu_ctx Gpu;
+
+typedef struct mem_ctx{
 	u8 bios[0x100];
 	u8 memory[0x10000];
+	Cartridge cartridge;
 	bool in_bios;
-	struct Gpu* gpu;
+	Gpu* gpu;
 	Controller controller;
 } Memory;
 
@@ -118,7 +131,7 @@ typedef enum {
 	VRAM_ACCESS
 } gpu_mode;
 
-typedef struct {
+struct gpu_ctx{
 	int line;
 	int clock;
 	u32 framebuffer[23040];
@@ -130,4 +143,4 @@ typedef struct {
 	SDL_Surface* tile_screen;
 
 	gpu_mode mode;
-} Gpu;
+};
