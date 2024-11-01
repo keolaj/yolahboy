@@ -595,9 +595,15 @@ alu_return run_alu(Cpu* cpu, u8 x, u8 y, instruction_type type, instruction_flag
 		}
 		result = x - y;
 		if ((y & 0x0f) > (x & 0x0f)) { //  half carry (there is a lot of different documentation on this so idk, this matches bgb) 
+			new_flags &= ~FLAG_HALFCARRY;
+		}
+		else {
 			new_flags |= FLAG_HALFCARRY;
 		}
 		if ((int)x - (int)y < 0) { //  carry
+			new_flags &= ~FLAG_CARRY;
+		}
+		else {
 			new_flags |= FLAG_CARRY;
 		}
 
