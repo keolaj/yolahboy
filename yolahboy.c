@@ -43,7 +43,7 @@ int main(int argc, char* argv[]) {
 		assert(false);
 	}
 
-	if (SDL_NumJoysticks < 1) {
+	if (SDL_NumJoysticks() < 1) {
 		printf("no joystick connected!");
 		assert(false);
 	}

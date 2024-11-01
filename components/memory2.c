@@ -14,8 +14,6 @@ Memory* create_memory(const char* bootrom_path, const char* rom_path) {
 	return ret;
 }
 
-
-
 void set_gpu(Memory* mem, Gpu* gpu) {
 	mem->gpu = gpu;
 }

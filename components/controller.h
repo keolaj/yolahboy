@@ -1,3 +1,5 @@
+#pragma once
+
 #include "global_definitions.h"
 #include "SDL.h"
 

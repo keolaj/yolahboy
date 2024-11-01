@@ -26,9 +26,17 @@ void init_gpu(Gpu* gpu, Memory* mem) {
 		assert(false && "WTF");
 	}
 	for (int i = 0; i < NUM_TILES; ++i) {
-		gpu->tiles[i] = (Tile)malloc(sizeof(u8*) * 8); // I will soon find out if malloc returns NULL
+		gpu->tiles[i] = (Tile)malloc(sizeof(u8*) * 8);
+		if (gpu->tiles[i] == NULL) {
+			printf("unable to allocate tile");
+			assert(false);
+		}
 		for (int y = 0; y < 8; ++y) {
 			gpu->tiles[i][y] = (u8*)malloc(sizeof(u8) * 8);
+			if (gpu->tiles[i][y] == NULL) {
+				printf("unable to allocate tile");
+				assert(false);
+			}
 			for (int x = 0; x < 8; ++x) {
 				gpu->tiles[i][y][x] = 0;
 			}

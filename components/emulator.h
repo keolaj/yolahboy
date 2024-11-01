@@ -1,5 +1,6 @@
 #pragma once
-#include "cpu2.h";
+
+#include "cpu2.h"
 #include "memory2.h"
 #include "operations.h"
 #include "gpu2.h"

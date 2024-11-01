@@ -4,6 +4,7 @@
 #include "cpu_definitions.h"
 #include "memory2.h"
 #include "operations.h"
+#include "controller.h"
 
 
 Cpu* create_cpu();
