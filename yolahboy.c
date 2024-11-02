@@ -20,17 +20,26 @@ Emulator emu;
 HANDLE emu_mutex;
 
 int run_emulator(LPVOID t_args) {
-	
+
+
+	DWORD dwWaitResult;
+
+	dwWaitResult = WaitForSingleObject(emu_mutex, INFINITE);
+
+
 	// HANDLE mem_pipe_handle = ((args*)t_args)->mem_pipe_handle;
 	int argc = ((args*)t_args)->argc;
 	char** argv = ((args*)t_args)->argv;
-	
-	SDL_Window* window;
-	SDL_Renderer* renderer;
+	u16* breakpoints = ((args*)t_args)->breakpoint_arr;
 
-	SDL_Window* tile_window;
-	SDL_Renderer* tile_renderer;
-	SDL_GameController* game_controller;
+	SDL_Window* window = NULL;
+	SDL_Renderer* renderer = NULL;
+
+	SDL_Window* tile_window = NULL;
+	SDL_Renderer* tile_renderer = NULL;
+	SDL_GameController* game_controller = NULL;
+
+	int did_SDL_init = -1;
 
 	window = SDL_CreateWindow("YolahBoy", 700, 200, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_RESIZABLE);
 	if (!window) {
@@ -54,8 +63,8 @@ int run_emulator(LPVOID t_args) {
 		SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't set create renderer: %s\n", SDL_GetError());
 		goto cleanup;
 	}
-
-	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER) < 0) {
+	did_SDL_init = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER);
+	if (did_SDL_init < 0) {
 		printf("could not init SDL: %s", SDL_GetError());
 		goto cleanup;
 	}
@@ -73,11 +82,40 @@ int run_emulator(LPVOID t_args) {
 		}
 	}
 
-	if (init_emulator(&emu, argv[1], argv[2]) < 0) goto cleanup;
+	switch (dwWaitResult) {
+	case WAIT_OBJECT_0:
+		__try {
+			if (init_emulator(&emu, argv[1], argv[2], breakpoints) < 0) {
+				goto cleanup;
+			}
+
+		}
+
+		__finally {
+			printf("initialized emulator");
+		}
+		break;
+
+	case WAIT_ABANDONED:
+		goto cleanup;
+
+	}
 
 	int c = 0;
 	bool quit = false;
 	while (!quit) {
+
+		for (int i = 0; i < MAX_BREAKPOINTS; ++i) {
+			if (emu.cpu->registers.pc == emu.breakpoints[i]) {
+				printf("BREAKPOINT!!\n");
+				// print_registers(emu.cpu);
+
+				ReleaseMutex(emu_mutex);
+
+				SuspendThread(GetCurrentThread());
+				break;
+			}
+		}
 
 		Operation to_execute = get_operation(emu.cpu, emu.memory);
 		// print_operation(to_execute);
@@ -104,7 +142,9 @@ int run_emulator(LPVOID t_args) {
 			c = 0;
 			// Sleep(5);
 		}
-
+		if (emu.should_quit) {
+			quit = true;
+		}
 	}
 
 cleanup:
@@ -113,7 +153,7 @@ cleanup:
 	if (tile_renderer) SDL_DestroyRenderer(tile_renderer);
 	if (window) SDL_DestroyWindow(window);
 	if (game_controller) SDL_GameControllerClose(game_controller);
-	SDL_Quit();
+	if (did_SDL_init > 0) SDL_Quit();
 	destroy_emulator(&emu);
 
 	return 0;
@@ -131,7 +171,8 @@ int main(int argc, const char* argv[]) {
 	//}
 
 	emu_mutex = CreateMutex(NULL, false, NULL);
-	
+
+
 	args* rom_args = (args*)malloc(sizeof(args));
 	if (rom_args == NULL) {
 		printf("could not init rom args");
@@ -140,6 +181,7 @@ int main(int argc, const char* argv[]) {
 	rom_args->argc = argc;
 	rom_args->argv = argv;
 	rom_args->breakpoint_arr = (u16*)malloc(sizeof(u16) * MAX_BREAKPOINTS);
+	memset(rom_args->breakpoint_arr, 0, sizeof(u16) * MAX_BREAKPOINTS);
 
 	SECURITY_ATTRIBUTES emu_thread_atts = {
 		sizeof(SECURITY_ATTRIBUTES), NULL, false
@@ -151,12 +193,38 @@ int main(int argc, const char* argv[]) {
 		printf("could not start emulator thread");
 		return -1;
 	}
-	
+
+
+
+	while (true) {
+		Sleep(10);
+		DWORD dwWaitResult;
+
+		dwWaitResult = WaitForSingleObject(emu_mutex, INFINITE);
+		switch (dwWaitResult) {
+		case WAIT_OBJECT_0:
+			__try {
+				print_registers(emu.cpu);
+			}
+
+			__finally {
+				printf("back to emulator");
+				ReleaseMutex(emu_mutex);
+				ResumeThread(emulator_thread);
+			}
+			break;
+
+		case WAIT_ABANDONED:
+			return -1;
+		}
+
+	}
+
 	WaitForSingleObject(emulator_thread, INFINITE);
 
 	int emu_exit_code;
 
 	GetExitCodeThread(emulator_thread, (LPDWORD)&emu_exit_code);
-	
+
 	return emu_exit_code;
 }
