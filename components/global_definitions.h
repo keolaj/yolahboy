@@ -113,7 +113,6 @@ typedef struct {
 	bool should_update_IME;
 	bool update_IME_value;
 	int update_IME_counter;
-
 } Cpu;
 
 typedef struct {

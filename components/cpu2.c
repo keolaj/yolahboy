@@ -16,7 +16,10 @@ void init_cpu(Cpu* cpu) {
 
 Cpu* create_cpu() {
 	Cpu* ret = (Cpu*)malloc(sizeof(Cpu));
-	assert(ret != NULL && "Cannot allocate Cpu");
+	if (ret == NULL) {
+		printf("could not allocate cpu");
+		return NULL;
+	}
 	init_cpu(ret);
 	return ret;
 }
@@ -462,3 +465,7 @@ Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op) {
 	return (Cycles) { op.m_cycles, op.t_cycles };
 }
 
+void destroy_cpu(Cpu* cpu) {
+	if (cpu == NULL) return;
+	free(cpu);
+}

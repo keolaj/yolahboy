@@ -6,12 +6,18 @@
 
 Gpu* create_gpu(Memory* mem) {
 	Gpu* ret = (Gpu*)malloc(sizeof(Gpu));
-	assert(ret != NULL && "could not initialize gpu");
-	init_gpu(ret, mem);
+	if (ret == NULL) {
+		printf("could not allocate Gpu");
+		return NULL;
+	}
+	if (init_gpu(ret, mem) == -1) {
+		printf("could not initialize Gpu");
+		return NULL;
+	}
 	return ret;
 }
 
-void init_gpu(Gpu* gpu, Memory* mem) {
+int init_gpu(Gpu* gpu, Memory* mem) {
 	gpu->mode = OAM_ACCESS;
 	gpu->line = 0;
 	gpu->mem = mem;
@@ -23,19 +29,23 @@ void init_gpu(Gpu* gpu, Memory* mem) {
 	// setup Tiles array
 	gpu->tiles = (Tile*)malloc(NUM_TILES * sizeof(Tile));
 	if (gpu->tiles == NULL) {
-		assert(false && "WTF");
+		printf("could not allocate Tile");
+		return -1;
 	}
 	for (int i = 0; i < NUM_TILES; ++i) {
 		gpu->tiles[i] = (Tile)malloc(sizeof(u8*) * 8);
 		if (gpu->tiles[i] == NULL) {
-			printf("unable to allocate tile");
-			assert(false);
+			printf("unable to allocate tile array");
+			free(gpu->tiles);
+			return -1;
 		}
 		for (int y = 0; y < 8; ++y) {
 			gpu->tiles[i][y] = (u8*)malloc(sizeof(u8) * 8);
 			if (gpu->tiles[i][y] == NULL) {
 				printf("unable to allocate tile");
-				assert(false);
+				free(gpu->tiles[i]);
+				free(gpu->tiles);
+				return -1;
 			}
 			for (int x = 0; x < 8; ++x) {
 				gpu->tiles[i][y][x] = 0;
@@ -207,6 +217,9 @@ void draw_line(Gpu* gpu) {
 }
 
 void destroy_gpu(Gpu* gpu) {
+	if (gpu == NULL) {
+		return;
+	}
 	for (int i = 0; i < NUM_TILES; ++i) {
 		for (int y = 0; y < 8; ++y) {
 			free(gpu->tiles[i][y]);

@@ -52,3 +52,7 @@ u8 joypad_return(Controller controller, u8 data) {
 	return ret;
 }
 
+void destroy_controller(Controller* controller) {
+	if (controller == NULL) return;
+	free(controller);
+}

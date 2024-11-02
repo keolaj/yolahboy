@@ -10,7 +10,7 @@ void updateWindow(SDL_Surface* source, SDL_Window* dest) {
 int main(int argc, char* argv[]) {
 
 	Emulator emu;
-	init_emulator(&emu, argv[1], argv[2]);
+	if (init_emulator(&emu, argv[1], argv[2]) < 0) goto cleanup;
 
 	SDL_Window* window;
 	SDL_Renderer* renderer;
@@ -55,8 +55,6 @@ int main(int argc, char* argv[]) {
 		}
 	}
 
-
-
 	int c = 0;
 	bool quit = false;
 	while (!quit) {
@@ -86,6 +84,7 @@ int main(int argc, char* argv[]) {
 
 	}
 
+	cleanup:
 	SDL_Quit();
 	destroy_emulator(&emu);
 

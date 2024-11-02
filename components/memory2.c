@@ -7,9 +7,12 @@
 
 Memory* create_memory(const char* bootrom_path, const char* rom_path) {
 	Memory* ret = (Memory*)malloc(sizeof(Memory));
-	assert(ret != NULL && "Cannot allocate Memory");
-	load_bootrom(ret, bootrom_path);
-	load_rom(ret, rom_path);
+	if (ret == NULL) {
+		printf("could not allocate memory");
+		return NULL;
+	}
+	if (load_bootrom(ret, bootrom_path) < 0) return NULL;
+	if (load_rom(ret, rom_path) < 0) return NULL;
 	memset((void*)&ret->controller, 0, sizeof(Controller));
 	return ret;
 }
@@ -68,17 +71,27 @@ void write8(Memory* mem, u16 address, u8 data) {
 	}
 }
 
-void load_bootrom(Memory* mem, const char* path) {
+int load_bootrom(Memory* mem, const char* path) {
 	FILE* fp;
 	fp = fopen(path, "rb");
-	assert(fp != NULL && "error opening bootrom");
+	if (fp == NULL) {
+		printf("error opening bootrom");
+		return -1;
+	}
 	fread(mem->bios, sizeof(u8), 0x100, fp);
 }
-void load_rom(Memory* mem, const char* path) {
+int load_rom(Memory* mem, const char* path) {
 	FILE* fp;
 	fp = fopen(path, "rb");
-	assert(fp != NULL && "error opening rom");
+	if (fp == NULL) {
+		printf("error opening rom");
+		return -1;
+	}
 	memset(mem->memory, 0, sizeof(mem->memory));
 	fread(mem->memory, sizeof(u8), 0x8000, fp);
 }
 
+void destroy_memory(Memory* mem) {
+	if (mem == NULL) return;
+	free(mem);
+}

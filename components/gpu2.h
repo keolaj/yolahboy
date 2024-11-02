@@ -5,6 +5,6 @@
 
 
 Gpu* create_gpu(Memory* mem);
-void init_gpu(Gpu* gpu, Memory* mem);
+int init_gpu(Gpu* gpu, Memory* mem);
 void destroy_gpu(Gpu* gpu);
 void step_gpu(Gpu* gpu, u8 cycles);
