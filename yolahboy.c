@@ -17,14 +17,9 @@ typedef struct {
 } args;
 
 Emulator emu;
-HANDLE emu_mutex;
+CRITICAL_SECTION emu_crit;
 
 int run_emulator(LPVOID t_args) {
-
-
-	DWORD dwWaitResult;
-
-	dwWaitResult = WaitForSingleObject(emu_mutex, INFINITE);
 
 
 	// HANDLE mem_pipe_handle = ((args*)t_args)->mem_pipe_handle;
@@ -82,83 +77,57 @@ int run_emulator(LPVOID t_args) {
 		}
 	}
 
-	switch (dwWaitResult) {
-	case WAIT_OBJECT_0:
-		__try {
-			if (init_emulator(&emu, argv[1], argv[2], breakpoints) < 0) {
-				goto cleanup;
-			}
-
-		}
-
-		__finally {
-			printf("initialized emulator");
-		}
-		break;
-
-	case WAIT_ABANDONED:
+	if (init_emulator(&emu, argv[1], argv[2], breakpoints) < 0) {
 		goto cleanup;
-
 	}
+
 
 	int c = 0;
 	bool quit = false;
 	while (!quit) {
 
 		for (int i = 0; i < MAX_BREAKPOINTS; ++i) {
-			if (emu.cpu->registers.pc == emu.breakpoints[i]) {
+			if (emu.cpu->registers.pc == emu.breakpoints[i] && emu.breakpoints[i] != 0) {
 				printf("BREAKPOINT!!\n");
 				// print_registers(emu.cpu);
 
-				ReleaseMutex(emu_mutex);
 
-				SuspendThread(GetCurrentThread());
-
+				// SuspendThread(GetCurrentThread());
+				while (true);
 				break;
 			}
 		}
 
-		dwWaitResult = WaitForSingleObject(emu_mutex, INFINITE);
-		switch (dwWaitResult) {
-		case WAIT_OBJECT_0:
-			__try {
-				Operation to_execute = get_operation(emu.cpu, emu.memory);
-				// print_operation(to_execute);
-				Cycles clock = step_cpu(emu.cpu, emu.memory, to_execute);
-				if (clock.m_cycles == -1 && clock.t_cycles == -1) {
-					goto cleanup;
-				}
-				// print_registers(emu.cpu);
-				c += clock.t_cycles;
-				step_gpu(emu.gpu, clock.t_cycles);
-				if (c > 29780) {
-					SDL_Event e;
-					while (SDL_PollEvent(&e)) {
-						if (e.type == SDL_QUIT) {
-							quit = true;
-						}
-						else {
-							update_emu_controller(&emu, get_controller_state(game_controller));
-							print_controller(emu.memory->controller);
-						}
-					}
-					updateWindow(emu.gpu->screen, window);
-					updateWindow(emu.gpu->tile_screen, tile_window);
-					c = 0;
-					// Sleep(5);
-				}
-				if (emu.should_quit) {
-					quit = true;
-				}
 
-			}
-			__finally {
-
-			}
-			break;
-		case WAIT_ABANDONED:
+		Operation to_execute = get_operation(emu.cpu, emu.memory);
+		// print_operation(to_execute);
+		Cycles clock = step_cpu(emu.cpu, emu.memory, to_execute);
+		if (clock.m_cycles == -1 && clock.t_cycles == -1) {
 			goto cleanup;
 		}
+		// print_registers(emu.cpu);
+		c += clock.t_cycles;
+		step_gpu(emu.gpu, clock.t_cycles);
+		if (c > 29780) {
+			SDL_Event e;
+			while (SDL_PollEvent(&e)) {
+				if (e.type == SDL_QUIT) {
+					quit = true;
+				}
+				else {
+					update_emu_controller(&emu, get_controller_state(game_controller));
+					print_controller(emu.memory->controller);
+				}
+			}
+			updateWindow(emu.gpu->screen, window);
+			updateWindow(emu.gpu->tile_screen, tile_window);
+			c = 0;
+			// Sleep(5);
+		}
+		if (emu.should_quit) {
+			quit = true;
+		}
+		break;
 	}
 
 cleanup:
@@ -184,8 +153,6 @@ int main(int argc, const char* argv[]) {
 	//	return -1;
 	//}
 
-	emu_mutex = CreateMutex(NULL, false, NULL);
-
 
 	args* rom_args = (args*)malloc(sizeof(args));
 	if (rom_args == NULL) {
@@ -195,56 +162,66 @@ int main(int argc, const char* argv[]) {
 	rom_args->argc = argc;
 	rom_args->argv = argv;
 	rom_args->breakpoint_arr = (u16*)malloc(sizeof(u16) * MAX_BREAKPOINTS);
+	if (rom_args->breakpoint_arr == NULL) {
+		printf("Couldn't allocate breakpoint array");
+		return -1;
+	}
 	memset(rom_args->breakpoint_arr, 0, sizeof(u16) * MAX_BREAKPOINTS);
+	rom_args->breakpoint_arr[0] = 0x100;
+
 
 	SECURITY_ATTRIBUTES emu_thread_atts = {
 		sizeof(SECURITY_ATTRIBUTES), NULL, false
 	};
 
-	HANDLE emulator_thread = CreateThread(&emu_thread_atts, 0, run_emulator, rom_args, 0, NULL);
+	SECURITY_ATTRIBUTES event_atts = {
+		sizeof(SECURITY_ATTRIBUTES), NULL, false
+	};
 
+	HANDLE mutex_created_event = CreateEventExA(NULL, TEXT("Mutex Created"), 0, EVENT_MODIFY_STATE | SYNCHRONIZE);
+	if (mutex_created_event == NULL) {
+		printf("could not create mutex created event");
+		return -1;
+	}
+
+	HANDLE emulator_thread = CreateThread(&emu_thread_atts, 0, run_emulator, rom_args, 0, NULL);
 	if (emulator_thread == NULL) {
 		printf("could not start emulator thread");
 		return -1;
 	}
 
-
-	Sleep(10);
-
 	bool quit = false;
 	while (!quit) {
-		DWORD dwWaitResult;
-
-		dwWaitResult = WaitForSingleObject(emu_mutex, INFINITE);
-		switch (dwWaitResult) {
-		case WAIT_OBJECT_0:
-			__try {
-				if (emu.cpu == NULL) {
-					quit = true;
-					__leave;
-				}
-				print_registers(emu.cpu);
-			}
-
-			__finally {
-				printf("back to emulator");
-				ReleaseMutex(emu_mutex);
-				ResumeThread(emulator_thread);
-			}
+		if (emu.cpu == NULL) {
+			quit = true;
 			break;
-
-		case WAIT_ABANDONED:
-			return -1;
+			// __leave;
 		}
+		printf("HERE");
+		print_registers(emu.cpu);
+		emu.should_quit = true;
+		ReleaseMutex(emu_mutex);
+		SetEvent(mutex_created_event);
+		quit = true;
+		// }
+
+		//__finally {
+		//	printf("back to emulator");
+		//	ReleaseMutex(emu_mutex);
+		//	ResumeThread(emulator_thread);
+		//}
+		break;
+
 
 	}
 end:
 
 	WaitForSingleObject(emulator_thread, INFINITE);
 
-	int emu_exit_code;
+	DWORD emu_exit_code;
 
-	GetExitCodeThread(emulator_thread, (LPDWORD)&emu_exit_code);
+	GetExitCodeThread(emulator_thread, &emu_exit_code);
+	CloseHandle(emulator_thread);
 
 	return emu_exit_code;
 }
