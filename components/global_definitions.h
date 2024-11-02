@@ -116,8 +116,8 @@ typedef struct {
 } Cpu;
 
 typedef struct {
-	u8 m_cycles;
-	u8 t_cycles;
+	int m_cycles;
+	int t_cycles;
 } Cycles;
 
 
