@@ -10,7 +10,6 @@ void updateWindow(SDL_Surface* source, SDL_Window* dest) {
 int main(int argc, char* argv[]) {
 
 	Emulator emu;
-	if (init_emulator(&emu, argv[1], argv[2]) < 0) goto cleanup;
 
 	SDL_Window* window;
 	SDL_Renderer* renderer;
@@ -19,29 +18,41 @@ int main(int argc, char* argv[]) {
 	SDL_Renderer* tile_renderer;
 	SDL_GameController* game_controller;
 
-	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER) < 0) {
-		assert(false && "COULDNT INIT SDL");
-	}
-
 	window = SDL_CreateWindow("YolahBoy", 700, 200, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_RESIZABLE);
+	if (!window) {
+		SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't set create renderer: %s\n", SDL_GetError());
+		return -1;
+
+	}
 
 	renderer = SDL_CreateRenderer(window, -1, 0);
 	if (!renderer) {
 		SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't set create renderer: %s\n", SDL_GetError());
-		assert(false);
+		SDL_DestroyWindow(window);
+		return -1;
 	}
 
 	tile_window = SDL_CreateWindow("YolahBoy tiles", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 16 * 8, 24 * 8, SDL_WINDOW_RESIZABLE);
-	if (!window) {
+	if (!tile_window) {
 		SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't set create window: %s\n", SDL_GetError());
-		assert(false);
+		SDL_DestroyWindow(window);
+		SDL_DestroyRenderer(renderer);
+		return -1;
 	}
 
-	tile_renderer = SDL_CreateRenderer(window, -1, 0);
-	if (!renderer) {
+	tile_renderer = SDL_CreateRenderer(tile_window, -1, 0);
+	if (!tile_renderer) {
 		SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't set create renderer: %s\n", SDL_GetError());
-		assert(false);
+		SDL_DestroyWindow(window);
+		SDL_DestroyWindow(tile_window);
+		SDL_DestroyRenderer(renderer);
+		return -1;
 	}
+
+	if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER) < 0) {
+		goto cleanup;
+	}
+
 
 	if (SDL_NumJoysticks() < 1) {
 		printf("no joystick connected!");
@@ -54,6 +65,8 @@ int main(int argc, char* argv[]) {
 			assert(false);
 		}
 	}
+
+	if (init_emulator(&emu, argv[1], argv[2]) < 0) goto cleanup;
 
 	int c = 0;
 	bool quit = false;
@@ -84,7 +97,11 @@ int main(int argc, char* argv[]) {
 
 	}
 
-	cleanup:
+cleanup:
+	SDL_DestroyWindow(tile_window);
+	SDL_DestroyRenderer(renderer);
+	SDL_DestroyRenderer(tile_renderer);
+	SDL_DestroyWindow(window);
 	SDL_Quit();
 	destroy_emulator(&emu);
 
