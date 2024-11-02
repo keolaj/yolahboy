@@ -444,8 +444,7 @@ Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op) {
 		print_registers(cpu);
 		printf("unimplemented operation type\t");
 		print_operation(op);
-		assert(false);
-
+		return (Cycles) { -1, -1 };
 	}
 
 	if (cpu->should_update_IME) {

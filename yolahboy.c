@@ -75,6 +75,7 @@ int main(int argc, char* argv[]) {
 		Operation to_execute = get_operation(emu.cpu, emu.memory);
 		// print_operation(to_execute);
 		Cycles clock = step_cpu(emu.cpu, emu.memory, to_execute);
+		if (clock.m_cycles == -1 && clock.t_cycles == -1) goto cleanup;
 		// print_registers(emu.cpu);
 		c += clock.t_cycles;
 		step_gpu(emu.gpu, clock.t_cycles);
