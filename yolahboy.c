@@ -113,37 +113,51 @@ int run_emulator(LPVOID t_args) {
 				ReleaseMutex(emu_mutex);
 
 				SuspendThread(GetCurrentThread());
+
 				break;
 			}
 		}
 
-		Operation to_execute = get_operation(emu.cpu, emu.memory);
-		// print_operation(to_execute);
-		Cycles clock = step_cpu(emu.cpu, emu.memory, to_execute);
-		if (clock.m_cycles == -1 && clock.t_cycles == -1) {
-			goto cleanup;
-		}
-		// print_registers(emu.cpu);
-		c += clock.t_cycles;
-		step_gpu(emu.gpu, clock.t_cycles);
-		if (c > 29780) {
-			SDL_Event e;
-			while (SDL_PollEvent(&e)) {
-				if (e.type == SDL_QUIT) {
+		dwWaitResult = WaitForSingleObject(emu_mutex, INFINITE);
+		switch (dwWaitResult) {
+		case WAIT_OBJECT_0:
+			__try {
+				Operation to_execute = get_operation(emu.cpu, emu.memory);
+				// print_operation(to_execute);
+				Cycles clock = step_cpu(emu.cpu, emu.memory, to_execute);
+				if (clock.m_cycles == -1 && clock.t_cycles == -1) {
+					goto cleanup;
+				}
+				// print_registers(emu.cpu);
+				c += clock.t_cycles;
+				step_gpu(emu.gpu, clock.t_cycles);
+				if (c > 29780) {
+					SDL_Event e;
+					while (SDL_PollEvent(&e)) {
+						if (e.type == SDL_QUIT) {
+							quit = true;
+						}
+						else {
+							update_emu_controller(&emu, get_controller_state(game_controller));
+							print_controller(emu.memory->controller);
+						}
+					}
+					updateWindow(emu.gpu->screen, window);
+					updateWindow(emu.gpu->tile_screen, tile_window);
+					c = 0;
+					// Sleep(5);
+				}
+				if (emu.should_quit) {
 					quit = true;
 				}
-				else {
-					update_emu_controller(&emu, get_controller_state(game_controller));
-					print_controller(emu.memory->controller);
-				}
+
 			}
-			updateWindow(emu.gpu->screen, window);
-			updateWindow(emu.gpu->tile_screen, tile_window);
-			c = 0;
-			// Sleep(5);
-		}
-		if (emu.should_quit) {
-			quit = true;
+			__finally {
+
+			}
+			break;
+		case WAIT_ABANDONED:
+			goto cleanup;
 		}
 	}
 
@@ -195,15 +209,20 @@ int main(int argc, const char* argv[]) {
 	}
 
 
+	Sleep(10);
 
-	while (true) {
-		Sleep(10);
+	bool quit = false;
+	while (!quit) {
 		DWORD dwWaitResult;
 
 		dwWaitResult = WaitForSingleObject(emu_mutex, INFINITE);
 		switch (dwWaitResult) {
 		case WAIT_OBJECT_0:
 			__try {
+				if (emu.cpu == NULL) {
+					quit = true;
+					__leave;
+				}
 				print_registers(emu.cpu);
 			}
 
@@ -219,6 +238,7 @@ int main(int argc, const char* argv[]) {
 		}
 
 	}
+end:
 
 	WaitForSingleObject(emulator_thread, INFINITE);
 

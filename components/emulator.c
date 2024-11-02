@@ -30,4 +30,5 @@ void destroy_emulator(Emulator* emu) {
 	destroy_memory(emu->memory);
 	destroy_cpu(emu->cpu);
 	destroy_controller(emu->controller);
+	emu->cpu = NULL;
 }
