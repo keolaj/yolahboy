@@ -17,6 +17,7 @@ typedef struct {
 } args;
 
 Emulator emu;
+LPHANDLE emu_breakpoint_event;
 CRITICAL_SECTION emu_crit;
 
 int run_emulator(LPVOID t_args) {
@@ -77,23 +78,28 @@ int run_emulator(LPVOID t_args) {
 		}
 	}
 
+	EnterCriticalSection(&emu_crit);
 	if (init_emulator(&emu, argv[1], argv[2], breakpoints) < 0) {
 		goto cleanup;
 	}
+	LeaveCriticalSection(&emu_crit);
+
 
 
 	int c = 0;
 	bool quit = false;
 	while (!quit) {
-
+		EnterCriticalSection(&emu_crit);
 		for (int i = 0; i < MAX_BREAKPOINTS; ++i) {
 			if (emu.cpu->registers.pc == emu.breakpoints[i] && emu.breakpoints[i] != 0) {
 				printf("BREAKPOINT!!\n");
+				LeaveCriticalSection(&emu_crit);
+				SetEvent(emu_breakpoint_event);
 				// print_registers(emu.cpu);
 
 
-				// SuspendThread(GetCurrentThread());
-				while (true);
+				SuspendThread(GetCurrentThread());
+				EnterCriticalSection(&emu_crit);
 				break;
 			}
 		}
@@ -127,7 +133,7 @@ int run_emulator(LPVOID t_args) {
 		if (emu.should_quit) {
 			quit = true;
 		}
-		break;
+		LeaveCriticalSection(&emu_crit);
 	}
 
 cleanup:
@@ -137,8 +143,9 @@ cleanup:
 	if (window) SDL_DestroyWindow(window);
 	if (game_controller) SDL_GameControllerClose(game_controller);
 	if (did_SDL_init > 0) SDL_Quit();
+	EnterCriticalSection(&emu_crit);
 	destroy_emulator(&emu);
-
+	LeaveCriticalSection(&emu_crit);
 	return 0;
 }
 
@@ -153,6 +160,8 @@ int main(int argc, const char* argv[]) {
 	//	return -1;
 	//}
 
+	InitializeCriticalSection(&emu_crit);
+	emu_breakpoint_event = CreateEventExA(NULL, TEXT("INITIALIZED EMULATOR"), 0, EVENT_MODIFY_STATE | SYNCHRONIZE);
 
 	args* rom_args = (args*)malloc(sizeof(args));
 	if (rom_args == NULL) {
@@ -178,41 +187,26 @@ int main(int argc, const char* argv[]) {
 		sizeof(SECURITY_ATTRIBUTES), NULL, false
 	};
 
-	HANDLE mutex_created_event = CreateEventExA(NULL, TEXT("Mutex Created"), 0, EVENT_MODIFY_STATE | SYNCHRONIZE);
-	if (mutex_created_event == NULL) {
-		printf("could not create mutex created event");
-		return -1;
-	}
-
 	HANDLE emulator_thread = CreateThread(&emu_thread_atts, 0, run_emulator, rom_args, 0, NULL);
 	if (emulator_thread == NULL) {
 		printf("could not start emulator thread");
 		return -1;
 	}
 
+
 	bool quit = false;
 	while (!quit) {
+		WaitForSingleObject(emu_breakpoint_event, INFINITE);
+		EnterCriticalSection(&emu_crit);
 		if (emu.cpu == NULL) {
 			quit = true;
-			break;
-			// __leave;
+			continue;
 		}
-		printf("HERE");
 		print_registers(emu.cpu);
 		emu.should_quit = true;
-		ReleaseMutex(emu_mutex);
-		SetEvent(mutex_created_event);
 		quit = true;
-		// }
-
-		//__finally {
-		//	printf("back to emulator");
-		//	ReleaseMutex(emu_mutex);
-		//	ResumeThread(emulator_thread);
-		//}
-		break;
-
-
+		LeaveCriticalSection(&emu_crit);
+		ResumeThread(emulator_thread);
 	}
 end:
 
