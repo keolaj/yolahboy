@@ -4,6 +4,8 @@
 #include "SDL.h"
 #include <stdlib.h>
 
+#define MAX_BREAKPOINTS 0x100
+
 #define IF 0xFF0F
 #define IE 0xFFFF
 

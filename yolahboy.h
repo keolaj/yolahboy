@@ -4,10 +4,4 @@
 #pragma once
 
 #include <stdio.h>
-#include "SDL.h"
-#include "yolahboy.h"
-#include "components/emulator.h"
-#include "components/operations.h"
 #include <assert.h>
-
-void updateWindow(SDL_Surface* source, SDL_Window* dest);

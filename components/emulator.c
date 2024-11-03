@@ -3,6 +3,11 @@
 #include "emulator.h"
 #include "global_definitions.h"
 #include "controller.h"
+#include "cpu2.h"
+#include "memory2.h"
+#include "operations.h"
+#include "gpu2.h"
+
 
 int init_emulator(Emulator* emu, const char* bootrom_path, const char* rom_path, u16* breakpoints) {
 	emu->cpu = create_cpu();

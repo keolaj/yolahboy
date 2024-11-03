@@ -99,7 +99,7 @@ typedef enum {
 } instruction_type;
 
 typedef enum {
-	IGNORE,
+	_IGNORE,
 	SET,
 	RESET,
 	DEPENDENT,
