@@ -5,11 +5,14 @@
 
 Emulator emu;
 LPHANDLE emu_breakpoint_event;
+LPHANDLE emu_step_event;
 CRITICAL_SECTION emu_crit;
 
 ATOM Init_App_Window_class(HINSTANCE);
 BOOL InitInstance(HINSTANCE, int);
 LRESULT CALLBACK WinProc(HWND, UINT, WPARAM, LPARAM);
+HWND hWnd;
+HANDLE emulator_thread;
 
 int WINAPI main(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
 	//
@@ -29,7 +32,8 @@ int WINAPI main(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, i
 	}
 
 	InitializeCriticalSection(&emu_crit);
-	emu_breakpoint_event = CreateEventExA(NULL, TEXT("INITIALIZED EMULATOR"), 0, EVENT_MODIFY_STATE | SYNCHRONIZE);
+	emu_breakpoint_event = CreateEventExA(NULL, TEXT("BREAKPOINT_EMULATOR"), 0, EVENT_MODIFY_STATE | SYNCHRONIZE);
+	emu_step_event = CreateEventExA(NULL, TEXT("STEP_EMULATOR"), 0, EVENT_MODIFY_STATE | SYNCHRONIZE);
 
 	args* rom_args = (args*)malloc(sizeof(args));
 	if (rom_args == NULL) {
@@ -58,7 +62,7 @@ int WINAPI main(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, i
 		sizeof(SECURITY_ATTRIBUTES), NULL, false
 	};
 
-	HANDLE emulator_thread = CreateThread(&emu_thread_atts, 0, run_emulator, rom_args, 0, NULL);
+	emulator_thread = CreateThread(&emu_thread_atts, 0, run_emulator, rom_args, 0, NULL);
 	if (emulator_thread == NULL) {
 		printf("could not start emulator thread");
 		return -1;
@@ -66,10 +70,17 @@ int WINAPI main(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, i
 
 
 	bool quit = false;
-	while (!quit) {
+	while (GetMessageA(&m, hWnd, 0, 0)) {
+		TranslateMessage(&m);
+		DispatchMessageA(&m);
+
+		printf("%d", m.message);
+
+		if (m.message == WM_CLOSE) {
+		}
 
 
-		switch (WaitForSingleObject(emu_breakpoint_event, 1)) {
+		switch (WaitForSingleObject(emu_breakpoint_event, 10)) {
 		case WAIT_OBJECT_0:
 			EnterCriticalSection(&emu_crit);
 			if (emu.cpu == NULL) {
@@ -97,7 +108,7 @@ end:
 
 	free(rom_args);
 
-	return emu_exit_code;
+	return m.wParam;
 }
 
 ATOM Init_App_Window_class(HINSTANCE hInstance) {
@@ -121,7 +132,7 @@ ATOM Init_App_Window_class(HINSTANCE hInstance) {
 }
 
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow) {
-	HWND hWnd;					// Handle for the window
+	// Handle for the window
 
 	hWnd = CreateWindow("YolahBoy Debugger",            // Window Class Name
 		"YolahBoy Debugger",            // Title Bar
@@ -151,7 +162,18 @@ LRESULT CALLBACK WinProc(HWND hWnd,           //Window handle
 	switch (message)
 	{
 
-	case WM_DESTROY: PostQuitMessage(0);
+	case WM_CLOSE: {
+		
+		EnterCriticalSection(&emu_crit);
+		emu.should_quit = true;
+		LeaveCriticalSection(&emu_crit);				
+		DestroyWindow(hWnd);
+		break;
+
+	}
+
+	case WM_DESTROY:
+		PostQuitMessage(0);
 		break;
 
 	}

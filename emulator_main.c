@@ -17,6 +17,7 @@
 
 extern Emulator emu;
 extern LPHANDLE emu_breakpoint_event;
+extern LPHANDLE emu_step_event;
 extern CRITICAL_SECTION emu_crit;
 
 void updateWindow(SDL_Surface* source, SDL_Window* dest) {
