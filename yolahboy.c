@@ -3,6 +3,8 @@
 #include "emulator_main.h"
 #include "components/emulator.h"
 
+#define APP_NAME "YolahBoy Debugger"
+
 Emulator emu;
 LPHANDLE emu_breakpoint_event;
 LPHANDLE emu_step_event;
@@ -70,15 +72,11 @@ int WINAPI main(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, i
 
 
 	bool quit = false;
-	while (GetMessageA(&m, hWnd, 0, 0)) {
+	while (GetMessageA(&m, NULL, 0, 0)) {
 		TranslateMessage(&m);
 		DispatchMessageA(&m);
 
 		printf("%d", m.message);
-
-		if (m.message == WM_CLOSE) {
-		}
-
 
 		switch (WaitForSingleObject(emu_breakpoint_event, 10)) {
 		case WAIT_OBJECT_0:
@@ -134,8 +132,8 @@ ATOM Init_App_Window_class(HINSTANCE hInstance) {
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow) {
 	// Handle for the window
 
-	hWnd = CreateWindow("YolahBoy Debugger",            // Window Class Name
-		"YolahBoy Debugger",            // Title Bar
+	hWnd = CreateWindow(APP_NAME,            // Window Class Name
+		APP_NAME,            // Title Bar
 		WS_OVERLAPPEDWINDOW, // Window style
 		CW_USEDEFAULT,       // x position of Window
 		CW_USEDEFAULT,       // y position of Window
