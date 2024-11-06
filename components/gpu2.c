@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <string.h>
+#include <SDL.h>
 
 Gpu* create_gpu(Memory* mem) {
 	Gpu* ret = (Gpu*)malloc(sizeof(Gpu));

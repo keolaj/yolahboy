@@ -1,7 +1,4 @@
-#undef main
-#define SDL_MAIN_HANDLED
-
-#include "SDL.h"
+#include <SDL.h>
 
 #include <Windows.h>
 #include "components/global_definitions.h"
@@ -14,6 +11,7 @@
 #include "components/operation_defitions.h"
 #include "components/cpu2.h"
 #include "components/memory2.h"
+#include "components/gpu2.h"
 
 extern Emulator emu;
 extern LPHANDLE emu_breakpoint_event;
@@ -97,7 +95,7 @@ int run_emulator(LPVOID t_args) {
 	while (!quit) {
 		EnterCriticalSection(&emu_crit);
 		for (int i = 0; i < MAX_BREAKPOINTS; ++i) {
-			if (emu.cpu->registers.pc == emu.breakpoints[i] && emu.breakpoints[i] != 0) {
+			if (emu.cpu->registers.pc == emu.breakpoints[i] && emu.breakpoints[i] != -1) {
 				printf("BREAKPOINT!!\n");
 				LeaveCriticalSection(&emu_crit);
 				SetEvent(emu_breakpoint_event);

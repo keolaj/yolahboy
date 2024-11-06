@@ -6,7 +6,7 @@ typedef struct {
 	// HANDLE mem_pipe_handle;
 	int argc;
 	char** argv;
-	u16* breakpoint_arr;
+	int* breakpoint_arr;
 
 } args;
 

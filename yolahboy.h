@@ -2,6 +2,3 @@
 // or project specific include files.
 
 #pragma once
-
-#include <stdio.h>
-#include <assert.h>

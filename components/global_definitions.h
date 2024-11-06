@@ -1,8 +1,8 @@
 #pragma once
 
 #include <stdbool.h>
-#include "SDL.h"
 #include <stdlib.h>
+#include <SDL2/SDL_surface.h>
 
 #define MAX_BREAKPOINTS 0x100
 
@@ -145,3 +145,12 @@ struct gpu_ctx{
 
 	gpu_mode mode;
 };
+
+typedef struct {
+	Cpu* cpu;
+	Memory* memory;
+	Gpu* gpu;
+	Controller* controller;
+	u16* breakpoints;
+	bool should_quit;
+} Emulator;

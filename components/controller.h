@@ -1,7 +1,7 @@
 #pragma once
 
 #include "global_definitions.h"
-#include "SDL.h"
+#include "SDL_gamecontroller.h"
 
 Controller* create_controller();
 void print_controller(Controller c);

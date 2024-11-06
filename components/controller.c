@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <string.h>
 #include "controller.h"
+#include <SDL2/SDL_gamecontroller.h>
+
 
 void print_controller(Controller c) {
 	printf("CONTROLLER STATE:\nA: %d\nB: %d\nUP: %d\nDOWN: %d\nLEFT: %d\nRIGHT: %d\nSELECT: %d\nSTART: %d\n", c.a, c.b, c.up, c.down, c.left, c.right, c.select, c.start);
