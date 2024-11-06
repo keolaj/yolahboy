@@ -81,7 +81,7 @@ int main(int argc, char* argv[]) {
 		return -1;
 	}
 
-	if (debugger_run(emulator_thread) < 0) {
+	if (debugger_run(emulator_thread, rom_args) < 0) {
 		TerminateThread(emulator_thread, 0);
 		return -1;
 	}
