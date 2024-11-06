@@ -22,28 +22,6 @@ extern CRITICAL_SECTION emu_crit;
 int run_emulator(LPVOID t_args) {
 
 	// HANDLE mem_pipe_handle = ((args*)t_args)->mem_pipe_handle;
-	int argc = ((args*)t_args)->argc;
-	char** argv = ((args*)t_args)->argv;
-	SDL_Window* window = NULL;
-	SDL_Renderer* renderer = NULL;
-
-	SDL_Window* tile_window = NULL;
-	SDL_Renderer* tile_renderer = NULL;
-	SDL_GameController* game_controller = NULL;
-
-
-	int did_SDL_init = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER | SDL_INIT_AUDIO);
-	if (did_SDL_init < 0) {
-		printf("could not init SDL: %s", SDL_GetError());
-		goto cleanup;
-	}
-
-
-	EnterCriticalSection(&emu_crit);
-	if (init_emulator(&emu, argv[1], argv[2], ((args*)t_args)->breakpoint_arr) < 0) {
-		goto cleanup;
-	}
-	LeaveCriticalSection(&emu_crit);
 
 	int c = 0;
 	bool quit = false;
@@ -88,15 +66,6 @@ int run_emulator(LPVOID t_args) {
 	}
 
 cleanup:
-	if (tile_window) SDL_DestroyWindow(tile_window);
-	if (renderer) SDL_DestroyRenderer(renderer);
-	if (tile_renderer) SDL_DestroyRenderer(tile_renderer);
-	if (window) SDL_DestroyWindow(window);
-	if (game_controller) SDL_GameControllerClose(game_controller);
-	if (did_SDL_init > 0) SDL_Quit();
-	EnterCriticalSection(&emu_crit);
-	destroy_emulator(&emu);
-	LeaveCriticalSection(&emu_crit);
 	SetEvent(emu_breakpoint_event);
 	return 0;
 }
