@@ -32,11 +32,9 @@ int debugger_run(HANDLE emulator_thread) {
 
 	ResumeThread(emulator_thread);
 
-	SDL_Event debugger_e;
-
 	bool quit = false;
 	while (!quit) {
-		++counter;
+
 		switch (WaitForSingleObject(emu_breakpoint_event, 0)) {
 		case WAIT_OBJECT_0:
 			EnterCriticalSection(&emu_crit);
@@ -52,14 +50,21 @@ int debugger_run(HANDLE emulator_thread) {
 			break;
 		case WAIT_TIMEOUT:
 			break;
+		case WAIT_FAILED:
+			printf("Wait failed! (%d)", GetLastError());
+			break;
+		default:
+			printf("what");
+			break;
+
 		}
 
 		switch (WaitForSingleObject(emu_draw_event, 0)) {
-		case WAIT_OBJECT_0:
+		case WAIT_OBJECT_0: {
 			EnterCriticalSection(&emu_crit);
-			SDL_Event controller_e;
-			while (SDL_PollEvent(&controller_e)) {
-				if (controller_e.type == SDL_QUIT) {
+			SDL_Event e;
+			while (SDL_PollEvent(&e)) {
+				if (e.type == SDL_QUIT) {
 					quit = true;
 				}
 				else {
@@ -72,7 +77,15 @@ int debugger_run(HANDLE emulator_thread) {
 			updateWindow(emu.gpu->tile_screen, emu.tile_window);
 			LeaveCriticalSection(&emu_crit);
 			ResumeThread(emulator_thread);
+			break;
+		}
 		case WAIT_TIMEOUT:
+			break;
+		case WAIT_FAILED:
+			printf("Wait failed! (%d)", GetLastError());
+			break;
+		default:
+			printf("what");
 			break;
 		}
 
