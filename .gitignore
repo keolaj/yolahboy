@@ -54,3 +54,4 @@ dkms.conf
 out/
 .vs/
 build/
+vcpkg_installed/
