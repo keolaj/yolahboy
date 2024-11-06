@@ -32,8 +32,10 @@ args* create_args(int argc, char** argv) {
 		free(rom_args);
 		return NULL;
 	}
-	memset(rom_args->breakpoint_arr, -1, sizeof(u16) * MAX_BREAKPOINTS);
-	// rom_args->breakpoint_arr[0] = 0x100;
+	for (int i = 0; i < MAX_BREAKPOINTS; ++i) {
+		rom_args->breakpoint_arr[i] = -1;
+	}
+	rom_args->breakpoint_arr[0] = 0x100;
 	return rom_args;
 }
 

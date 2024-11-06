@@ -28,8 +28,6 @@ int run_emulator(LPVOID t_args) {
 	// HANDLE mem_pipe_handle = ((args*)t_args)->mem_pipe_handle;
 	int argc = ((args*)t_args)->argc;
 	char** argv = ((args*)t_args)->argv;
-	u16* breakpoints = ((args*)t_args)->breakpoint_arr;
-
 	SDL_Window* window = NULL;
 	SDL_Renderer* renderer = NULL;
 
@@ -83,7 +81,7 @@ int run_emulator(LPVOID t_args) {
 	}
 
 	EnterCriticalSection(&emu_crit);
-	if (init_emulator(&emu, argv[1], argv[2], breakpoints) < 0) {
+	if (init_emulator(&emu, argv[1], argv[2], ((args*)t_args)->breakpoint_arr) < 0) {
 		goto cleanup;
 	}
 	LeaveCriticalSection(&emu_crit);
@@ -95,7 +93,7 @@ int run_emulator(LPVOID t_args) {
 	while (!quit) {
 		EnterCriticalSection(&emu_crit);
 		for (int i = 0; i < MAX_BREAKPOINTS; ++i) {
-			if (emu.cpu->registers.pc == emu.breakpoints[i] && emu.breakpoints[i] != -1) {
+			if ((int)emu.cpu->registers.pc == emu.breakpoints[i]) {
 				printf("BREAKPOINT!!\n");
 				LeaveCriticalSection(&emu_crit);
 				SetEvent(emu_breakpoint_event);

@@ -67,7 +67,7 @@ typedef struct {
 typedef struct mem_ctx Memory;
 typedef struct gpu_ctx Gpu;
 
-typedef struct mem_ctx{
+typedef struct mem_ctx {
 	u8 bios[0x100];
 	u8 memory[0x10000];
 	Cartridge cartridge;
@@ -132,7 +132,7 @@ typedef enum {
 	VRAM_ACCESS
 } gpu_mode;
 
-struct gpu_ctx{
+struct gpu_ctx {
 	int line;
 	int clock;
 	u32 framebuffer[23040];
@@ -151,6 +151,6 @@ typedef struct {
 	Memory* memory;
 	Gpu* gpu;
 	Controller* controller;
-	u16* breakpoints;
+	int* breakpoints;
 	bool should_quit;
 } Emulator;
