@@ -44,6 +44,17 @@ int init_emulator(Emulator* emu, const char* bootrom_path, const char* rom_path,
 		printf("create render error");
 	}
 
+	if (SDL_NumJoysticks() < 1) {
+		printf("no joystick connected!");
+	}
+	else {
+		emu->game_controller = SDL_GameControllerOpen(0);
+		if (emu->game_controller == NULL) {
+			printf("Unable to open game controller! SDL Error: %s", SDL_GetError());
+
+		}
+	}
+
 
 	if (emu->cpu == NULL || emu->memory == NULL || emu->gpu == NULL || emu->controller == NULL) return -1; // make this actually clean things up
 

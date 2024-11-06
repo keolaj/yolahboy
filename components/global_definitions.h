@@ -155,6 +155,7 @@ typedef struct {
 	SDL_Window* tile_window;
 	SDL_Renderer* emulator_renderer;
 	SDL_Renderer* tile_renderer;
+	SDL_GameController* game_controller;
 	int* breakpoints;
 	bool should_quit;
 } Emulator;

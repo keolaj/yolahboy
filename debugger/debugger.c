@@ -2,6 +2,7 @@
 #include "debugger.h"
 #include "../components/global_definitions.h"
 #include "../components/emulator.h"
+#include "../components/controller.h"
 
 extern Emulator emu;
 extern HANDLE emu_breakpoint_event;
@@ -37,6 +38,17 @@ int debugger_run(HANDLE emulator_thread) {
 		switch (WaitForSingleObject(emu_draw_event, 0)) {
 		case WAIT_OBJECT_0:
 			EnterCriticalSection(&emu_crit);
+			SDL_Event e;
+			while (SDL_PollEvent(&e)) {
+				if (e.type == SDL_QUIT) {
+					quit = true;
+				}
+				else {
+					update_emu_controller(&emu, get_controller_state(emu.game_controller));
+					print_controller(emu.memory->controller);
+				}
+			}
+
 			updateWindow(emu.gpu->screen, emu.emulator_window);
 			updateWindow(emu.gpu->tile_screen, emu.tile_window);
 			LeaveCriticalSection(&emu_crit);
@@ -53,8 +65,8 @@ int debugger_run(HANDLE emulator_thread) {
 				break;
 			}
 			print_registers(emu.cpu);
-			// emu.should_quit = true;
-			// quit = true;
+			emu.should_quit = true;
+			quit = true;
 			LeaveCriticalSection(&emu_crit);
 			ResumeThread(emulator_thread);
 			break;

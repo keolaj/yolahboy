@@ -38,17 +38,6 @@ int run_emulator(LPVOID t_args) {
 		goto cleanup;
 	}
 
-	if (SDL_NumJoysticks() < 1) {
-		printf("no joystick connected!");
-		goto cleanup;
-	}
-	else {
-		game_controller = SDL_GameControllerOpen(0);
-		if (game_controller == NULL) {
-			printf("Unable to open game controller! SDL Error: %s", SDL_GetError());
-			goto cleanup;
-		}
-	}
 
 	EnterCriticalSection(&emu_crit);
 	if (init_emulator(&emu, argv[1], argv[2], ((args*)t_args)->breakpoint_arr) < 0) {
@@ -78,23 +67,13 @@ int run_emulator(LPVOID t_args) {
 		// print_operation(to_execute);
 		Cycles clock = step_cpu(emu.cpu, emu.memory, to_execute);
 		if (clock.m_cycles == -1 && clock.t_cycles == -1) {
-			goto cleanup;
+			emu.should_quit = true;
 		}
 		// print_registers(emu.cpu);
 		c += clock.t_cycles;
 		step_gpu(emu.gpu, clock.t_cycles);
 		if (c > 29780) {
 
-			SDL_Event e;
-			while (SDL_PollEvent(&e)) {
-				if (e.type == SDL_QUIT) {
-					quit = true;
-				}
-				else {
-					update_emu_controller(&emu, get_controller_state(game_controller));
-					print_controller(emu.memory->controller);
-				}
-			}
 			LeaveCriticalSection(&emu_crit);
 			SetEvent(emu_draw_event);
 			SuspendThread(GetCurrentThread());
@@ -118,5 +97,6 @@ cleanup:
 	EnterCriticalSection(&emu_crit);
 	destroy_emulator(&emu);
 	LeaveCriticalSection(&emu_crit);
+	SetEvent(emu_breakpoint_event);
 	return 0;
 }
