@@ -66,7 +66,7 @@ int main(int argc, char* argv[]) {
 	bool quit = false;
 	while (!quit) {
 
-		switch (WaitForSingleObject(emu_breakpoint_event, INFINITE)) {
+		switch (WaitForSingleObject(emu_breakpoint_event, 10)) {
 		case WAIT_OBJECT_0:
 			EnterCriticalSection(&emu_crit);
 			if (emu.cpu == NULL) {
@@ -74,10 +74,10 @@ int main(int argc, char* argv[]) {
 				break;
 			}
 			print_registers(emu.cpu);
-			emu.should_quit = true;
-			quit = true;
+			// emu.should_quit = true;
+			// quit = true;
 			LeaveCriticalSection(&emu_crit);
-			ResumeThread(emulator_thread);
+			// ResumeThread(emulator_thread);
 			break;
 		case WAIT_TIMEOUT:
 			break;
