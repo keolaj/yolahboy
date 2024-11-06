@@ -1,3 +1,0 @@
-C:/Users/Keola/dev/c++/yolahboy/build/CMakeFiles/yolahboy.dir
-C:/Users/Keola/dev/c++/yolahboy/build/CMakeFiles/edit_cache.dir
-C:/Users/Keola/dev/c++/yolahboy/build/CMakeFiles/rebuild_cache.dir
