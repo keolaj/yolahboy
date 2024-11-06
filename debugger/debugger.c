@@ -35,7 +35,6 @@ int debugger_run(HANDLE emulator_thread) {
 	SDL_Event debugger_e;
 
 	bool quit = false;
-	int counter = 0; // we are using this because of a bug in sdl that causes poll event to be really slow
 	while (!quit) {
 		++counter;
 		switch (WaitForSingleObject(emu_breakpoint_event, 0)) {
@@ -75,18 +74,6 @@ int debugger_run(HANDLE emulator_thread) {
 			ResumeThread(emulator_thread);
 		case WAIT_TIMEOUT:
 			break;
-		}
-
-		if (counter > 10000) {
-			SDL_PollEvent(&debugger_e);
-			switch (debugger_e.type) {
-			case SDL_QUIT:
-				quit = true;
-				break;
-			default:
-				break;
-			}
-			counter = 0;
 		}
 
 	}
