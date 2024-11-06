@@ -37,8 +37,6 @@ int run_emulator(LPVOID t_args) {
 
 	int did_SDL_init = -1;
 
-	SDL_SetMainReady();
-
 	window = SDL_CreateWindow("YolahBoy", 700, 200, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_RESIZABLE);
 	if (!window) {
 		SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't set create renderer: %s\n", SDL_GetError());
@@ -59,11 +57,6 @@ int run_emulator(LPVOID t_args) {
 	tile_renderer = SDL_CreateRenderer(tile_window, -1, 0);
 	if (!tile_renderer) {
 		SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't set create renderer: %s\n", SDL_GetError());
-		goto cleanup;
-	}
-	did_SDL_init = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER);
-	if (did_SDL_init < 0) {
-		printf("could not init SDL: %s", SDL_GetError());
 		goto cleanup;
 	}
 
