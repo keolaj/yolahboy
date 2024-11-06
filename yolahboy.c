@@ -6,13 +6,13 @@
 
 #include "emulator_main.h"
 #include "components/emulator.h"
-#include "debugger/debuggerUI.h"
+#include "debugger/debugger.h"
 
 #define APP_NAME "YolahBoy Debugger"
 
 Emulator emu;
 HANDLE emu_breakpoint_event;
-HANDLE emu_step_event;
+HANDLE emu_draw_event;
 CRITICAL_SECTION emu_crit;
 
 HANDLE emulator_thread;
@@ -52,9 +52,9 @@ int main(int argc, char* argv[]) {
 		printf("could not create breakpoint event");
 		goto cleanup;
 	}
-	emu_step_event = CreateEventExA(NULL, TEXT("STEP_EMULATOR"), 0, EVENT_MODIFY_STATE | SYNCHRONIZE);
-	if (emu_step_event == NULL) {
-		printf("could not create step event");
+	emu_draw_event = CreateEventExA(NULL, TEXT("DRAW_EMULATOR"), 0, EVENT_MODIFY_STATE | SYNCHRONIZE);
+	if (emu_draw_event == NULL) {
+		printf("could not create draw event");
 		goto cleanup;
 	}
 
@@ -92,8 +92,9 @@ int main(int argc, char* argv[]) {
 
 cleanup:
 	if (emu_breakpoint_event != NULL) CloseHandle(emu_breakpoint_event);
-	if (emu_step_event != NULL) CloseHandle(emu_step_event);
+	if (emu_draw_event != NULL) CloseHandle(emu_draw_event);
 	if (emulator_thread != NULL) CloseHandle(emulator_thread);
+	if (&emu_crit != NULL) DeleteCriticalSection(&emu_crit);
 	if (rom_args != NULL) free(rom_args);
 
 	return emu_exit_code;

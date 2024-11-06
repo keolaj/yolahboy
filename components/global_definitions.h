@@ -2,7 +2,7 @@
 
 #include <stdbool.h>
 #include <stdlib.h>
-#include <SDL2/SDL_surface.h>
+#include <SDL.h>
 
 #define MAX_BREAKPOINTS 0x100
 
@@ -151,6 +151,10 @@ typedef struct {
 	Memory* memory;
 	Gpu* gpu;
 	Controller* controller;
+	SDL_Window* emulator_window;
+	SDL_Window* tile_window;
+	SDL_Renderer* emulator_renderer;
+	SDL_Renderer* tile_renderer;
 	int* breakpoints;
 	bool should_quit;
 } Emulator;

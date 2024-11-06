@@ -15,13 +15,9 @@
 
 extern Emulator emu;
 extern LPHANDLE emu_breakpoint_event;
-extern LPHANDLE emu_step_event;
+extern LPHANDLE emu_draw_event;
 extern CRITICAL_SECTION emu_crit;
 
-void updateWindow(SDL_Surface* source, SDL_Window* dest) {
-	SDL_BlitSurface(source, NULL, SDL_GetWindowSurface(dest), NULL);
-	SDL_UpdateWindowSurface(dest);
-}
 
 int run_emulator(LPVOID t_args) {
 
@@ -35,31 +31,12 @@ int run_emulator(LPVOID t_args) {
 	SDL_Renderer* tile_renderer = NULL;
 	SDL_GameController* game_controller = NULL;
 
-	int did_SDL_init = -1;
 
-	window = SDL_CreateWindow("YolahBoy", 700, 200, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_RESIZABLE);
-	if (!window) {
-		SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't set create renderer: %s\n", SDL_GetError());
+	int did_SDL_init = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER | SDL_INIT_AUDIO);
+	if (did_SDL_init < 0) {
+		printf("could not init SDL: %s", SDL_GetError());
 		goto cleanup;
 	}
-
-	renderer = SDL_CreateRenderer(window, -1, 0);
-	if (!renderer) {
-		SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't set create renderer: %s\n", SDL_GetError());
-		goto cleanup;
-	}
-
-	tile_window = SDL_CreateWindow("YolahBoy tiles", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 16 * 8, 24 * 8, SDL_WINDOW_RESIZABLE);
-	if (!tile_window) {
-		goto cleanup;
-	}
-
-	tile_renderer = SDL_CreateRenderer(tile_window, -1, 0);
-	if (!tile_renderer) {
-		SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't set create renderer: %s\n", SDL_GetError());
-		goto cleanup;
-	}
-
 
 	if (SDL_NumJoysticks() < 1) {
 		printf("no joystick connected!");
@@ -79,8 +56,6 @@ int run_emulator(LPVOID t_args) {
 	}
 	LeaveCriticalSection(&emu_crit);
 
-
-
 	int c = 0;
 	bool quit = false;
 	while (!quit) {
@@ -99,7 +74,6 @@ int run_emulator(LPVOID t_args) {
 			}
 		}
 
-
 		Operation to_execute = get_operation(emu.cpu, emu.memory);
 		// print_operation(to_execute);
 		Cycles clock = step_cpu(emu.cpu, emu.memory, to_execute);
@@ -110,6 +84,7 @@ int run_emulator(LPVOID t_args) {
 		c += clock.t_cycles;
 		step_gpu(emu.gpu, clock.t_cycles);
 		if (c > 29780) {
+
 			SDL_Event e;
 			while (SDL_PollEvent(&e)) {
 				if (e.type == SDL_QUIT) {
@@ -120,8 +95,10 @@ int run_emulator(LPVOID t_args) {
 					print_controller(emu.memory->controller);
 				}
 			}
-			updateWindow(emu.gpu->screen, window);
-			updateWindow(emu.gpu->tile_screen, tile_window);
+			LeaveCriticalSection(&emu_crit);
+			SetEvent(emu_draw_event);
+			SuspendThread(GetCurrentThread());
+			EnterCriticalSection(&emu_crit);
 			c = 0;
 			// Sleep(5);
 		}
