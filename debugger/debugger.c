@@ -10,7 +10,7 @@ extern HANDLE emu_draw_event;
 extern CRITICAL_SECTION emu_crit;
 
 void updateWindow(SDL_Surface* source, SDL_Window* dest) {
-	SDL_BlitSurface(source, NULL, SDL_GetWindowSurface(dest), NULL);
+	SDL_BlitSurfaceScaled(source, NULL, SDL_GetWindowSurface(dest), NULL, SDL_SCALEMODE_LINEAR);
 	SDL_UpdateWindowSurface(dest);
 }
 
@@ -80,7 +80,8 @@ int debugger_run(HANDLE emulator_thread, args* t_args) {
 			EnterCriticalSection(&emu_crit);
 			SDL_Event e;
 			while (SDL_PollEvent(&e)) {
-				if (e.type == SDL_EVENT_QUIT) {
+				if (e.type == SDL_EVENT_QUIT || e.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED) {
+					emu.should_quit = true;
 					quit = true;
 				}
 				else {
@@ -88,7 +89,6 @@ int debugger_run(HANDLE emulator_thread, args* t_args) {
 					print_controller(emu.memory->controller);
 				}
 			}
-
 			updateWindow(emu.gpu->screen, emu.emulator_window);
 			updateWindow(emu.gpu->tile_screen, emu.tile_window);
 			LeaveCriticalSection(&emu_crit);

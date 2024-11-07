@@ -33,10 +33,17 @@ int init_emulator(Emulator* emu, const char* bootrom_path, const char* rom_path,
 		printf("create render error");
 	}
 
-	emu->tile_window = SDL_CreateWindow("YolahBoy tiles", 16 * 8, 24 * 8, SDL_WINDOW_RESIZABLE);
+	emu->tile_window = SDL_CreateWindow("YolahBoy tiles", TILES_X * 8, TILES_Y * 8, SDL_WINDOW_RESIZABLE);
 	if (!emu->tile_window) {
 		printf("create render error");
 	}
+	if (SDL_SetWindowMinimumSize(emu->tile_window, 0, 0)) {
+
+	}
+	else {
+		printf("couldn't resize tile window!");
+	}
+
 
 	emu->tile_renderer = SDL_CreateRenderer(emu->tile_window, NULL);
 	if (!emu->tile_renderer) {
