@@ -1,4 +1,4 @@
-#include <SDL.h>
+#include <SDL3/SDL.h>
 #include "debugger.h"
 #include "../components/global_definitions.h"
 #include "../components/emulator.h"
@@ -16,13 +16,8 @@ void updateWindow(SDL_Surface* source, SDL_Window* dest) {
 
 int debugger_run(HANDLE emulator_thread, args* t_args) {
 
-	SDL_Window* window = SDL_CreateWindow("Yolahboy Debugger", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 400, 400, 0);
-	SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, 0);
-
-	// TODO: this only works sometimes, might need to call sdl entirely from one thread
-
-	SDL_Window* window = SDL_CreateWindow("Yolahboy Debugger", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 400, 400, 0);
-	SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, 0);
+	SDL_Window* window = SDL_CreateWindow("Yolahboy Debugger", 400, 400, 0);
+	SDL_Renderer* renderer = SDL_CreateRenderer(window, NULL);
 
 	if (window == NULL) {
 		printf("could not initialize debugger window");
@@ -61,7 +56,7 @@ int debugger_run(HANDLE emulator_thread, args* t_args) {
 				if (emu.emulator_renderer) SDL_DestroyRenderer(emu.emulator_renderer);
 				if (emu.tile_renderer) SDL_DestroyRenderer(emu.tile_renderer);
 				if (emu.emulator_window) SDL_DestroyWindow(emu.emulator_window);
-				if (emu.game_controller) SDL_GameControllerClose(emu.game_controller);
+				if (emu.game_controller) SDL_CloseGamepad(emu.game_controller);
 				destroy_emulator(&emu);
 				break;
 			}
@@ -74,10 +69,8 @@ int debugger_run(HANDLE emulator_thread, args* t_args) {
 		case WAIT_TIMEOUT:
 			break;
 		case WAIT_FAILED:
-			printf("Wait failed! (%d)", GetLastError());
 			break;
 		default:
-			printf("what");
 			break;
 
 		}
@@ -87,7 +80,7 @@ int debugger_run(HANDLE emulator_thread, args* t_args) {
 			EnterCriticalSection(&emu_crit);
 			SDL_Event e;
 			while (SDL_PollEvent(&e)) {
-				if (e.type == SDL_QUIT) {
+				if (e.type == SDL_EVENT_QUIT) {
 					quit = true;
 				}
 				else {
@@ -105,10 +98,6 @@ int debugger_run(HANDLE emulator_thread, args* t_args) {
 		case WAIT_TIMEOUT:
 			break;
 		case WAIT_FAILED:
-			printf("Wait failed! (%d)", GetLastError());
-			break;
-		default:
-			printf("what");
 			break;
 		}
 

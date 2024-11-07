@@ -1,28 +1,28 @@
 #include <stdio.h>
 #include <string.h>
 #include "controller.h"
-#include <SDL2/SDL_gamecontroller.h>
+#include <SDL3/SDL_gamepad.h>
 
 
 void print_controller(Controller c) {
 	printf("CONTROLLER STATE:\nA: %d\nB: %d\nUP: %d\nDOWN: %d\nLEFT: %d\nRIGHT: %d\nSELECT: %d\nSTART: %d\n", c.a, c.b, c.up, c.down, c.left, c.right, c.select, c.start);
 }
 
-Controller get_controller_state(SDL_GameController* sdl_c) {
+Controller get_controller_state(SDL_Gamepad* sdl_c) {
 	Controller c;
-	c.a = SDL_GameControllerGetButton(sdl_c, SDL_CONTROLLER_BUTTON_A);
-	c.b = SDL_GameControllerGetButton(sdl_c, SDL_CONTROLLER_BUTTON_B);
-	c.select = SDL_GameControllerGetButton(sdl_c, SDL_CONTROLLER_BUTTON_BACK);
-	c.start = SDL_GameControllerGetButton(sdl_c, SDL_CONTROLLER_BUTTON_START);
-	c.up = SDL_GameControllerGetButton(sdl_c, SDL_CONTROLLER_BUTTON_DPAD_UP);
-	c.down = SDL_GameControllerGetButton(sdl_c, SDL_CONTROLLER_BUTTON_DPAD_DOWN);
-	c.left = SDL_GameControllerGetButton(sdl_c, SDL_CONTROLLER_BUTTON_DPAD_LEFT);
-	c.right = SDL_GameControllerGetButton(sdl_c, SDL_CONTROLLER_BUTTON_DPAD_RIGHT);
+	c.a = SDL_GetGamepadButton(sdl_c, SDL_GAMEPAD_BUTTON_SOUTH);
+	c.b = SDL_GetGamepadButton(sdl_c, SDL_GAMEPAD_BUTTON_SOUTH);
+	c.select = SDL_GetGamepadButton(sdl_c, SDL_GAMEPAD_BUTTON_BACK);
+	c.start = SDL_GetGamepadButton(sdl_c, SDL_GAMEPAD_BUTTON_START);
+	c.up = SDL_GetGamepadButton(sdl_c, SDL_GAMEPAD_BUTTON_DPAD_UP);
+	c.down = SDL_GetGamepadButton(sdl_c, SDL_GAMEPAD_BUTTON_DPAD_DOWN);
+	c.left = SDL_GetGamepadButton(sdl_c, SDL_GAMEPAD_BUTTON_DPAD_LEFT);
+	c.right = SDL_GetGamepadButton(sdl_c, SDL_GAMEPAD_BUTTON_DPAD_RIGHT);
 
 	return c;
 }
 
-Controller* create_controller(){
+Controller* create_controller() {
 	Controller* ret = malloc(sizeof(Controller));
 	if (ret == NULL) {
 		printf("Could not initialize controller!");

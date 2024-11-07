@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <string.h>
-#include <SDL.h>
+#include <SDL3/SDL.h>
 
 Gpu* create_gpu(Memory* mem) {
 	Gpu* ret = (Gpu*)malloc(sizeof(Gpu));
@@ -24,8 +24,8 @@ int init_gpu(Gpu* gpu, Memory* mem) {
 	gpu->mem = mem;
 	gpu->clock = 0;
 	memset(gpu->framebuffer, 0, sizeof(gpu->framebuffer));
-	gpu->screen = SDL_CreateRGBSurface(0, SCREEN_WIDTH, SCREEN_HEIGHT, 32, 0xFF000000, 0x00FF0000, 0x0000FF00, 0x000000FF);
-	gpu->tile_screen = SDL_CreateRGBSurface(0, 32 * 8, 64 * 8, 32, 0xFF000000, 0x00FF0000, 0x0000FF00, 0x000000FF);
+	gpu->screen = SDL_CreateSurface(SCREEN_WIDTH, SCREEN_HEIGHT, SDL_PIXELFORMAT_ARGB32);
+	gpu->tile_screen = SDL_CreateSurface(32 * 8, 64 * 8, SDL_PIXELFORMAT_ARGB32);
 
 	// setup Tiles array
 	gpu->tiles = (Tile*)malloc(NUM_TILES * sizeof(Tile));
@@ -92,7 +92,7 @@ u32 createPixelFromPaletteId(u8 palette, u8 id) {
 }
 
 void writePixel(SDL_Surface* surface, int x, int y, u32 pixel) {
-	uint32_t* const target = (u32*)((u8*)surface->pixels + y * surface->pitch + x * surface->format->BytesPerPixel); // for some reason I need to cast to uint8
+	uint32_t* const target = (u32*)((u8*)surface->pixels + y * surface->pitch + x * SDL_GetPixelFormatDetails(surface->format)->bytes_per_pixel); // for some reason I need to cast to uint8
 	*target = pixel;
 }
 
@@ -227,8 +227,8 @@ void destroy_gpu(Gpu* gpu) {
 		}
 		free(gpu->tiles[i]);
 	}
-	SDL_FreeSurface(gpu->screen);
-	SDL_FreeSurface(gpu->tile_screen);
+	SDL_DestroySurface(gpu->screen);
+	SDL_DestroySurface(gpu->tile_screen);
 }
 
 void handle_oam(Gpu* gpu) {

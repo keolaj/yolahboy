@@ -14,14 +14,14 @@ set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:CONSOLE")
 
 project ("yolahboy")
 
-find_package(SDL2 CONFIG REQUIRED)
+find_package(SDL3 REQUIRED)
 
 #find_library(SDL2, "C:\\Users\\Keola\\dev\\lib\\SDL2-2.30.8\\lib\\x64")
 
 # Add source to this project's executable.
 add_executable (yolahboy "yolahboy.c" "yolahboy.h" "components/cpu2.h" "components/cpu2.c"  "components/emulator.h" "components/emulator.c" "components/memory2.h" "components/memory2.c" "components/operation_defitions.h" "components/operations.h" "components/operations.c" "components/cpu_definitions.h" "components/gpu2.h" "components/gpu2.c" "components/memory_definitions.h" "components/controller.h" "components/controller.c" "debugger/debugger.c" "debugger/debugger.h" "emulator_main.c" "emulator_main.h")
-target_include_directories(yolahboy SYSTEM PUBLIC ${SDL_INCLUDE_DIRS})
-target_link_libraries(yolahboy PRIVATE SDL2::SDL2main SDL2::SDL2)
+# target_include_directories(yolahboy SYSTEM PUBLIC ${SDL_INCLUDE_DIRS})
+target_link_libraries(yolahboy PUBLIC SDL3::SDL3)
 set_property(TARGET yolahboy PROPERTY CXX_STANDARD 20)
 
 # TODO: Add tests and install targets if needed.

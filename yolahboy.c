@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <assert.h>
 
-#include <SDL.h>
+#include <SDL3/SDL.h>
 
 #include "emulator_main.h"
 #include "components/emulator.h"
@@ -69,7 +69,7 @@ int main(int argc, char* argv[]) {
 	}
 
 	int did_SDL_init = 0;
-	did_SDL_init = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER | SDL_INIT_AUDIO);
+	did_SDL_init = SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD | SDL_INIT_AUDIO);
 	if (did_SDL_init < 0) {
 		printf("could not init SDL: %s", SDL_GetError());
 		goto cleanup;

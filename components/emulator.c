@@ -9,7 +9,7 @@
 #include "controller.h"
 #include "gpu2.h"
 
-#include <SDL.h>
+#include <SDL3/SDL.h>
 
 
 int init_emulator(Emulator* emu, const char* bootrom_path, const char* rom_path, int* breakpoints) {
@@ -20,39 +20,42 @@ int init_emulator(Emulator* emu, const char* bootrom_path, const char* rom_path,
 	emu->breakpoints = breakpoints;
 	emu->should_quit = false;
 
-	emu->emulator_window = SDL_CreateWindow("YolahBoy", 700, 200, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_RESIZABLE);
+	emu->emulator_window = SDL_CreateWindow("YolahBoy", SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_RESIZABLE);
 	if (!emu->emulator_window) {
 		SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't set create renderer: %s\n", SDL_GetError());
 		printf("create render error");
 		// todo cleanup bs
 	}
 
-	emu->emulator_renderer = SDL_CreateRenderer(emu->emulator_window, -1, 0);
+	emu->emulator_renderer = SDL_CreateRenderer(emu->emulator_window, NULL);
 	if (!emu->emulator_renderer) {
 		SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't set create renderer: %s\n", SDL_GetError());
 		printf("create render error");
 	}
 
-	emu->tile_window = SDL_CreateWindow("YolahBoy tiles", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 16 * 8, 24 * 8, SDL_WINDOW_RESIZABLE);
+	emu->tile_window = SDL_CreateWindow("YolahBoy tiles", 16 * 8, 24 * 8, SDL_WINDOW_RESIZABLE);
 	if (!emu->tile_window) {
 		printf("create render error");
 	}
 
-	emu->tile_renderer = SDL_CreateRenderer(emu->tile_window, -1, 0);
+	emu->tile_renderer = SDL_CreateRenderer(emu->tile_window, NULL);
 	if (!emu->tile_renderer) {
 		SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't set create renderer: %s\n", SDL_GetError());
 		printf("create render error");
 	}
 
-	if (SDL_NumJoysticks() < 1) {
-		printf("no joystick connected!");
-	}
-	else {
-		emu->game_controller = SDL_GameControllerOpen(0);
+	int num_joysticks;
+	SDL_JoystickID* joysticks = SDL_GetJoysticks(&num_joysticks);
+
+	if (joysticks) {
+		emu->game_controller = SDL_OpenGamepad(joysticks[0]);
 		if (emu->game_controller == NULL) {
 			printf("Unable to open game controller! SDL Error: %s", SDL_GetError());
-
 		}
+		SDL_free(joysticks);
+	}
+	else {
+		printf("no joystick connected!");
 	}
 
 
