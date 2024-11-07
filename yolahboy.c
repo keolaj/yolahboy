@@ -94,7 +94,7 @@ cleanup:
 	if (emu_breakpoint_event != NULL) CloseHandle(emu_breakpoint_event);
 	if (emu_draw_event != NULL) CloseHandle(emu_draw_event);
 	if (emulator_thread != NULL) CloseHandle(emulator_thread);
-	if (&emu_crit != NULL) DeleteCriticalSection(&emu_crit);
+	DeleteCriticalSection(&emu_crit);
 	if (rom_args != NULL) free(rom_args);
 
 	return emu_exit_code;

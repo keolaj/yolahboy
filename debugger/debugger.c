@@ -16,29 +16,24 @@ void updateWindow(SDL_Surface* source, SDL_Window* dest) {
 
 int debugger_run(HANDLE emulator_thread, args* t_args) {
 
-<<<<<<< HEAD
 	SDL_Window* window = SDL_CreateWindow("Yolahboy Debugger", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 400, 400, 0);
 	SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, 0);
 
-=======
 	// TODO: this only works sometimes, might need to call sdl entirely from one thread
 
 	SDL_Window* window = SDL_CreateWindow("Yolahboy Debugger", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 400, 400, 0);
 	SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, 0);
 
->>>>>>> e04586e31ec20190e3c59fda9c065a27966474ca
 	if (window == NULL) {
 		printf("could not initialize debugger window");
 		return -1;
 	}
-<<<<<<< HEAD
 
 	if (renderer == NULL) {
 		printf("could not initialize debugger renderer");
 		SDL_DestroyWindow(window);
 		return -1;
 	}
-=======
 
 	if (renderer == NULL) {
 		printf("could not initialize debugger renderer");
@@ -51,8 +46,6 @@ int debugger_run(HANDLE emulator_thread, args* t_args) {
 		destroy_emulator(&emu);
 	}
 	LeaveCriticalSection(&emu_crit);
-
->>>>>>> e04586e31ec20190e3c59fda9c065a27966474ca
 
 	ResumeThread(emulator_thread);
 
