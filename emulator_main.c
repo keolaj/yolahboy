@@ -21,8 +21,6 @@ extern CRITICAL_SECTION emu_crit;
 
 int run_emulator(LPVOID t_args) {
 
-	// HANDLE mem_pipe_handle = ((args*)t_args)->mem_pipe_handle;
-
 	int c = 0;
 	bool quit = false;
 	while (!quit) {

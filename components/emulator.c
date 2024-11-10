@@ -11,7 +11,6 @@
 
 #include <SDL3/SDL.h>
 
-
 int init_emulator(Emulator* emu, const char* bootrom_path, const char* rom_path, int* breakpoints) {
 	emu->cpu = create_cpu();
 	emu->memory = create_memory(bootrom_path, rom_path);
@@ -20,7 +19,7 @@ int init_emulator(Emulator* emu, const char* bootrom_path, const char* rom_path,
 	emu->breakpoints = breakpoints;
 	emu->should_quit = false;
 
-	emu->emulator_window = SDL_CreateWindow("YolahBoy", SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_RESIZABLE);
+	emu->emulator_window = SDL_CreateWindow("YolahBoy", SCREEN_WIDTH * 2, SCREEN_HEIGHT * 2, 0);
 	if (!emu->emulator_window) {
 		SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't set create renderer: %s\n", SDL_GetError());
 		printf("create render error");
@@ -33,7 +32,7 @@ int init_emulator(Emulator* emu, const char* bootrom_path, const char* rom_path,
 		printf("create render error");
 	}
 
-	emu->tile_window = SDL_CreateWindow("YolahBoy tiles", TILES_X * 8, TILES_Y * 8, SDL_WINDOW_RESIZABLE);
+	emu->tile_window = SDL_CreateWindow("YolahBoy tiles", TILES_X * 8 * 2, TILES_Y * 8 * 2, 0);
 	if (!emu->tile_window) {
 		printf("create render error");
 	}

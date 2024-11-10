@@ -4,14 +4,49 @@
 #include "../components/emulator.h"
 #include "../components/controller.h"
 
+#define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
+#include "cimgui.h"
+#define CIMGUI_USE_SDL3
+#include "cimgui_impl.h"
+
 extern Emulator emu;
 extern HANDLE emu_breakpoint_event;
 extern HANDLE emu_draw_event;
 extern CRITICAL_SECTION emu_crit;
 
 void updateWindow(SDL_Surface* source, SDL_Window* dest) {
-	SDL_BlitSurfaceScaled(source, NULL, SDL_GetWindowSurface(dest), NULL, SDL_SCALEMODE_LINEAR);
+	SDL_BlitSurfaceScaled(source, NULL, SDL_GetWindowSurface(dest), NULL, SDL_SCALEMODE_NEAREST);
 	SDL_UpdateWindowSurface(dest);
+}
+
+void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer) {
+	static ImGuiContext* ig_ctx;
+	static ImGuiIO* ioptr;
+	static bool showDemoWindow = true;
+	static 	bool showAnotherWindow = false;
+	static ImVec4 clearColor = {
+		.x = 0.45f,
+		.y = 0.55f,
+		.z = 0.60f,
+		.w = 1.00f
+	};
+
+	if (ig_ctx == NULL) {
+		ig_ctx = igCreateContext(NULL);
+	}
+	if (ioptr == NULL) {
+		ioptr = igGetIO();
+		ioptr->ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+		ioptr->ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+		ioptr->ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+
+	}
+
+	ImGui_ImplSDL3_InitForSDLRenderer(window, renderer);
+
+	igBegin("Hello World", NULL, 0);
+	igEnd();
+
 }
 
 int debugger_run(HANDLE emulator_thread, args* t_args) {
@@ -92,6 +127,10 @@ int debugger_run(HANDLE emulator_thread, args* t_args) {
 			updateWindow(emu.gpu->screen, emu.emulator_window);
 			updateWindow(emu.gpu->tile_screen, emu.tile_window);
 			LeaveCriticalSection(&emu_crit);
+
+			// draw debug window
+
+
 			ResumeThread(emulator_thread);
 			break;
 		}

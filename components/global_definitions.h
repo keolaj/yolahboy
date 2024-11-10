@@ -144,6 +144,7 @@ struct gpu_ctx {
 	SDL_Surface* tile_screen;
 
 	gpu_mode mode;
+	bool drawline;
 };
 
 typedef struct {
@@ -158,4 +159,6 @@ typedef struct {
 	SDL_Gamepad* game_controller;
 	int* breakpoints;
 	bool should_quit;
+	bool breakpoint;
+	bool draw;
 } Emulator;
