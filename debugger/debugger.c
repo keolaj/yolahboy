@@ -24,7 +24,7 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer) {
 	static ImGuiIO* ioptr;
 	static bool showDemoWindow = true;
 	static 	bool showAnotherWindow = false;
-	static ImVec4 clearColor = {
+	static ImVec4 clear_color = {
 		.x = 0.45f,
 		.y = 0.55f,
 		.z = 0.60f,
@@ -33,20 +33,29 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer) {
 
 	if (ig_ctx == NULL) {
 		ig_ctx = igCreateContext(NULL);
+		igStyleColorsDark(NULL);
+
+		ImGui_ImplSDL3_InitForSDLRenderer(window, renderer);
+		ImGui_ImplSDLRenderer3_Init(renderer);
 	}
 	if (ioptr == NULL) {
 		ioptr = igGetIO();
 		ioptr->ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-		ioptr->ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-		ioptr->ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
-
+		ioptr->ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
 	}
 
-	ImGui_ImplSDL3_InitForSDLRenderer(window, renderer);
-
+	ImGui_ImplSDL3_NewFrame();
+	ImGui_ImplSDLRenderer3_NewFrame();
+	igNewFrame();
+	
 	igBegin("Hello World", NULL, 0);
 	igEnd();
 
+	igRender();
+	SDL_SetRenderDrawColorFloat(renderer, clear_color.x, clear_color.y, clear_color.z, clear_color.w);
+    SDL_RenderClear(renderer);
+    ImGui_ImplSDLRenderer3_RenderDrawData(igGetDrawData(), renderer);
+	SDL_RenderPresent(renderer);
 }
 
 int debugger_run(HANDLE emulator_thread, args* t_args) {
@@ -129,7 +138,7 @@ int debugger_run(HANDLE emulator_thread, args* t_args) {
 			LeaveCriticalSection(&emu_crit);
 
 			// draw debug window
-
+			draw_debug_ui(window, renderer);
 
 			ResumeThread(emulator_thread);
 			break;

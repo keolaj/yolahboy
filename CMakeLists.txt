@@ -20,6 +20,7 @@ add_definitions("-DIMGUI_USER_CONFIG=\"../cimconfig.h\"")
 add_definitions("-DIMGUI_DISABLE_OBSOLETE_FUNCTIONS=1")
 
 add_compile_definitions("IMGUI_IMPL_SDL3")
+add_compile_definitions("IMGUI_IMPL_SDLRENDERER3")
 
 
 set(BACKENDS_FOLDER "./cimgui/imgui/backends")
@@ -54,6 +55,7 @@ target_include_directories(cimgui_sdl PUBLIC "./cimgui/imgui")
 # Add source to this project's executable.
 add_executable (yolahboy "yolahboy.c" "yolahboy.h" "components/cpu2.h" "components/cpu2.c"  "components/emulator.h" "components/emulator.c" "components/memory2.h" "components/memory2.c" "components/operation_defitions.h" "components/operations.h" "components/operations.c" "components/cpu_definitions.h" "components/gpu2.h" "components/gpu2.c" "components/memory_definitions.h" "components/controller.h" "components/controller.c" "debugger/debugger.c" "debugger/debugger.h" "emulator_main.c" "emulator_main.h")
 target_include_directories(yolahboy PUBLIC "./cimgui/generator/output" "./cimgui")
+target_compile_definitions(yolahboy PUBLIC -DCIMGUI_USE_SDLRENDERER3 -DCIMGUI_USE_SDL3)
 target_link_libraries(yolahboy PUBLIC SDL3::SDL3 cimgui_sdl)
 set_property(TARGET yolahboy PROPERTY CXX_STANDARD 20)
 
