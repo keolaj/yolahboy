@@ -53,7 +53,7 @@ target_link_libraries(cimgui_sdl SDL3::SDL3)
 target_include_directories(cimgui_sdl PUBLIC "./cimgui/imgui")
 
 # Add source to this project's executable.
-add_executable (yolahboy "yolahboy.c" "yolahboy.h" "components/cpu2.h" "components/cpu2.c"  "components/emulator.h" "components/emulator.c" "components/memory2.h" "components/memory2.c" "components/operation_defitions.h" "components/operations.h" "components/operations.c" "components/cpu_definitions.h" "components/gpu2.h" "components/gpu2.c" "components/memory_definitions.h" "components/controller.h" "components/controller.c" "debugger/debugger.c" "debugger/debugger.h" "emulator_main.c" "emulator_main.h")
+add_executable (yolahboy WIN32 "yolahboy.c" "yolahboy.h" "components/cpu2.h" "components/cpu2.c"  "components/emulator.h" "components/emulator.c" "components/memory2.h" "components/memory2.c" "components/operation_defitions.h" "components/operations.h" "components/operations.c" "components/cpu_definitions.h" "components/gpu2.h" "components/gpu2.c" "components/memory_definitions.h" "components/controller.h" "components/controller.c" "debugger/debugger.c" "debugger/debugger.h" "emulator_main.c" "emulator_main.h")
 target_include_directories(yolahboy PUBLIC "./cimgui/generator/output" "./cimgui")
 target_compile_definitions(yolahboy PUBLIC -DCIMGUI_USE_SDLRENDERER3 -DCIMGUI_USE_SDL3)
 target_link_libraries(yolahboy PUBLIC SDL3::SDL3 cimgui_sdl)
