@@ -27,7 +27,7 @@ set(IMGUI_SRC
 )
 
 # Add source to this project's executable.
-add_executable (yolahboy WIN32 "yolahboy.c" "yolahboy.h" "components/cpu2.h" "components/cpu2.c"  "components/emulator.h" "components/emulator.c" "components/memory2.h" "components/memory2.c" "components/operation_defitions.h" "components/operations.h" "components/operations.c" "components/cpu_definitions.h" "components/gpu2.h" "components/gpu2.c" "components/memory_definitions.h" "components/controller.h" "components/controller.c" "debugger/debugger.cpp" "debugger/debugger.hpp" ${IMGUI_SRC})
+add_executable (yolahboy WIN32 "yolahboy.c" "yolahboy.h" "components/cpu2.h" "components/cpu2.c"  "components/emulator.h" "components/emulator.c" "components/memory2.h" "components/memory2.c" "components/operation_defitions.h" "components/operations.h" "components/operations.c" "components/cpu_definitions.h" "components/gpu2.h" "components/gpu2.c" "components/memory_definitions.h" "components/controller.h" "components/controller.c" "debugger/debugger.cpp" "debugger/debugger.h" "imgui_memory_editor.h" ${IMGUI_SRC})
 target_include_directories(yolahboy PUBLIC ./imgui)
 target_link_libraries(yolahboy PUBLIC SDL3::SDL3)
 set_property(TARGET yolahboy PROPERTY CXX_STANDARD 20)

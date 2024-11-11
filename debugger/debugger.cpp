@@ -5,11 +5,15 @@ extern "C" {
 #include "../components/global_definitions.h"
 #include "../components/emulator.h"
 #include "../components/controller.h"
+#include "../components/operations.h"
+#include "../components/operation_defitions.h"
+	extern Operation operations[];
 }
 
 #include "imgui.h"
 #include "./backends/imgui_impl_sdl3.h"
 #include "./backends/imgui_impl_sdlrenderer3.h"
+#include "../imgui_memory_editor.h"
 
 #include <stdio.h>
 
@@ -42,16 +46,101 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 		1.00f
 	};
 
+	static bool breakpoints[0x10000];
+	static MemoryEditor ram_viewer;
+
+	char af_buf[10];
+	char bc_buf[10];
+	char de_buf[10];
+	char hl_buf[10];
+	char sp_buf[10];
+	char pc_buf[10];
+
+	sprintf(af_buf, "AF: %04hX", emu->cpu->registers.af);
+	sprintf(bc_buf, "BC: %04hX", emu->cpu->registers.bc);
+	sprintf(de_buf, "DE: %04hX", emu->cpu->registers.de);
+	sprintf(hl_buf, "HL: %04hX", emu->cpu->registers.hl);
+	sprintf(sp_buf, "SP: %04hX", emu->cpu->registers.sp);
+	sprintf(pc_buf, "PC: %04hX", emu->cpu->registers.pc);
+
 	ImGui_ImplSDL3_NewFrame();
 	ImGui_ImplSDLRenderer3_NewFrame();
 	ImGui::NewFrame();
 
 	// Do all ImGui widgets here
 
-	ImGui::Begin("DEBUGGER", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
+	ImGui::Begin("DEBUGGER", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
 	if (ImGui::Button("RUN", { 40, 15 })) {
+		emu->should_run = true;
+	}
+
+	ImGui::Begin("REGISTERS", NULL, 0);
+	ImGui::Text(af_buf);
+	ImGui::Text(bc_buf);
+	ImGui::Text(de_buf);
+	ImGui::Text(hl_buf);
+	ImGui::Text(sp_buf);
+	ImGui::Text(pc_buf);
+	ImGui::End();
+
+	ImGui::Begin("INSTRUCTIONS", NULL, 0);
+	char op_buf[10];
+
+
+	if (emu->memory->in_bios) {
+		for (int i = emu->cpu->registers.pc; i < 0x100; ++i) {
+			sprintf(op_buf, "%04hX", i);
+			ImGui::PushID(i);
+			if (operations[emu->memory->bios[i]].type != UNIMPLEMENTED) {
+				ImGui::Checkbox(op_buf, &breakpoints[i]);
+				ImGui::SameLine();
+				ImGui::Text(operations[emu->memory->bios[i]].mnemonic);
+			}
+			else {
+				ImGui::Checkbox(op_buf, &breakpoints[i]);
+				ImGui::SameLine();
+				ImGui::Text("UNIMPLEMENTED");
+			}
+			ImGui::PopID();
+		}
+		for (int i = emu->cpu->registers.pc; i < emu->cpu->registers.pc + 0x100; ++i) {
+			sprintf(op_buf, "%04hX", i);
+			ImGui::PushID(i);
+			if (operations[emu->memory->memory[i]].type != UNIMPLEMENTED) {
+				ImGui::Checkbox(op_buf, &breakpoints[i]);
+				ImGui::SameLine();
+				ImGui::Text(operations[emu->memory->memory[i]].mnemonic);
+			}
+			else {
+				ImGui::Checkbox(op_buf, &breakpoints[i]);
+				ImGui::SameLine();
+				ImGui::Text("UNIMPLEMENTED");
+			}
+			ImGui::PopID();
+		}
+	}
+	else {
+		for (int i = emu->cpu->registers.pc; i < emu->cpu->registers.pc + 0x100; ++i) {
+			sprintf(op_buf, "%04hX", i);
+			ImGui::PushID(i);
+			if (operations[emu->memory->memory[i]].type != UNIMPLEMENTED) {
+				ImGui::Checkbox(op_buf, &breakpoints[i]);
+				ImGui::SameLine();
+				ImGui::Text(operations[emu->memory->memory[i]].mnemonic);
+			}
+			else {
+				ImGui::Checkbox(op_buf, &breakpoints[i]);
+				ImGui::SameLine();
+				ImGui::Text("UNIMPLEMENTED");
+			}
+			ImGui::PopID();
+		}
 
 	}
+	ImGui::End();
+
+	ram_viewer.DrawWindow("RAM", emu->memory->memory, 0x10000);
+
 	ImGui::End();
 
 	ImGui::Render();
@@ -179,7 +268,7 @@ void destroy_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* 
 //}
 
 int debugger_run(args* emu_args) {
-	SDL_Window* window = SDL_CreateWindow("Yolahboy Debugger", 800, 600, SDL_WINDOW_BORDERLESS);
+	SDL_Window* window = SDL_CreateWindow("Yolahboy Debugger", 800, 600, 0);
 	SDL_Renderer* renderer = SDL_CreateRenderer(window, NULL);
 
 	if (window == NULL) {
@@ -229,7 +318,6 @@ int debugger_run(args* emu_args) {
 		if (clocks > 29780 || !emu.should_run) {
 
 
-			draw_debug_ui(window, renderer, ig_ctx, ioptr, &emu, &emulator_screen_rect, &tile_screen_rect);
 
 			while (SDL_PollEvent(&e)) {
 				ImGui_ImplSDL3_ProcessEvent(&e);
@@ -244,6 +332,9 @@ int debugger_run(args* emu_args) {
 					break;
 				}
 			}
+
+			if (!emu.should_run) draw_debug_ui(window, renderer, ig_ctx, ioptr, &emu, &emulator_screen_rect, &tile_screen_rect);
+
 
 			if (clocks > 29780) {
 

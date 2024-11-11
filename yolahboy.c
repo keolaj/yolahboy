@@ -37,7 +37,7 @@ args* create_args(int argc, char** argv) {
 	for (int i = 0; i < MAX_BREAKPOINTS; ++i) {
 		rom_args->breakpoint_arr[i] = -1;
 	}
-	// rom_args->breakpoint_arr[0] = 0x100;
+	rom_args->breakpoint_arr[0] = 0x100;
 	return rom_args;
 }
 

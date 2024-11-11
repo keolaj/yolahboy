@@ -29,6 +29,9 @@ u8 read8(Memory* mem, u16 address) {
 		if (mem->in_bios) {
 			return mem->bios[(u8)address];
 		}
+		else {
+			return mem->memory[address];
+		}
 	}
 	if (address == 0xFF00) {
 		u8 j_ret = joypad_return(mem->controller, mem->memory[address]);
@@ -57,8 +60,8 @@ void write8(Memory* mem, u16 address, u8 data) {
 	}
 	mem->memory[address] = data;
 
-	if (address > 0x8000 && address <= 0x97FF) {
-		if (mem->in_bios) update_tile(mem->gpu, address, data);
+	if (address >= 0x8000 && address <= 0x97FF) {
+		if (address % 2 == 0) update_tile(mem->gpu, address, data);
 		if (address % 2 != 0) update_tile(mem->gpu, address - 1, data);
 	}
 	if (address == DMA && data <= 0xDF) {
