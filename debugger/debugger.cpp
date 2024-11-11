@@ -5,9 +5,11 @@ extern "C" {
 #include "../components/global_definitions.h"
 #include "../components/emulator.h"
 #include "../components/controller.h"
+#include "../components/memory2.h"
 #include "../components/operations.h"
 #include "../components/operation_defitions.h"
 	extern Operation operations[];
+	extern Operation cb_operations[];
 }
 
 #include "imgui.h"
@@ -84,59 +86,89 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 	ImGui::End();
 
 	ImGui::Begin("INSTRUCTIONS", NULL, 0);
-	char op_buf[10];
 
-
-	if (emu->memory->in_bios) {
-		for (int i = emu->cpu->registers.pc; i < 0x100; ++i) {
-			sprintf(op_buf, "%04hX", i);
-			ImGui::PushID(i);
-			if (operations[emu->memory->bios[i]].type != UNIMPLEMENTED) {
-				ImGui::Checkbox(op_buf, &breakpoints[i]);
-				ImGui::SameLine();
-				ImGui::Text(operations[emu->memory->bios[i]].mnemonic);
+	ImGuiListClipper clipper;
+	u16 currentPC = emu->cpu->registers.pc;
+	clipper.Begin(0x10000);
+	while (clipper.Step()) {
+		for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; ++i) {
+			Operation* currentOp = &operations[read8(emu->memory, i)];
+			if (currentOp->type == CB) {
+				++i;
+				clipper.DisplayEnd += 1;
+				currentOp = &cb_operations[read8(emu->memory, i)];
 			}
+
+			char op_buf[10];
+			sprintf(op_buf, "%04hX", i);
+
+			ImGui::PushID(i);
+			ImGui::Checkbox(op_buf, &breakpoints[i]);
+			ImGui::SameLine();
+			if (currentOp->type != UNIMPLEMENTED) ImGui::Text(currentOp->mnemonic);
 			else {
-				ImGui::Checkbox(op_buf, &breakpoints[i]);
-				ImGui::SameLine();
-				ImGui::Text("UNIMPLEMENTED");
+				char unimpl_buf[30];
+				sprintf(unimpl_buf, "UNIMPL OP: 0x%02hX", read8(emu->memory, i));
+				ImGui::Text(unimpl_buf);
 			}
 			ImGui::PopID();
-		}
-		for (int i = emu->cpu->registers.pc; i < emu->cpu->registers.pc + 0x100; ++i) {
-			sprintf(op_buf, "%04hX", i);
-			ImGui::PushID(i);
-			if (operations[emu->memory->memory[i]].type != UNIMPLEMENTED) {
-				ImGui::Checkbox(op_buf, &breakpoints[i]);
-				ImGui::SameLine();
-				ImGui::Text(operations[emu->memory->memory[i]].mnemonic);
+			switch (currentOp->source_addr_mode) {
+			case MEM_READ:
+			case MEM_READ_ADDR_OFFSET:
+				clipper.DisplayEnd += 1;
+				i += 1;
+				break;
+			case MEM_READ16:
+				clipper.DisplayEnd += 2;
+				i += 2;
+				break;
 			}
-			else {
-				ImGui::Checkbox(op_buf, &breakpoints[i]);
-				ImGui::SameLine();
-				ImGui::Text("UNIMPLEMENTED");
-			}
-			ImGui::PopID();
 		}
 	}
-	else {
-		for (int i = emu->cpu->registers.pc; i < emu->cpu->registers.pc + 0x100; ++i) {
-			sprintf(op_buf, "%04hX", i);
-			ImGui::PushID(i);
-			if (operations[emu->memory->memory[i]].type != UNIMPLEMENTED) {
-				ImGui::Checkbox(op_buf, &breakpoints[i]);
-				ImGui::SameLine();
-				ImGui::Text(operations[emu->memory->memory[i]].mnemonic);
-			}
-			else {
-				ImGui::Checkbox(op_buf, &breakpoints[i]);
-				ImGui::SameLine();
-				ImGui::Text("UNIMPLEMENTED");
-			}
-			ImGui::PopID();
-		}
 
-	}
+
+
+
+
+	//char op_buf[10];
+
+
+	//if (emu->memory->in_bios) { // TODO: Implement skipping instructions with data values ex. u8, i8, u16.
+	//	// TODO: only render what is in view 
+	//	for (int i = emu->cpu->registers.pc; i < 0x100; ++i) {
+	//		sprintf(op_buf, "%04hX", i);
+	//		ImGui::PushID(i);
+	//		if (operations[emu->memory->bios[i]].type != UNIMPLEMENTED) {
+	//			ImGui::Checkbox(op_buf, &breakpoints[i]);
+	//			ImGui::SameLine();
+	//			ImGui::Text(operations[emu->memory->bios[i]].mnemonic);
+	//		}
+	//		else {
+	//			ImGui::Checkbox(op_buf, &breakpoints[i]);
+	//			ImGui::SameLine();
+	//			ImGui::Text("UNIMPLEMENTED");
+	//		}
+	//		ImGui::PopID();
+	//	}
+	//}
+	//else {
+	//	for (int i = emu->cpu->registers.pc; i < emu->cpu->registers.pc + 0x100; ++i) {
+	//		sprintf(op_buf, "%04hX", i);
+	//		ImGui::PushID(i);
+	//		if (operations[emu->memory->memory[i]].type != UNIMPLEMENTED) {
+	//			ImGui::Checkbox(op_buf, &breakpoints[i]);
+	//			ImGui::SameLine();
+	//			ImGui::Text(operations[emu->memory->memory[i]].mnemonic);
+	//		}
+	//		else {
+	//			ImGui::Checkbox(op_buf, &breakpoints[i]);
+	//			ImGui::SameLine();
+	//			ImGui::Text("UNIMPLEMENTED");
+	//		}
+	//		ImGui::PopID();
+	//	}
+
+	//}
 	ImGui::End();
 
 	ram_viewer.DrawWindow("RAM", emu->memory->memory, 0x10000);

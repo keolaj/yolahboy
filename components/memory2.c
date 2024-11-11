@@ -14,6 +14,7 @@ Memory* create_memory(const char* bootrom_path, const char* rom_path) {
 	if (load_bootrom(ret, bootrom_path) < 0) return NULL;
 	if (load_rom(ret, rom_path) < 0) return NULL;
 	memset((void*)&ret->controller, 0, sizeof(Controller));
+	ret->in_bios = true;
 	return ret;
 }
 
@@ -97,4 +98,8 @@ int load_rom(Memory* mem, const char* path) {
 void destroy_memory(Memory* mem) {
 	if (mem == NULL) return;
 	free(mem);
+}
+
+void write_mem_layout_to_buffer(u8* buffer) {
+
 }
