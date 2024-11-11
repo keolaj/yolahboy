@@ -16,47 +16,20 @@ project ("yolahboy")
 
 find_package(SDL3 REQUIRED)
 
-add_definitions("-DIMGUI_USER_CONFIG=\"../cimconfig.h\"")
-add_definitions("-DIMGUI_DISABLE_OBSOLETE_FUNCTIONS=1")
-
-add_compile_definitions("IMGUI_IMPL_SDL3")
-add_compile_definitions("IMGUI_IMPL_SDLRENDERER3")
-
-
-set(BACKENDS_FOLDER "./cimgui/imgui/backends")
-message(STATUS "backends folder: " ${BACKENDS_FOLDER})
-set(IMGUI_PATH "./cimgui/imgui")
-set(IMGUI_SOURCES 
-
-./cimgui/cimgui.cpp
-./cimgui/imgui/imgui.cpp
-./cimgui/imgui/imgui_draw.cpp
-./cimgui/imgui/imgui_demo.cpp
-./cimgui/imgui/imgui_widgets.cpp
-./cimgui/imgui/imgui_tables.cpp
-
+set(IMGUI_SRC 
+	./imgui/imgui.cpp
+	./imgui/imgui_demo.cpp
+	./imgui/imgui_draw.cpp
+	./imgui/imgui_tables.cpp
+	./imgui/imgui_widgets.cpp
+	./imgui/backends/imgui_impl_sdlrenderer3.cpp
+	./imgui/backends/imgui_impl_sdl3.cpp
 )
 
-if (WIN32)
-    add_definitions("-DIMGUI_IMPL_API=extern \"C\" __declspec\(dllexport\)")
-else(WIN32)
-    add_definitions("-DIMGUI_IMPL_API=extern \"C\" ")
-endif(WIN32)
-
-set(IMGUI_SOURCES_sdl)
-set(IMGUI_LIBRARIES)
-
-list(APPEND IMGUI_SOURCES ${BACKENDS_FOLDER}/imgui_impl_sdlrenderer3.cpp ${BACKENDS_FOLDER}/imgui_impl_sdl3.cpp)
-
-add_library(cimgui_sdl SHARED ${IMGUI_SOURCES})
-target_link_libraries(cimgui_sdl SDL3::SDL3)
-target_include_directories(cimgui_sdl PUBLIC "./cimgui/imgui")
-
 # Add source to this project's executable.
-add_executable (yolahboy WIN32 "yolahboy.c" "yolahboy.h" "components/cpu2.h" "components/cpu2.c"  "components/emulator.h" "components/emulator.c" "components/memory2.h" "components/memory2.c" "components/operation_defitions.h" "components/operations.h" "components/operations.c" "components/cpu_definitions.h" "components/gpu2.h" "components/gpu2.c" "components/memory_definitions.h" "components/controller.h" "components/controller.c" "debugger/debugger.c" "debugger/debugger.h" "emulator_main.c" "emulator_main.h")
-target_include_directories(yolahboy PUBLIC "./cimgui/generator/output" "./cimgui")
-target_compile_definitions(yolahboy PUBLIC -DCIMGUI_USE_SDLRENDERER3 -DCIMGUI_USE_SDL3)
-target_link_libraries(yolahboy PUBLIC SDL3::SDL3 cimgui_sdl)
+add_executable (yolahboy WIN32 "yolahboy.c" "yolahboy.h" "components/cpu2.h" "components/cpu2.c"  "components/emulator.h" "components/emulator.c" "components/memory2.h" "components/memory2.c" "components/operation_defitions.h" "components/operations.h" "components/operations.c" "components/cpu_definitions.h" "components/gpu2.h" "components/gpu2.c" "components/memory_definitions.h" "components/controller.h" "components/controller.c" "debugger/debugger.cpp" "debugger/debugger.hpp" ${IMGUI_SRC})
+target_include_directories(yolahboy PUBLIC ./imgui)
+target_link_libraries(yolahboy PUBLIC SDL3::SDL3)
 set_property(TARGET yolahboy PROPERTY CXX_STANDARD 20)
 
 # TODO: Add tests and install targets if needed.

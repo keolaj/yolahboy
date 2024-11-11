@@ -1,4 +1,8 @@
 #pragma once
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 #include <Windows.h>
 
 typedef struct {
@@ -10,4 +14,9 @@ typedef struct {
 } args;
 
 int debugger_run_threaded(HANDLE emulator_thread, args* t_args);
+
 int debugger_run(args* emu_args);
+
+#ifdef __cplusplus
+}
+#endif

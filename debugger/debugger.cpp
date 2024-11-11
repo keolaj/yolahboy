@@ -1,18 +1,17 @@
+
+extern "C" {
 #include <SDL3/SDL.h>
 #include "debugger.h"
 #include "../components/global_definitions.h"
 #include "../components/emulator.h"
 #include "../components/controller.h"
+}
 
-#define CIMGUI_DEFINE_ENUMS_AND_STRUCTS
-#include "cimgui.h"
-#define CIMGUI_USE_SDL3
-#include "cimgui_impl.h"
+#include "imgui.h"
+#include "./backends/imgui_impl_sdl3.h"
+#include "./backends/imgui_impl_sdlrenderer3.h"
 
-// extern Emulator emu;
-extern HANDLE emu_breakpoint_event;
-extern HANDLE emu_draw_event;
-extern CRITICAL_SECTION emu_crit;
+#include <stdio.h>
 
 void updateWindow(SDL_Surface* source, SDL_Window* dest) {
 	SDL_BlitSurfaceScaled(source, NULL, SDL_GetWindowSurface(dest), NULL, SDL_SCALEMODE_NEAREST);
@@ -21,14 +20,14 @@ void updateWindow(SDL_Surface* source, SDL_Window* dest) {
 
 void init_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_ctx, ImGuiIO* ioptr) {
 	if (ig_ctx == NULL) {
-		ig_ctx = igCreateContext(NULL);
-		igStyleColorsDark(NULL);
+		ig_ctx = ImGui::CreateContext(NULL);
+		ImGui::StyleColorsDark(NULL);
 
 		ImGui_ImplSDL3_InitForSDLRenderer(window, renderer);
 		ImGui_ImplSDLRenderer3_Init(renderer);
 	}
 	if (ioptr == NULL) {
-		ioptr = igGetIO();
+		ioptr = &ImGui::GetIO();
 		ioptr->ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 		ioptr->ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
 	}
@@ -37,24 +36,28 @@ void init_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 
 void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_ctx, ImGuiIO* ioptr, Emulator* emu, SDL_Rect* emulator_screen_rect, SDL_Rect* tile_screen_rect) {
 	static ImVec4 clear_color = {
-		.x = 0.45f,
-		.y = 0.55f,
-		.z = 0.60f,
-		.w = 1.00f
+		0.45f,
+		0.55f,
+		0.60f,
+		1.00f
 	};
 
 	ImGui_ImplSDL3_NewFrame();
 	ImGui_ImplSDLRenderer3_NewFrame();
-	igNewFrame();
+	ImGui::NewFrame();
 
-	igBegin("DEBUGGER", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
-	igButton("RUN", (ImVec2) { 40, 15 });
-	igEnd();
+	// Do all ImGui widgets here
 
-	igRender();
+	ImGui::Begin("DEBUGGER", NULL, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
+	if (ImGui::Button("RUN", { 40, 15 })) {
+
+	}
+	ImGui::End();
+
+	ImGui::Render();
 	SDL_SetRenderDrawColorFloat(renderer, clear_color.x, clear_color.y, clear_color.z, clear_color.w);
 	SDL_RenderClear(renderer);
-	ImGui_ImplSDLRenderer3_RenderDrawData(igGetDrawData(), renderer);
+	ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), renderer);
 	SDL_RenderPresent(renderer);
 }
 
@@ -65,7 +68,7 @@ void destroy_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* 
 	ImGui_ImplSDLRenderer3_Shutdown();
 	ImGui_ImplSDL3_Shutdown();
 
-	igDestroyContext(ig_ctx);
+	ImGui::DestroyContext(ig_ctx);
 }
 
 //int debugger_run_threaded(HANDLE emulator_thread, args* t_args) {
@@ -176,7 +179,7 @@ void destroy_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* 
 //}
 
 int debugger_run(args* emu_args) {
-	SDL_Window* window = SDL_CreateWindow("Yolahboy Debugger", 800, 600, 0);
+	SDL_Window* window = SDL_CreateWindow("Yolahboy Debugger", 800, 600, SDL_WINDOW_BORDERLESS);
 	SDL_Renderer* renderer = SDL_CreateRenderer(window, NULL);
 
 	if (window == NULL) {
@@ -224,7 +227,7 @@ int debugger_run(args* emu_args) {
 		}
 
 		if (clocks > 29780 || !emu.should_run) {
-			
+
 
 			draw_debug_ui(window, renderer, ig_ctx, ioptr, &emu, &emulator_screen_rect, &tile_screen_rect);
 
@@ -241,10 +244,10 @@ int debugger_run(args* emu_args) {
 					break;
 				}
 			}
-			
+
 			if (clocks > 29780) {
-				
-				
+
+
 
 				clocks = 0;
 			}
@@ -256,3 +259,4 @@ end:
 	destroy_debug_ui(window, renderer, ig_ctx, ioptr);
 	return 0;
 }
+
