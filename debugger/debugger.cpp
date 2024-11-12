@@ -50,16 +50,16 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 	static ExampleAppLog log;
 	static ImGuiListClipper clipper;
 
-	static int DEBUGGER_X;
-	static int DEBUGGER_Y;
-	static int SCREEN_X = 0;
-	static int SCREEN_Y = 0;
-	static int TILE_X = 0;
-	static int TILE_Y = 0;
-	static int INSTRUCTION_X;
-	static int INSTRUCTION_Y;
-	static int TABS_X;
-	static int TABS_Y;
+	static float DEBUGGER_X = 160;
+	static float DEBUGGER_Y = 323;
+	static float SCREEN_X = 336;
+	static float SCREEN_Y = 323;
+	static float TILE_X = 144;
+	static float TILE_Y = 323;
+	static float INSTRUCTION_X = 210;
+	static float INSTRUCTION_Y = 600;
+	static float TABS_X = 640;
+	static float TABS_Y = 277;
 
 	ImGui_ImplSDL3_NewFrame();
 	ImGui_ImplSDLRenderer3_NewFrame();
@@ -67,11 +67,9 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 
 	// Do all ImGui widgets here
 
-	ImGui::SetNextWindowSize({ (float)(800 - (SCREEN_X + TILE_X)) / 2, (float)SCREEN_Y});
+	ImGui::SetNextWindowSize({ (float)DEBUGGER_X, (float)DEBUGGER_Y});
 	ImGui::SetNextWindowPos({ 0, 0 });
 	ImGui::Begin("DEBUGGER", NULL, ImGuiWindowFlags_NoResize);
-	DEBUGGER_X = ImGui::GetWindowSize().x;
-	DEBUGGER_Y = ImGui::GetWindowSize().y;
 	if (ImGui::Button("RUN", { 40, 15 })) {
 		emu->should_run = true;
 	}
@@ -101,13 +99,11 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 	ImGui::EndChild();
 	ImGui::End();
 
-	ImGui::SetNextWindowContentSize({ 160 * 2, 144 * 2 });
+	ImGui::SetNextWindowSize({ SCREEN_X, SCREEN_Y });
 	ImGui::SetNextWindowPos({ (float)DEBUGGER_X ,(float)0 });
 	if (emu->should_run) ImGui::SetNextWindowFocus();
 	ImGui::Begin("SCREEN", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize);
 	{
-		SCREEN_X = ImGui::GetWindowSize().x;
-		SCREEN_Y = ImGui::GetWindowSize().y;
 
 		ImVec2 vMin = ImGui::GetWindowContentRegionMin();
 		ImVec2 vMax = ImGui::GetWindowContentRegionMax();
@@ -121,12 +117,10 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 	}
 	ImGui::End();
 
-	ImGui::SetNextWindowContentSize({ 128, 144 * 2 });
+	ImGui::SetNextWindowSize({ TILE_X, TILE_Y });
 	ImGui::SetNextWindowPos({ (float)DEBUGGER_X + SCREEN_X, (float)0 });
 	ImGui::Begin("TILES", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize);
 	{
-		TILE_X = ImGui::GetWindowSize().x;
-		TILE_Y = ImGui::GetWindowSize().y;
 
 		ImVec2 vMin = ImGui::GetWindowContentRegionMin();
 		ImVec2 vMax = ImGui::GetWindowContentRegionMax();
@@ -139,11 +133,9 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 	}
 	ImGui::End();
 
-	ImGui::SetNextWindowSize({ (float)(800 - (SCREEN_X + TILE_X)) / 2, (float)600 });
+	ImGui::SetNextWindowSize({ (float)INSTRUCTION_X, (float)INSTRUCTION_Y });
 	ImGui::SetNextWindowPos({ (float)DEBUGGER_X + SCREEN_X + TILE_X, (float)0 });
 	ImGui::Begin("INSTRUCTIONS", NULL, ImGuiWindowFlags_NoResize);
-	INSTRUCTION_X = ImGui::GetWindowSize().x;
-	INSTRUCTION_Y = ImGui::GetWindowSize().y;
 
 	u16 currentPC = emu->cpu->registers.pc;
 
@@ -195,7 +187,7 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 	}
 	ImGui::End();
 
-	ImGui::SetNextWindowSize({ (float)DEBUGGER_X + SCREEN_X + TILE_X, (float)600 - SCREEN_Y });
+	ImGui::SetNextWindowSize({ (float)TABS_X, (float)TABS_Y });
 	ImGui::SetNextWindowPos({ (float)0, (float)DEBUGGER_Y });
 	ImGui::Begin("OTHER", 0, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoResize);
 	ImGui::BeginTabBar("##SETTINGSTABS");
@@ -212,6 +204,10 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 		// TODO
 		ImGui::Text("Settings");
 		ImGui::EndTabItem();
+	}
+
+	if (run_once) {
+		log.AddLog("BREAKPOINT! 0x%04hX", emu->cpu->registers.pc);
 	}
 
 	ImGui::EndTabBar();
@@ -337,7 +333,7 @@ void destroy_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* 
 //}
 
 int debugger_run(args* emu_args) {
-	SDL_Window* window = SDL_CreateWindow("Yolahboy Debugger", 800, 600, 0);
+	SDL_Window* window = SDL_CreateWindow("Yolahboy Debugger", 850, 600, 0);
 	SDL_Renderer* renderer = SDL_CreateRenderer(window, NULL);
 	SDL_Texture* screen_tex;
 	SDL_Texture* tile_tex;
