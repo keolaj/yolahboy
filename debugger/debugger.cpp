@@ -42,12 +42,13 @@ void init_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 		ioptr->ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
 	}
 
-}
+}	
+
+ExampleAppLog app_log;
 
 void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_ctx, ImGuiIO* ioptr, Emulator* emu, SDL_FRect* emulator_screen_rect, SDL_FRect* tile_screen_rect, bool run_once) {
 
 	static MemoryEditor ram_viewer;
-	static ExampleAppLog log;
 	static ImGuiListClipper clipper;
 
 	static float DEBUGGER_X = 160;
@@ -67,7 +68,7 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 
 	// Do all ImGui widgets here
 
-	ImGui::SetNextWindowSize({ (float)DEBUGGER_X, (float)DEBUGGER_Y});
+	ImGui::SetNextWindowSize({ (float)DEBUGGER_X, (float)DEBUGGER_Y });
 	ImGui::SetNextWindowPos({ 0, 0 });
 	ImGui::Begin("DEBUGGER", NULL, ImGuiWindowFlags_NoResize);
 	if (ImGui::Button("RUN", { 40, 15 })) {
@@ -139,6 +140,10 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 
 	u16 currentPC = emu->cpu->registers.pc;
 
+	static int GOTO_Y = 50;
+
+	ImGui::SetNextWindowSize({ ImGui::GetContentRegionMax().x, ImGui::GetContentRegionMax().y - GOTO_Y});
+	ImGui::BeginChild("INST_VIEW");
 	clipper.Begin(0x10000);
 	while (clipper.Step()) {
 		for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; ++i) {
@@ -183,8 +188,19 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 			float item_pos_y = clipper.ItemsHeight * (emu->cpu->registers.pc) + clipper.ItemsHeight;
 			ImGui::SetScrollY(item_pos_y);
 		}
+	}
+	ImGui::EndChild();
+	ImGui::BeginChild("GOTO"); // TODO make this work
+	static char goto_buf[5] = {0};
+	ImGui::InputText("##GOTO", goto_buf, 5);
+	ImGui::SameLine();
+	if (ImGui::Button("GOTO")) {
+		int to = atoi(goto_buf);
+		float item_pos_y = clipper.ItemsHeight * (to) + clipper.ItemsHeight;
+		ImGui::SetScrollY(item_pos_y); // need to find out how to scroll sibling window
 
 	}
+	ImGui::EndChild();
 	ImGui::End();
 
 	ImGui::SetNextWindowSize({ (float)TABS_X, (float)TABS_Y });
@@ -197,7 +213,7 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 	}
 	if (ImGui::BeginTabItem("CONSOLE")) {
 		// TODO
-		log.Draw();
+		app_log.Draw();
 		ImGui::EndTabItem();
 	}
 	if (ImGui::BeginTabItem("SETTINGS")) {
@@ -207,7 +223,6 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 	}
 
 	if (run_once) {
-		log.AddLog("BREAKPOINT! 0x%04hX", emu->cpu->registers.pc);
 	}
 
 	ImGui::EndTabBar();
@@ -385,6 +400,7 @@ int debugger_run(args* emu_args) {
 			if (!set_run_once) { // logic for only running a function once in draw debug ui
 				run_once = true;
 				set_run_once = true;
+				app_log.AddLog("BREAKPOINT! 0x%04hX\n", emu.cpu->registers.pc);
 			}
 		}
 
