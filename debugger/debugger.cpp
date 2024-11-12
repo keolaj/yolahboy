@@ -41,14 +41,15 @@ void init_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 }
 
 bool breakpoints[0x10000];
-
-void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_ctx, ImGuiIO* ioptr, Emulator* emu, SDL_Rect* emulator_screen_rect, SDL_Rect* tile_screen_rect, bool run_once) {
-	static ImVec4 clear_color = {
+ImVec4 clear_color = {
 		0.45f,
 		0.55f,
 		0.60f,
 		1.00f
-	};
+};
+
+
+void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_ctx, ImGuiIO* ioptr, Emulator* emu, SDL_FRect* emulator_screen_rect, SDL_FRect* tile_screen_rect, bool run_once) {
 
 	static MemoryEditor ram_viewer;
 
@@ -138,50 +139,19 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 		}
 
 	}
+	ImGui::End();
 
+	ImGui::SetNextWindowContentSize({ 160 * 2, 144 * 2 });
+	ImGui::Begin("SCREEN", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize);
+	ImVec2 vMin = ImGui::GetWindowContentRegionMin();
+	ImVec2 vMax = ImGui::GetWindowContentRegionMax();
+	ImVec2 windowpos = ImGui::GetWindowPos();
 
+	emulator_screen_rect->x = vMin.x + windowpos.x;
+	emulator_screen_rect->y = vMin.y + windowpos.y;
+	emulator_screen_rect->w = vMax.x - vMin.x;
+	emulator_screen_rect->h = vMax.y - vMin.y;
 
-
-
-	//char op_buf[10];
-
-
-	//if (emu->memory->in_bios) { // TODO: Implement skipping instructions with data values ex. u8, i8, u16.
-	//	// TODO: only render what is in view 
-	//	for (int i = emu->cpu->registers.pc; i < 0x100; ++i) {
-	//		sprintf(op_buf, "%04hX", i);
-	//		ImGui::PushID(i);
-	//		if (operations[emu->memory->bios[i]].type != UNIMPLEMENTED) {
-	//			ImGui::Checkbox(op_buf, &breakpoints[i]);
-	//			ImGui::SameLine();
-	//			ImGui::Text(operations[emu->memory->bios[i]].mnemonic);
-	//		}
-	//		else {
-	//			ImGui::Checkbox(op_buf, &breakpoints[i]);
-	//			ImGui::SameLine();
-	//			ImGui::Text("UNIMPLEMENTED");
-	//		}
-	//		ImGui::PopID();
-	//	}
-	//}
-	//else {
-	//	for (int i = emu->cpu->registers.pc; i < emu->cpu->registers.pc + 0x100; ++i) {
-	//		sprintf(op_buf, "%04hX", i);
-	//		ImGui::PushID(i);
-	//		if (operations[emu->memory->memory[i]].type != UNIMPLEMENTED) {
-	//			ImGui::Checkbox(op_buf, &breakpoints[i]);
-	//			ImGui::SameLine();
-	//			ImGui::Text(operations[emu->memory->memory[i]].mnemonic);
-	//		}
-	//		else {
-	//			ImGui::Checkbox(op_buf, &breakpoints[i]);
-	//			ImGui::SameLine();
-	//			ImGui::Text("UNIMPLEMENTED");
-	//		}
-	//		ImGui::PopID();
-	//	}
-
-	//}
 	ImGui::End();
 
 	ram_viewer.DrawWindow("RAM", emu->memory->memory, 0x10000);
@@ -189,10 +159,6 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 	ImGui::End();
 
 	ImGui::Render();
-	SDL_SetRenderDrawColorFloat(renderer, clear_color.x, clear_color.y, clear_color.z, clear_color.w);
-	SDL_RenderClear(renderer);
-	ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), renderer);
-	SDL_RenderPresent(renderer);
 }
 
 void destroy_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_ctx, ImGuiIO* ioptr) {
@@ -315,6 +281,7 @@ void destroy_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* 
 int debugger_run(args* emu_args) {
 	SDL_Window* window = SDL_CreateWindow("Yolahboy Debugger", 800, 600, 0);
 	SDL_Renderer* renderer = SDL_CreateRenderer(window, NULL);
+	SDL_Texture* screen_tex;
 
 	if (window == NULL) {
 		printf("could not initialize debugger window");
@@ -332,6 +299,7 @@ int debugger_run(args* emu_args) {
 		destroy_emulator(&emu);
 		return -1;
 	}
+	screen_tex = SDL_CreateTextureFromSurface(renderer, emu.gpu->screen);
 
 	ImGuiContext* ig_ctx = NULL;
 	ImGuiIO* ioptr = NULL;
@@ -344,8 +312,8 @@ int debugger_run(args* emu_args) {
 	bool set_run_once = false;
 	SDL_Event e;
 
-	SDL_Rect emulator_screen_rect;
-	SDL_Rect tile_screen_rect;
+	SDL_FRect emulator_screen_rect{ 0, 0, 160, 144 };
+	SDL_FRect tile_screen_rect;
 
 	while (!quit) {
 
@@ -365,9 +333,6 @@ int debugger_run(args* emu_args) {
 		}
 
 		if (clocks > 29780 || !emu.should_run) {
-
-
-
 			while (SDL_PollEvent(&e)) {
 				ImGui_ImplSDL3_ProcessEvent(&e);
 
@@ -381,20 +346,21 @@ int debugger_run(args* emu_args) {
 					break;
 				}
 			}
-
 			if (!emu.should_run) {
 				draw_debug_ui(window, renderer, ig_ctx, ioptr, &emu, &emulator_screen_rect, &tile_screen_rect, run_once);
 				run_once = false;
 			}
-
-
 			if (clocks > 29780) {
-
-
-
+				SDL_DestroyTexture(screen_tex);
+				screen_tex = SDL_CreateTextureFromSurface(renderer, emu.gpu->screen);
+				SDL_SetTextureScaleMode(screen_tex, SDL_SCALEMODE_NEAREST);
 				clocks = 0;
 			}
-			// todo draw emulator surface on proper location on debug window
+			SDL_SetRenderDrawColorFloat(renderer, clear_color.x, clear_color.y, clear_color.z, clear_color.w);
+			SDL_RenderClear(renderer);
+			ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), renderer);
+			SDL_RenderTexture(renderer, screen_tex, nullptr, &emulator_screen_rect);
+			SDL_RenderPresent(renderer);
 		}
 	}
 end:
