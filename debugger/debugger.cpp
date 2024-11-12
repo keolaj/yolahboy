@@ -1,3 +1,4 @@
+#include <stdio.h>
 
 extern "C" {
 #include <SDL3/SDL.h>
@@ -16,125 +17,7 @@ extern "C" {
 #include "./backends/imgui_impl_sdl3.h"
 #include "./backends/imgui_impl_sdlrenderer3.h"
 #include "../imgui_memory_editor.h"
-
-#include <stdio.h>
-
-struct ExampleAppLog
-{
-    ImGuiTextBuffer     Buf;
-    ImGuiTextFilter     Filter;
-    ImVector<int>       LineOffsets; // Index to lines offset. We maintain this with AddLog() calls.
-    bool                AutoScroll;  // Keep scrolling if already at the bottom.
-
-    ExampleAppLog()
-    {
-        AutoScroll = true;
-        Clear();
-    }
-
-    void    Clear()
-    {
-        Buf.clear();
-        LineOffsets.clear();
-        LineOffsets.push_back(0);
-    }
-
-    void    AddLog(const char* fmt, ...) IM_FMTARGS(2)
-    {
-        int old_size = Buf.size();
-        va_list args;
-        va_start(args, fmt);
-        Buf.appendfv(fmt, args);
-        va_end(args);
-        for (int new_size = Buf.size(); old_size < new_size; old_size++)
-            if (Buf[old_size] == '\n')
-                LineOffsets.push_back(old_size + 1);
-    }
-
-    void    Draw(bool* p_open = NULL)
-    {
-
-        // Options menu
-        if (ImGui::BeginPopup("Options"))
-        {
-            ImGui::Checkbox("Auto-scroll", &AutoScroll);
-            ImGui::EndPopup();
-        }
-
-        // Main window
-        if (ImGui::Button("Options"))
-            ImGui::OpenPopup("Options");
-        ImGui::SameLine();
-        bool clear = ImGui::Button("Clear");
-        ImGui::SameLine();
-        bool copy = ImGui::Button("Copy");
-        ImGui::SameLine();
-        Filter.Draw("Filter", -100.0f);
-
-        ImGui::Separator();
-
-        if (ImGui::BeginChild("scrolling", ImVec2(0, 0), ImGuiChildFlags_None, ImGuiWindowFlags_HorizontalScrollbar))
-        {
-            if (clear)
-                Clear();
-            if (copy)
-                ImGui::LogToClipboard();
-
-            ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
-            const char* buf = Buf.begin();
-            const char* buf_end = Buf.end();
-            if (Filter.IsActive())
-            {
-                // In this example we don't use the clipper when Filter is enabled.
-                // This is because we don't have random access to the result of our filter.
-                // A real application processing logs with ten of thousands of entries may want to store the result of
-                // search/filter.. especially if the filtering function is not trivial (e.g. reg-exp).
-                for (int line_no = 0; line_no < LineOffsets.Size; line_no++)
-                {
-                    const char* line_start = buf + LineOffsets[line_no];
-                    const char* line_end = (line_no + 1 < LineOffsets.Size) ? (buf + LineOffsets[line_no + 1] - 1) : buf_end;
-                    if (Filter.PassFilter(line_start, line_end))
-                        ImGui::TextUnformatted(line_start, line_end);
-                }
-            }
-            else
-            {
-                // The simplest and easy way to display the entire buffer:
-                //   ImGui::TextUnformatted(buf_begin, buf_end);
-                // And it'll just work. TextUnformatted() has specialization for large blob of text and will fast-forward
-                // to skip non-visible lines. Here we instead demonstrate using the clipper to only process lines that are
-                // within the visible area.
-                // If you have tens of thousands of items and their processing cost is non-negligible, coarse clipping them
-                // on your side is recommended. Using ImGuiListClipper requires
-                // - A) random access into your data
-                // - B) items all being the  same height,
-                // both of which we can handle since we have an array pointing to the beginning of each line of text.
-                // When using the filter (in the block of code above) we don't have random access into the data to display
-                // anymore, which is why we don't use the clipper. Storing or skimming through the search result would make
-                // it possible (and would be recommended if you want to search through tens of thousands of entries).
-                ImGuiListClipper clipper;
-                clipper.Begin(LineOffsets.Size);
-                while (clipper.Step())
-                {
-                    for (int line_no = clipper.DisplayStart; line_no < clipper.DisplayEnd; line_no++)
-                    {
-                        const char* line_start = buf + LineOffsets[line_no];
-                        const char* line_end = (line_no + 1 < LineOffsets.Size) ? (buf + LineOffsets[line_no + 1] - 1) : buf_end;
-                        ImGui::TextUnformatted(line_start, line_end);
-                    }
-                }
-                clipper.End();
-            }
-            ImGui::PopStyleVar();
-
-            // Keep up at the bottom of the scroll region if we were already at the bottom at the beginning of the frame.
-            // Using a scrollbar or mouse-wheel will take away from the bottom edge.
-            if (AutoScroll && ImGui::GetScrollY() >= ImGui::GetScrollMaxY())
-                ImGui::SetScrollHereY(1.0f);
-        }
-        ImGui::EndChild();
-    }
-};
+#include "./imgui_custom_widgets.h"
 
 
 bool breakpoints[0x10000];
@@ -165,6 +48,35 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 
 	static MemoryEditor ram_viewer;
 	static ExampleAppLog log;
+	static ImGuiListClipper clipper;
+
+	static int DEBUGGER_X;
+	static int DEBUGGER_Y;
+	static int SCREEN_X = 0;
+	static int SCREEN_Y = 0;
+	static int TILE_X = 0;
+	static int TILE_Y = 0;
+	static int INSTRUCTION_X;
+	static int INSTRUCTION_Y;
+	static int TABS_X;
+	static int TABS_Y;
+
+	ImGui_ImplSDL3_NewFrame();
+	ImGui_ImplSDLRenderer3_NewFrame();
+	ImGui::NewFrame();
+
+	// Do all ImGui widgets here
+
+	ImGui::SetNextWindowSize({ (float)(800 - (SCREEN_X + TILE_X)) / 2, (float)SCREEN_Y});
+	ImGui::SetNextWindowPos({ 0, 0 });
+	ImGui::Begin("DEBUGGER", NULL, ImGuiWindowFlags_NoResize);
+	DEBUGGER_X = ImGui::GetWindowSize().x;
+	DEBUGGER_Y = ImGui::GetWindowSize().y;
+	if (ImGui::Button("RUN", { 40, 15 })) {
+		emu->should_run = true;
+	}
+
+	ImGui::BeginChild("REGISTERS");
 
 	char af_buf[10];
 	char bc_buf[10];
@@ -180,18 +92,6 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 	sprintf(sp_buf, "SP: %04hX", emu->cpu->registers.sp);
 	sprintf(pc_buf, "PC: %04hX", emu->cpu->registers.pc);
 
-	ImGui_ImplSDL3_NewFrame();
-	ImGui_ImplSDLRenderer3_NewFrame();
-	ImGui::NewFrame();
-
-	// Do all ImGui widgets here
-
-	ImGui::Begin("DEBUGGER", NULL, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize);
-	if (ImGui::Button("RUN", { 40, 15 })) {
-		emu->should_run = true;
-	}
-
-	ImGui::BeginChild("REGISTERS");
 	ImGui::Text(af_buf);
 	ImGui::Text(bc_buf);
 	ImGui::Text(de_buf);
@@ -201,9 +101,50 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 	ImGui::EndChild();
 	ImGui::End();
 
-	ImGui::Begin("INSTRUCTIONS", NULL, 0);
+	ImGui::SetNextWindowContentSize({ 160 * 2, 144 * 2 });
+	ImGui::SetNextWindowPos({ (float)DEBUGGER_X ,(float)0 });
+	if (emu->should_run) ImGui::SetNextWindowFocus();
+	ImGui::Begin("SCREEN", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize);
+	{
+		SCREEN_X = ImGui::GetWindowSize().x;
+		SCREEN_Y = ImGui::GetWindowSize().y;
 
-	static ImGuiListClipper clipper;
+		ImVec2 vMin = ImGui::GetWindowContentRegionMin();
+		ImVec2 vMax = ImGui::GetWindowContentRegionMax();
+		ImVec2 windowpos = ImGui::GetWindowPos();
+
+		emulator_screen_rect->x = vMin.x + windowpos.x;
+		emulator_screen_rect->y = vMin.y + windowpos.y;
+		emulator_screen_rect->w = vMax.x - vMin.x;
+		emulator_screen_rect->h = vMax.y - vMin.y;
+
+	}
+	ImGui::End();
+
+	ImGui::SetNextWindowContentSize({ 128, 144 * 2 });
+	ImGui::SetNextWindowPos({ (float)DEBUGGER_X + SCREEN_X, (float)0 });
+	ImGui::Begin("TILES", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize);
+	{
+		TILE_X = ImGui::GetWindowSize().x;
+		TILE_Y = ImGui::GetWindowSize().y;
+
+		ImVec2 vMin = ImGui::GetWindowContentRegionMin();
+		ImVec2 vMax = ImGui::GetWindowContentRegionMax();
+		ImVec2 windowpos = ImGui::GetWindowPos();
+
+		tile_screen_rect->x = vMin.x + windowpos.x;
+		tile_screen_rect->y = vMin.y + windowpos.y;
+		tile_screen_rect->w = vMax.x - vMin.x;
+		tile_screen_rect->h = 192;
+	}
+	ImGui::End();
+
+	ImGui::SetNextWindowSize({ (float)(800 - (SCREEN_X + TILE_X)) / 2, (float)600 });
+	ImGui::SetNextWindowPos({ (float)DEBUGGER_X + SCREEN_X + TILE_X, (float)0 });
+	ImGui::Begin("INSTRUCTIONS", NULL, ImGuiWindowFlags_NoResize);
+	INSTRUCTION_X = ImGui::GetWindowSize().x;
+	INSTRUCTION_Y = ImGui::GetWindowSize().y;
+
 	u16 currentPC = emu->cpu->registers.pc;
 
 	clipper.Begin(0x10000);
@@ -254,37 +195,9 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 	}
 	ImGui::End();
 
-	ImGui::SetNextWindowContentSize({ 160 * 2, 144 * 2 });
-	if (emu->should_run) ImGui::SetNextWindowFocus();
-	ImGui::Begin("SCREEN", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize);
-	{
-		ImVec2 vMin = ImGui::GetWindowContentRegionMin();
-		ImVec2 vMax = ImGui::GetWindowContentRegionMax();
-		ImVec2 windowpos = ImGui::GetWindowPos();
-
-		emulator_screen_rect->x = vMin.x + windowpos.x;
-		emulator_screen_rect->y = vMin.y + windowpos.y;
-		emulator_screen_rect->w = vMax.x - vMin.x;
-		emulator_screen_rect->h = vMax.y - vMin.y;
-
-	}
-	ImGui::End();
-
-	ImGui::SetNextWindowContentSize({ 128, 192 });
-	ImGui::Begin("TILES", NULL, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize);
-	{
-		ImVec2 vMin = ImGui::GetWindowContentRegionMin();
-		ImVec2 vMax = ImGui::GetWindowContentRegionMax();
-		ImVec2 windowpos = ImGui::GetWindowPos();
-
-		tile_screen_rect->x = vMin.x + windowpos.x;
-		tile_screen_rect->y = vMin.y + windowpos.y;
-		tile_screen_rect->w = vMax.x - vMin.x;
-		tile_screen_rect->h = vMax.y - vMin.y;
-	}
-	ImGui::End();
-
-	ImGui::Begin("OTHER", 0, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar);
+	ImGui::SetNextWindowSize({ (float)DEBUGGER_X + SCREEN_X + TILE_X, (float)600 - SCREEN_Y });
+	ImGui::SetNextWindowPos({ (float)0, (float)DEBUGGER_Y });
+	ImGui::Begin("OTHER", 0, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoResize);
 	ImGui::BeginTabBar("##SETTINGSTABS");
 	if (ImGui::BeginTabItem("RAM")) {
 		ram_viewer.DrawContents(emu->memory->memory, 0x10000);
@@ -466,7 +379,7 @@ int debugger_run(args* emu_args) {
 
 		if (emu.should_run) {
 			int c = step(&emu);
-			if (c == -1) goto end; // if step returns -1 the operation failed to execute
+			if (c < 0) goto end; // if step returns negative the operation failed to execute
 			clocks += c;
 			set_run_once = false;
 		}
