@@ -40,7 +40,9 @@ void init_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 
 }
 
-void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_ctx, ImGuiIO* ioptr, Emulator* emu, SDL_Rect* emulator_screen_rect, SDL_Rect* tile_screen_rect) {
+bool breakpoints[0x10000];
+
+void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_ctx, ImGuiIO* ioptr, Emulator* emu, SDL_Rect* emulator_screen_rect, SDL_Rect* tile_screen_rect, bool run_once) {
 	static ImVec4 clear_color = {
 		0.45f,
 		0.55f,
@@ -48,7 +50,6 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 		1.00f
 	};
 
-	static bool breakpoints[0x10000];
 	static MemoryEditor ram_viewer;
 
 	char af_buf[10];
@@ -117,13 +118,25 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 			case MEM_READ_ADDR_OFFSET:
 				clipper.DisplayEnd += 1;
 				i += 1;
+				sprintf(op_buf, "%04hX", read8(emu->memory, i));
+
+				ImGui::SameLine();
+				ImGui::Text(op_buf);
 				break;
 			case MEM_READ16:
 				clipper.DisplayEnd += 2;
 				i += 2;
+				sprintf(op_buf, "%04hX", read16(emu->memory, i - 1));
+				ImGui::SameLine();
+				ImGui::Text(op_buf);
 				break;
 			}
 		}
+		if (run_once) {
+			float item_pos_y = clipper.ItemsHeight * (emu->cpu->registers.pc) + clipper.ItemsHeight;
+			ImGui::SetScrollY(item_pos_y);
+		}
+
 	}
 
 
@@ -327,6 +340,8 @@ int debugger_run(args* emu_args) {
 
 	bool quit = false;
 	int clocks = 0;
+	bool run_once = false;
+	bool set_run_once = false;
 	SDL_Event e;
 
 	SDL_Rect emulator_screen_rect;
@@ -334,17 +349,19 @@ int debugger_run(args* emu_args) {
 
 	while (!quit) {
 
-		for (int i = 0; i < MAX_BREAKPOINTS; ++i) {
-			if ((int)emu.cpu->registers.pc == emu.breakpoints[i]) {
-				emu.should_run = false;
-			}
-		}
-
-
 		if (emu.should_run) {
 			int c = step(&emu);
 			if (c == -1) goto end;
 			clocks += c;
+			set_run_once = false;
+		}
+
+		if (breakpoints[emu.cpu->registers.pc]) {
+			emu.should_run = false;
+			if (!set_run_once) {
+				run_once = true;
+				set_run_once = true;
+			}
 		}
 
 		if (clocks > 29780 || !emu.should_run) {
@@ -365,7 +382,10 @@ int debugger_run(args* emu_args) {
 				}
 			}
 
-			if (!emu.should_run) draw_debug_ui(window, renderer, ig_ctx, ioptr, &emu, &emulator_screen_rect, &tile_screen_rect);
+			if (!emu.should_run) {
+				draw_debug_ui(window, renderer, ig_ctx, ioptr, &emu, &emulator_screen_rect, &tile_screen_rect, run_once);
+				run_once = false;
+			}
 
 
 			if (clocks > 29780) {
