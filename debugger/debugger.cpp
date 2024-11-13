@@ -22,8 +22,11 @@ extern "C" {
 #include "./imgui_custom_widgets.h"
 
 bool breakpoints[0x10000];
+static char bootrom_path_buf[200] = "";
+static char rom_path_buf[200] = "";
 
-void init_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_ctx, ImGuiIO* ioptr) {
+
+void init_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_ctx, ImGuiIO* ioptr, char* rom_path, char* bootrom_path) {
 	if (ig_ctx == NULL) {
 		ig_ctx = ImGui::CreateContext(NULL);
 		ImGui::StyleColorsDark(NULL);
@@ -36,7 +39,12 @@ void init_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 		ioptr->ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 		ioptr->ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
 	}
-
+	if (rom_path) {
+		strcpy(rom_path_buf, rom_path);
+	}
+	if (bootrom_path) {
+		strcpy(bootrom_path_buf, bootrom_path);
+	}
 }
 
 extern ExampleAppLog app_log;
@@ -69,7 +77,27 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 	ImGui::SetNextWindowPos({ 0, 0 });
 	ImGui::Begin("DEBUGGER", NULL, ImGuiWindowFlags_NoResize);
 	if (ImGui::Button("RUN", { 40, 15 })) {
-		emu->should_run = true;
+		if (!cartridge_loaded(emu)) {
+			if (strlen(bootrom_path_buf) > 0) {
+				if (load_bootrom(emu->memory, bootrom_path_buf) < 0) {
+					app_log.AddLog("Couldn't load bootrom!\n");
+				}
+			}
+			else {
+				skip_bootrom(emu);
+			}
+			if (strlen(rom_path_buf) > 0) {
+				if (load_rom(emu->memory, rom_path_buf) < 0) {
+					app_log.AddLog("Couldn't load rom!\n");
+				}
+				else {
+					emu->should_run = true;
+				}
+			}
+		}
+		else {
+			emu->should_run = true;
+		}
 	}
 
 	ImGui::SameLine();
@@ -229,6 +257,10 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 		// TODO
 		ImGui::Checkbox("Create GameboyDoctor Log", &create_gbd_log);
 		ImGui::Checkbox("Use Gamepad", &use_gamepad);
+
+		ImGui::InputText("Bootrom Path", bootrom_path_buf, 200);
+		ImGui::InputText("Rom Path", rom_path_buf, 200);
+
 		ImGui::EndTabItem();
 	}
 
@@ -357,7 +389,7 @@ void destroy_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* 
 //
 //}
 
-int debugger_run(args* emu_args) {
+int debugger_run(char* rom_path, char* bootrom_path) {
 
 	SDL_Window* window = SDL_CreateWindow("Yolahboy Debugger", 850, 600, 0);
 	SDL_Renderer* renderer = SDL_CreateRenderer(window, NULL);
@@ -386,7 +418,7 @@ int debugger_run(args* emu_args) {
 	}
 
 	Emulator emu;
-	if (init_emulator(&emu, emu_args->argv[1], emu_args->argv[2]) < 0) {
+	if (init_emulator(&emu) < 0) {
 		SDL_DestroyWindow(window);
 		SDL_DestroyRenderer(renderer);
 		destroy_emulator(&emu);
@@ -399,7 +431,7 @@ int debugger_run(args* emu_args) {
 	ImGuiContext* ig_ctx = NULL;
 	ImGuiIO* ioptr = NULL;
 
-	init_debug_ui(window, renderer, ig_ctx, ioptr);
+	init_debug_ui(window, renderer, ig_ctx, ioptr, rom_path, bootrom_path);
 
 	bool quit = false;
 	bool run_once = false;

@@ -4,7 +4,7 @@
 #include "gpu_definitions.h"
 
 
-Memory* create_memory(const char* bootrom_path, const char* rom_path);
+Memory* create_memory();
 int load_bootrom(Memory* mem, const char* path);
 int load_rom(Memory* mem, const char* path);
 u8 read8(Memory* mem, u16 address);

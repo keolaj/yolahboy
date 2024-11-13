@@ -12,9 +12,9 @@
 
 #include <SDL3/SDL.h>
 
-int init_emulator(Emulator* emu, const char* bootrom_path, const char* rom_path) {
+int init_emulator(Emulator* emu) {
 	emu->cpu = create_cpu();
-	emu->memory = create_memory(bootrom_path, rom_path);
+	emu->memory = create_memory();
 	emu->gpu = create_gpu(emu->memory);
 	emu->controller = create_controller();
 	emu->should_run = false;
@@ -54,4 +54,28 @@ void destroy_emulator(Emulator* emu) {
 	if (emu->memory) destroy_memory(emu->memory);
 	if (emu->cpu) destroy_cpu(emu->cpu);
 	emu->cpu = NULL;
+}
+
+void reset_emulator(Emulator* emu) {
+	
+}
+
+bool cartridge_loaded(Emulator* emu) {
+	if (emu->memory->cartridge.rom == NULL) return false;
+	else return true;
+}
+
+void skip_bootrom(Emulator* emu) {
+	emu->cpu->registers.a = 0x01;
+	emu->cpu->registers.f = 0xB0;
+	emu->cpu->registers.b = 0x00;
+	emu->cpu->registers.c = 0x13;
+	emu->cpu->registers.d = 0x00;
+	emu->cpu->registers.e = 0xD8;
+	emu->cpu->registers.h = 0x01;
+	emu->cpu->registers.l = 0x4D;
+	emu->cpu->registers.sp = 0xFFFE;
+	emu->cpu->registers.pc = 0x0100;
+
+	emu->memory->in_bios = false;
 }

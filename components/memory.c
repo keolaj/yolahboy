@@ -6,15 +6,17 @@
 #include "controller.h"
 #include "../debugger/imgui_custom_widget_wrapper.h"
 
-Memory* create_memory(const char* bootrom_path, const char* rom_path) {
+Memory* create_memory() {
 	Memory* ret = (Memory*)malloc(sizeof(Memory));
 	if (ret == NULL) {
 		printf("could not allocate memory");
 		return NULL;
 	}
-	if (load_bootrom(ret, bootrom_path) < 0) return NULL;
-	if (load_rom(ret, rom_path) < 0) return NULL;
+	ret->cartridge.rom = NULL;
+	ret->cartridge.ram = NULL;
 	memset((void*)&ret->controller, 0, sizeof(Controller));
+	memset(ret->memory, 0, 0x10000);
+	memset(ret->bios, 0, 0x100);
 	ret->in_bios = true;
 	return ret;
 }
@@ -82,24 +84,36 @@ int load_bootrom(Memory* mem, const char* path) {
 	FILE* fp;
 	fp = fopen(path, "rb");
 	if (fp == NULL) {
-		printf("error opening bootrom");
+		AddLog("error opening bootrom");
 		return -1;
 	}
 	fread(mem->bios, sizeof(u8), 0x100, fp);
+	return 0;
 }
 int load_rom(Memory* mem, const char* path) {
 	FILE* fp;
 	fp = fopen(path, "rb");
 	if (fp == NULL) {
-		printf("error opening rom");
+		AddLog("error opening rom");
 		return -1;
 	}
 	memset(mem->memory, 0, sizeof(mem->memory));
 	fread(mem->memory, sizeof(u8), 0x8000, fp);
+
+	mem->cartridge.rom = (u8*)malloc(sizeof(u8) * 0x8000);
+	if (mem->cartridge.rom == NULL) {
+		AddLog("could not allocate cartridge rom");
+		return -1;
+	}
+	fread(mem->cartridge.rom, sizeof(u8), 0x8000, fp);
+	fclose(fp);
+	return 0;
 }
 
 void destroy_memory(Memory* mem) {
 	if (mem == NULL) return;
+	
+	if (mem->cartridge.rom) free(mem->cartridge.rom);
 	free(mem);
 }
 
