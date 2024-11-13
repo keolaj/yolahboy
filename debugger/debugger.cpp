@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <iostream>
 #include <fstream>
+#include <chrono>
 
 extern "C" {
 #include <SDL3/SDL.h>
@@ -108,8 +109,8 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 
 	ImGui::SameLine();
 	if (ImGui::Button("RESET", { 40, 15 })) {
-		// destroy_emulator(emu);
-		// init_emulator(emu);
+		destroy_emulator(emu);
+		init_emulator(emu);
 	}
 
 	ImGui::BeginChild("REGISTERS");
@@ -134,6 +135,7 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 	ImGui::Text(hl_buf);
 	ImGui::Text(sp_buf);
 	ImGui::Text(pc_buf);
+	ImGui::Text("FPS: %.4f", ImGui::GetIO().Framerate);
 	ImGui::EndChild();
 	ImGui::End();
 
@@ -282,112 +284,25 @@ void destroy_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* 
 	ImGui::DestroyContext(ig_ctx);
 }
 
-//int debugger_run_threaded(HANDLE emulator_thread, args* t_args) {
-//
-//	SDL_Window* window = SDL_CreateWindow("Yolahboy Debugger", 400, 400, 0);
-//	SDL_Renderer* renderer = SDL_CreateRenderer(window, NULL);
-//
-//	if (window == NULL) {
-//		printf("could not initialize debugger window");
-//		return -1;
-//	}
-//
-//	if (renderer == NULL) {
-//		printf("could not initialize debugger renderer");
-//		SDL_DestroyWindow(window);
-//		return -1;
-//	}
-//
-//	if (renderer == NULL) {
-//		printf("could not initialize debugger renderer");
-//		SDL_DestroyWindow(window);
-//		return -1;
-//	}
-//
-//	EnterCriticalSection(&emu_crit);
-//	if (init_emulator(&emu, t_args->argv[1], t_args->argv[2], t_args->breakpoint_arr) < 0) {
-//		destroy_emulator(&emu);
-//	}
-//	LeaveCriticalSection(&emu_crit);
-//
-//	ResumeThread(emulator_thread);
-//
-//	ImGuiContext* ig_ctx = NULL;
-//	ImGuiIO* ioptr = NULL;
-//
-//	init_debug_ui(window, renderer, ig_ctx, ioptr);
-//
-//	bool quit = false;
-//	while (!quit) {
-//
-//		switch (WaitForSingleObject(emu_breakpoint_event, 0)) {
-//		case WAIT_OBJECT_0:
-//			EnterCriticalSection(&emu_crit);
-//			if (emu.cpu == NULL) {
-//				quit = true;
-//				if (emu.tile_window) SDL_DestroyWindow(emu.tile_window);
-//				if (emu.emulator_renderer) SDL_DestroyRenderer(emu.emulator_renderer);
-//				if (emu.tile_renderer) SDL_DestroyRenderer(emu.tile_renderer);
-//				if (emu.emulator_window) SDL_DestroyWindow(emu.emulator_window);
-//				if (emu.game_controller) SDL_CloseGamepad(emu.game_controller);
-//				destroy_emulator(&emu);
-//				break;
-//			}
-//			print_registers(emu.cpu);
-//			emu.should_quit = true;
-//			quit = true;
-//			LeaveCriticalSection(&emu_crit);
-//			ResumeThread(emulator_thread);
-//			break;
-//		case WAIT_TIMEOUT:
-//			break;
-//		case WAIT_FAILED:
-//			break;
-//		default:
-//			break;
-//
-//		}
-//
-//		switch (WaitForSingleObject(emu_draw_event, 0)) {
-//		case WAIT_OBJECT_0: {
-//			EnterCriticalSection(&emu_crit);
-//			SDL_Event e;
-//			while (SDL_PollEvent(&e)) {
-//			ImGui_ImplSDL3_ProcessEvent(&e);
-//
-//				if (e.type == SDL_EVENT_QUIT || e.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED) {
-//					emu.should_quit = true;
-//					quit = true;
-//				}
-//				else {
-//					update_emu_controller(&emu, get_controller_state(emu.game_controller));
-//					// print_controller(emu.memory->controller);
-//				}
-//			}
-//			updateWindow(emu.gpu->screen, emu.emulator_window);
-//			updateWindow(emu.gpu->tile_screen, emu.tile_window);
-//
-//			// draw debug window
-//			draw_debug_ui(window, renderer, ig_ctx, ioptr, &emu);
-//
-//			LeaveCriticalSection(&emu_crit);
-//			ResumeThread(emulator_thread);
-//			break;
-//		}
-//		case WAIT_TIMEOUT:
-//			break;
-//		case WAIT_FAILED:
-//			break;
-//		}
-//
-//	}
-//
-//	SDL_DestroyWindow(window);
-//	SDL_DestroyRenderer(renderer);
-//
-//	return 0;
-//
-//}
+SDL_Gamepad* get_first_gamepad() {
+
+	SDL_Gamepad* ret = NULL;
+
+	int num_joysticks = 0;
+	SDL_JoystickID* joysticks = SDL_GetJoysticks(&num_joysticks);
+
+	if (num_joysticks) {
+		ret = SDL_OpenGamepad(joysticks[0]);
+		if (ret == NULL) {
+			app_log.AddLog("Unable to open game controller! SDL Error: %s", SDL_GetError());
+		}
+	}
+	else {
+		app_log.AddLog("no joysticks connected!");
+	}
+	SDL_free(joysticks);
+	return ret;
+}
 
 int debugger_run(char* rom_path, char* bootrom_path) {
 
@@ -440,22 +355,21 @@ int debugger_run(char* rom_path, char* bootrom_path) {
 
 	std::ofstream gbd_log;
 
+	uint64_t NOW = SDL_GetPerformanceCounter();
+	uint64_t LAST = 0;
+
+	double deltaTime = 0;
+	double timer = 0;
+
 	while (!quit) {
+		LAST = NOW;
+		NOW = SDL_GetPerformanceCounter();
+		deltaTime = ((NOW - LAST) * 1000 / (double)SDL_GetPerformanceFrequency());
+		timer += deltaTime;
+
 
 		if (use_gamepad && gamepad == NULL) {
-			int num_joysticks = 0;
-			SDL_JoystickID* joysticks = SDL_GetJoysticks(&num_joysticks);
-
-			if (num_joysticks) {
-				gamepad = SDL_OpenGamepad(joysticks[0]);
-				if (gamepad == NULL) {
-					app_log.AddLog("Unable to open game controller! SDL Error: %s", SDL_GetError());
-				}
-			}
-			else {
-				app_log.AddLog("no joysticks connected!");
-			}
-			SDL_free(joysticks);
+			gamepad = get_first_gamepad();
 		}
 
 		if (emu.should_run) {
@@ -496,20 +410,22 @@ int debugger_run(char* rom_path, char* bootrom_path) {
 				app_log.AddLog("BREAKPOINT! 0x%04hX\n", emu.cpu->registers.pc);
 			}
 		}
-		if (emu.should_draw || !emu.should_run) {
-			while (SDL_PollEvent(&e)) {
-				switch (e.type) {
-				case SDL_EVENT_QUIT:
-				case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
-					goto end;
-				case SDL_EVENT_GAMEPAD_BUTTON_DOWN:
-				case SDL_EVENT_GAMEPAD_BUTTON_UP:
-					if (use_gamepad && gamepad) update_emu_controller(&emu, get_controller_state(gamepad)); // TODO make this logic less ugly. I think I should store SDL_Gamepad here instead of in emulator
-					break;
-				}
-				ImGui_ImplSDL3_ProcessEvent(&e);
-			}
+
+		if (emu.should_run) {
 			if (emu.should_draw) {
+				while (SDL_PollEvent(&e)) {
+					ImGui_ImplSDL3_ProcessEvent(&e);
+					switch (e.type) {
+					case SDL_EVENT_QUIT:
+					case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
+						goto end;
+					case SDL_EVENT_GAMEPAD_BUTTON_DOWN:
+					case SDL_EVENT_GAMEPAD_BUTTON_UP:
+						if (use_gamepad && gamepad) update_emu_controller(&emu, get_controller_state(gamepad)); // TODO make this logic less ugly. I think I should store SDL_Gamepad here instead of in emulator
+						break;
+					}
+				}
+				draw_debug_ui(window, renderer, ig_ctx, ioptr, &emu, &emulator_screen_rect, &tile_screen_rect, run_once);
 				SDL_DestroyTexture(screen_tex);
 				screen_tex = SDL_CreateTextureFromSurface(renderer, emu.gpu->screen);
 				SDL_SetTextureScaleMode(screen_tex, SDL_SCALEMODE_NEAREST);
@@ -517,22 +433,46 @@ int debugger_run(char* rom_path, char* bootrom_path) {
 				tile_tex = SDL_CreateTextureFromSurface(renderer, emu.gpu->tile_screen);
 				SDL_SetTextureScaleMode(tile_tex, SDL_SCALEMODE_NEAREST);
 				emu.should_draw = false;
+				SDL_SetRenderDrawColorFloat(renderer, clear_color.x, clear_color.y, clear_color.z, clear_color.w);
+				SDL_RenderClear(renderer);
+				ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), renderer);
+				SDL_RenderTexture(renderer, screen_tex, nullptr, &emulator_screen_rect);
+				SDL_RenderTexture(renderer, tile_tex, nullptr, &tile_screen_rect);
+				SDL_RenderPresent(renderer);
+				SDL_Delay(1);
 			}
-			draw_debug_ui(window, renderer, ig_ctx, ioptr, &emu, &emulator_screen_rect, &tile_screen_rect, run_once);
-			SDL_SetRenderDrawColorFloat(renderer, clear_color.x, clear_color.y, clear_color.z, clear_color.w);
-			SDL_RenderClear(renderer);
-			ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), renderer);
-			SDL_RenderTexture(renderer, screen_tex, nullptr, &emulator_screen_rect);
-			SDL_RenderTexture(renderer, tile_tex, nullptr, &tile_screen_rect);
-			SDL_RenderPresent(renderer);
+			run_once = false;
 
-			if (!emu.should_run) {
-				run_once = false;
+		}
+		else {
+			if (timer > 16.6) {
+				while (SDL_PollEvent(&e)) {
+					ImGui_ImplSDL3_ProcessEvent(&e);
+					switch (e.type) {
+					case SDL_EVENT_QUIT:
+					case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
+						goto end;
+					case SDL_EVENT_GAMEPAD_BUTTON_DOWN:
+					case SDL_EVENT_GAMEPAD_BUTTON_UP:
+						if (use_gamepad && gamepad) update_emu_controller(&emu, get_controller_state(gamepad)); // TODO make this logic less ugly. I think I should store SDL_Gamepad here instead of in emulator
+						break;
+					}
+				}
+					draw_debug_ui(window, renderer, ig_ctx, ioptr, &emu, &emulator_screen_rect, &tile_screen_rect, run_once);
+					SDL_SetRenderDrawColorFloat(renderer, clear_color.x, clear_color.y, clear_color.z, clear_color.w);
+					SDL_RenderClear(renderer);
+					ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), renderer);
+					SDL_RenderTexture(renderer, screen_tex, nullptr, &emulator_screen_rect);
+					SDL_RenderTexture(renderer, tile_tex, nullptr, &tile_screen_rect);
+					SDL_RenderPresent(renderer);
+				timer = 0;
+				SDL_Delay(1);
 			}
 		}
 	}
 end:
 	if (create_gbd_log) gbd_log.close();
+	if (gamepad) SDL_CloseGamepad(gamepad);
 	SDL_DestroyTexture(screen_tex);
 	SDL_DestroyTexture(tile_tex);
 	destroy_emulator(&emu);
