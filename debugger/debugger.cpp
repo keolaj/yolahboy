@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <iostream>
+#include <fstream>
 
 extern "C" {
 #include <SDL3/SDL.h>
@@ -75,10 +77,17 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 	if (ImGui::Button("RUN", { 40, 15 })) {
 		emu->should_run = true;
 	}
+
 	ImGui::SameLine();
-	if (ImGui::Button("PAUSE", { 40, 15 })) {
+	if (ImGui::Button("PAUSE", { 40, 15 })) { // TODO make this work while emulator running
 		app_log.AddLog("PAUSE\n");
 		emu->should_run = false;
+	}
+
+	ImGui::SameLine();
+	if (ImGui::Button("RESET", { 40, 15 })) {
+		// destroy_emulator(emu);
+		// init_emulator(emu);
 	}
 
 	ImGui::BeginChild("REGISTERS");
@@ -392,16 +401,18 @@ int debugger_run(args* emu_args) {
 	bool set_run_once = false;
 	SDL_Event e;
 
+	std::ofstream gbd_log;
+
 	while (!quit) {
 
 		if (emu.should_run) {
-			int c = step(&emu);
-			if (c < 0) emu.should_run = false; // if step returns negative the operation failed to execute
-			clocks += c;
-			set_run_once = false;
-
-			if (create_gbd_log) {
-				app_log.AddLog("A:%2hX F:%2hX B:%2hX C:%2hX D:%2hX E:%2hX H:%2hX L:%2hX SP:%4hX PC:%4hX PCMEM:%2hX,%2hX,%2hX,%2hX\n",
+			if (create_gbd_log && emu.memory->in_bios == false) {
+				if (!gbd_log.is_open()) {
+					app_log.AddLog("gbd log file is closed!");
+					gbd_log.open("./gbd_log.txt");
+				}
+				char str_buf[200];
+				sprintf(str_buf, "A:%2hX F:%2hX B:%2hX C:%2hX D:%2hX E:%2hX H:%2hX L:%2hX SP:%4hX PC:%4hX PCMEM:%2hX,%2hX,%2hX,%2hX\n",
 					emu.cpu->registers.a,
 					emu.cpu->registers.f,
 					emu.cpu->registers.b,
@@ -417,7 +428,14 @@ int debugger_run(args* emu_args) {
 					read8(emu.memory, emu.cpu->registers.pc + 2),
 					read8(emu.memory, emu.cpu->registers.pc + 3)
 					);
+				gbd_log << str_buf;
 			}
+
+			int c = step(&emu);
+			if (c < 0) emu.should_run = false; // if step returns negative the operation failed to execute
+			clocks += c;
+			set_run_once = false;
+
 		}
 
 		if (breakpoints[emu.cpu->registers.pc]) {
@@ -462,6 +480,7 @@ int debugger_run(args* emu_args) {
 		}
 	}
 end:
+	if (create_gbd_log) gbd_log.close();
 	destroy_emulator(&emu);
 	destroy_debug_ui(window, renderer, ig_ctx, ioptr);
 	return 0;
