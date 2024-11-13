@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include "cpu2.h"
+#include "../debugger/imgui_custom_widget_wrapper.h"
 
 
 void init_cpu(Cpu* cpu) {
@@ -17,19 +18,19 @@ void init_cpu(Cpu* cpu) {
 Cpu* create_cpu() {
 	Cpu* ret = (Cpu*)malloc(sizeof(Cpu));
 	if (ret == NULL) {
-		printf("could not allocate cpu");
+		AddLog("could not allocate cpu");
 		return NULL;
 	}
 	init_cpu(ret);
 	return ret;
 }
 void print_registers(Cpu* cpu) {
-	printf("af: 0x%04X\n", cpu->registers.af);
-	printf("bc: 0x%04X\n", cpu->registers.bc);
-	printf("de: 0x%04X\n", cpu->registers.de);
-	printf("hl: 0x%04X\n", cpu->registers.hl);
-	printf("sp: 0x%04X\n", cpu->registers.sp);
-	printf("pc: 0x%04X\n", cpu->registers.pc);
+	AddLog("af: 0x%04hX\n", cpu->registers.af);
+	AddLog("bc: 0x%04hX\n", cpu->registers.bc);
+	AddLog("de: 0x%04hX\n", cpu->registers.de);
+	AddLog("hl: 0x%04hX\n", cpu->registers.hl);
+	AddLog("sp: 0x%04hX\n", cpu->registers.sp);
+	AddLog("pc: 0x%04hX\n", cpu->registers.pc);
 }
 
 void update_IME(Cpu* cpu, bool value) {
@@ -149,7 +150,7 @@ void JP_impl(Cpu* cpu, Memory* mem, Operation* op) {
 			break;
 		}
 		default:
-			printf("unimplemented jump");
+			AddLog("unimplemented jump");
 			assert(false);
 		}
 	}
@@ -177,7 +178,7 @@ void INC_impl(Cpu* cpu, Memory* mem, Operation* op) {
 		break;
 	}
 	default:
-		printf("unimplemented increment");
+		AddLog("unimplemented increment");
 		assert(false);
 	}
 }
@@ -204,7 +205,7 @@ void DEC_impl(Cpu* cpu, Memory* mem, Operation* op) {
 		break;
 	}
 	default:
-		printf("unimplemented dec");
+		AddLog("unimplemented dec");
 	}
 }
 
@@ -222,7 +223,7 @@ void XOR_impl(Cpu* cpu, Memory* mem, Operation* op) {
 	//	break;
 	//}
 	//default:
-	//	printf("unimplemented dest_addr_mode\t");
+	//	AddLog("unimplemented dest_addr_mode\t");
 	//	print_operation(*op);
 	//	assert(false);
 	//}
@@ -334,11 +335,11 @@ Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op) {
 	++cpu->registers.pc;
 
 	if (cpu->registers.pc - 1 == 0x2cd && false) { // works to here
-		printf("BREAKPOINT!!! REGISTERS: \n");
+		AddLog("BREAKPOINT!!! REGISTERS: \n");
 		--cpu->registers.pc;
 		print_registers(cpu);
-		printf("IE: 0x%04X\n", read8(mem, IE));
-		printf("BGP: 0x%04X\n", read8(mem, BGP));
+		AddLog("IE: 0x%04X\n", read8(mem, IE));
+		AddLog("BGP: 0x%04X\n", read8(mem, BGP));
 		++cpu->registers.pc;
 	}
 
@@ -442,7 +443,7 @@ Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op) {
 	default:
 		--cpu->registers.pc;
 		print_registers(cpu);
-		printf("unimplemented operation type\t");
+		AddLog("unimplemented operation type\t");
 		print_operation(op);
 		return (Cycles) { -1, -1 };
 	}

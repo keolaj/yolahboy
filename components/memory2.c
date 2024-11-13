@@ -4,6 +4,7 @@
 #include <string.h>
 #include "memory2.h"
 #include "controller.h"
+#include "../debugger/imgui_custom_widget_wrapper.h"
 
 Memory* create_memory(const char* bootrom_path, const char* rom_path) {
 	Memory* ret = (Memory*)malloc(sizeof(Memory));
@@ -38,6 +39,7 @@ u8 read8(Memory* mem, u16 address) {
 		u8 j_ret = joypad_return(mem->controller, mem->memory[address]);
 		return j_ret; // joypad emulation for now
 	}
+	// if (address == 0xFF44) return 0x90; // this is for gameboy doctor TODO: add settings struct to emulator to conditionally control this
 	return mem->memory[address];
 }
 
@@ -71,8 +73,9 @@ void write8(Memory* mem, u16 address, u8 data) {
 		}
 	}
 	if (address == 0xFF02 && data == 0x81) {
-		printf("%c", read8(mem, 0xff01));
+		AddLog("%c", read8(mem, 0xff01));
 	}
+
 }
 
 int load_bootrom(Memory* mem, const char* path) {

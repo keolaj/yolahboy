@@ -45,6 +45,8 @@ void init_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 }	
 
 ExampleAppLog app_log;
+extern void* app_log_p = &app_log;
+static bool create_gbd_log = false;
 
 void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_ctx, ImGuiIO* ioptr, Emulator* emu, SDL_FRect* emulator_screen_rect, SDL_FRect* tile_screen_rect, bool run_once) {
 
@@ -73,6 +75,10 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 	ImGui::Begin("DEBUGGER", NULL, ImGuiWindowFlags_NoResize);
 	if (ImGui::Button("RUN", { 40, 15 })) {
 		emu->should_run = true;
+	}
+	ImGui::SameLine();
+	if (ImGui::Button("PAUSE", { 40, 15 })) {
+		emu->should_run = false;
 	}
 
 	ImGui::BeginChild("REGISTERS");
@@ -218,7 +224,7 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 	}
 	if (ImGui::BeginTabItem("SETTINGS")) {
 		// TODO
-		ImGui::Text("Settings");
+		ImGui::Checkbox("Create GameboyDoctor Log", &create_gbd_log);
 		ImGui::EndTabItem();
 	}
 
@@ -390,9 +396,28 @@ int debugger_run(args* emu_args) {
 
 		if (emu.should_run) {
 			int c = step(&emu);
-			if (c < 0) goto end; // if step returns negative the operation failed to execute
+			if (c < 0) emu.should_run = false; // if step returns negative the operation failed to execute
 			clocks += c;
 			set_run_once = false;
+
+			if (create_gbd_log) {
+				app_log.AddLog("A:%2hX F:%2hX B:%2hX C:%2hX D:%2hX E:%2hX H:%2hX L:%2hX SP:%4hX PC:%4hX PCMEM:%2hX,%2hX,%2hX,%2hX\n",
+					emu.cpu->registers.a,
+					emu.cpu->registers.f,
+					emu.cpu->registers.b,
+					emu.cpu->registers.c,
+					emu.cpu->registers.d,
+					emu.cpu->registers.e,
+					emu.cpu->registers.h,
+					emu.cpu->registers.l,
+					emu.cpu->registers.sp,
+					emu.cpu->registers.pc,
+					read8(emu.memory, emu.cpu->registers.pc),
+					read8(emu.memory, emu.cpu->registers.pc + 1),
+					read8(emu.memory, emu.cpu->registers.pc + 2),
+					read8(emu.memory, emu.cpu->registers.pc + 3)
+					);
+			}
 		}
 
 		if (breakpoints[emu.cpu->registers.pc]) {
@@ -402,12 +427,8 @@ int debugger_run(args* emu_args) {
 				set_run_once = true;
 				app_log.AddLog("BREAKPOINT! 0x%04hX\n", emu.cpu->registers.pc);
 			}
-		}
-
-		if (clocks > 29780 || !emu.should_run) {
+		} if (clocks > 29780 || !emu.should_run) {
 			while (SDL_PollEvent(&e)) {
-				ImGui_ImplSDL3_ProcessEvent(&e);
-
 				switch (e.type) {
 				case SDL_EVENT_QUIT:
 				case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
@@ -417,9 +438,9 @@ int debugger_run(args* emu_args) {
 					update_emu_controller(&emu, get_controller_state(emu.game_controller)); // TODO make this logic less ugly. I think I should store SDL_Gamepad here instead of in emulator
 					break;
 				}
+				ImGui_ImplSDL3_ProcessEvent(&e);
 			}
 			if (!emu.should_run) {
-				draw_debug_ui(window, renderer, ig_ctx, ioptr, &emu, &emulator_screen_rect, &tile_screen_rect, run_once);
 				run_once = false;
 			}
 			if (clocks > 29780) {
@@ -431,6 +452,7 @@ int debugger_run(args* emu_args) {
 				SDL_SetTextureScaleMode(tile_tex, SDL_SCALEMODE_NEAREST);
 				clocks = 0;
 			}
+			draw_debug_ui(window, renderer, ig_ctx, ioptr, &emu, &emulator_screen_rect, &tile_screen_rect, run_once);
 			SDL_SetRenderDrawColorFloat(renderer, clear_color.x, clear_color.y, clear_color.z, clear_color.w);
 			SDL_RenderClear(renderer);
 			ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), renderer);

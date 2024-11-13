@@ -8,6 +8,7 @@
 #include "operations.h"
 #include "controller.h"
 #include "gpu2.h"
+#include "../debugger/imgui_custom_widget_wrapper.h"
 
 #include <SDL3/SDL.h>
 
@@ -23,47 +24,48 @@ int init_emulator(Emulator* emu, const char* bootrom_path, const char* rom_path,
 	// emu->emulator_window = SDL_CreateWindow("YolahBoy", SCREEN_WIDTH * 2, SCREEN_HEIGHT * 2, 0);
 	//if (!emu->emulator_window) {
 	//	SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't set create renderer: %s\n", SDL_GetError());
-	//	printf("create render error");
+	//	AddLog("create render error");
 	//	// todo cleanup bs
 	//}
 
 	//emu->emulator_renderer = SDL_CreateRenderer(emu->emulator_window, NULL);
 	//if (!emu->emulator_renderer) {
 	//	SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't set create renderer: %s\n", SDL_GetError());
-	//	printf("create render error");
+	//	AddLog("create render error");
 	//}
 
 	//emu->tile_window = SDL_CreateWindow("YolahBoy tiles", TILES_X * 8 * 2, TILES_Y * 8 * 2, 0);
 	//if (!emu->tile_window) {
-	//	printf("create render error");
+	//	AddLog("create render error");
 	//}
 	//if (SDL_SetWindowMinimumSize(emu->tile_window, 0, 0)) {
 
 	//}
 	//else {
-	//	printf("couldn't resize tile window!");
+	//	AddLog("couldn't resize tile window!");
 	//}
 
 
 	//emu->tile_renderer = SDL_CreateRenderer(emu->tile_window, NULL);
 	//if (!emu->tile_renderer) {
 	//	SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Couldn't set create renderer: %s\n", SDL_GetError());
-	//	printf("create render error");
+	//	AddLog("create render error");
 	//}
 
-	int num_joysticks;
+	int num_joysticks = 0;
 	SDL_JoystickID* joysticks = SDL_GetJoysticks(&num_joysticks);
 
-	if (joysticks) {
+	if (num_joysticks) {
 		emu->game_controller = SDL_OpenGamepad(joysticks[0]);
 		if (emu->game_controller == NULL) {
-			printf("Unable to open game controller! SDL Error: %s", SDL_GetError());
+			AddLog("Unable to open game controller! SDL Error: %s", SDL_GetError());
 		}
-		SDL_free(joysticks);
 	}
 	else {
-		printf("no joystick connected!");
+		AddLog("no joysticks connected!");
 	}
+	SDL_free(joysticks);
+
 
 
 	if (emu->cpu == NULL || emu->memory == NULL || emu->gpu == NULL || emu->controller == NULL) return -1; // make this actually clean things up

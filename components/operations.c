@@ -1,5 +1,6 @@
 #include "operations.h"
 #include "memory2.h"
+#include "../debugger/imgui_custom_widget_wrapper.h"
 #include <stdio.h>
 
 Operation operations[0x100] = {
@@ -395,7 +396,7 @@ Operation cb_operations[0x100] = {
 };
 
 void print_operation(Operation op) {
-	printf("0x%02X: \t%s\n", op.opcode, op.mnemonic);
+	AddLog("0x%02X: \t%s\n", op.opcode, op.mnemonic);
 }
 
 void push(Cpu* cpu, Memory* mem, u16 value) {

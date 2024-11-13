@@ -102,7 +102,7 @@ args* create_args(int argc, char** argv) {
 //}
 
 int main(int argc, const char** argv) {
-	if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMEPAD)) {
+	if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMEPAD | SDL_INIT_JOYSTICK)) {
 		printf("could not initialize sdl! (%s)", SDL_GetError());
 		return -1;
 	}
