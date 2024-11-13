@@ -102,7 +102,8 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 	}
 
 	ImGui::SameLine();
-	if (ImGui::Button("PAUSE", { 40, 15 })) { // TODO make this work while emulator running
+	ImGui::Button("PAUSE", { 40, 15 });
+	if (ImGui::IsItemClicked()) { // for some reason this is how I got it to work...
 		app_log.AddLog("PAUSE\n");
 		emu->should_run = false;
 	}
