@@ -21,14 +21,7 @@ extern "C" {
 #include "../imgui_memory_editor.h"
 #include "./imgui_custom_widgets.h"
 
-
 bool breakpoints[0x10000];
-ImVec4 clear_color = {
-		0.45f,
-		0.55f,
-		0.60f,
-		1.00f
-};
 
 void init_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_ctx, ImGuiIO* ioptr) {
 	if (ig_ctx == NULL) {
@@ -44,7 +37,7 @@ void init_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 		ioptr->ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
 	}
 
-}	
+}
 
 extern ExampleAppLog app_log;
 static bool create_gbd_log = false;
@@ -157,7 +150,7 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 
 	static int GOTO_Y = 50;
 
-	ImGui::SetNextWindowSize({ ImGui::GetContentRegionMax().x, ImGui::GetContentRegionMax().y - GOTO_Y});
+	ImGui::SetNextWindowSize({ ImGui::GetContentRegionMax().x, ImGui::GetContentRegionMax().y - GOTO_Y });
 	ImGui::BeginChild("INST_VIEW");
 	clipper.Begin(0x10000);
 	while (clipper.Step()) {
@@ -206,12 +199,12 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 	}
 	ImGui::EndChild();
 	ImGui::BeginChild("GOTO"); // TODO make this work
-	static char goto_buf[5] = {0};
+	static char goto_buf[5] = { 0 };
 	ImGui::InputText("##GOTO", goto_buf, 5);
 	ImGui::SameLine();
 	if (ImGui::Button("GOTO")) {
 		int to = atoi(goto_buf);
-		float item_pos_y = clipper.ItemsHeight * (to) + clipper.ItemsHeight;
+		float item_pos_y = clipper.ItemsHeight * (to)+clipper.ItemsHeight;
 		ImGui::SetScrollY(item_pos_y); // need to find out how to scroll sibling window
 
 	}
@@ -363,6 +356,7 @@ void destroy_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* 
 //}
 
 int debugger_run(args* emu_args) {
+
 	SDL_Window* window = SDL_CreateWindow("Yolahboy Debugger", 850, 600, 0);
 	SDL_Renderer* renderer = SDL_CreateRenderer(window, NULL);
 	SDL_Texture* screen_tex;
@@ -370,6 +364,12 @@ int debugger_run(args* emu_args) {
 	SDL_FRect emulator_screen_rect{ 0, 0, 160, 144 };
 	SDL_FRect tile_screen_rect{ 0, 0, 128, 192 };
 
+	ImVec4 clear_color = {
+			0.45f,
+			0.55f,
+			0.60f,
+			1.00f
+	};
 
 	if (window == NULL) {
 		printf("could not initialize debugger window");
@@ -384,11 +384,31 @@ int debugger_run(args* emu_args) {
 
 	Emulator emu;
 	if (init_emulator(&emu, emu_args->argv[1], emu_args->argv[2], emu_args->breakpoint_arr) < 0) {
+		SDL_DestroyWindow(window);
+		SDL_DestroyRenderer(renderer);
 		destroy_emulator(&emu);
 		return -1;
 	}
+
 	screen_tex = SDL_CreateTextureFromSurface(renderer, emu.gpu->screen);
 	tile_tex = SDL_CreateTextureFromSurface(renderer, emu.gpu->tile_screen);
+
+	/*
+		int num_joysticks = 0;
+	SDL_JoystickID* joysticks = SDL_GetJoysticks(&num_joysticks);
+
+	if (num_joysticks) {
+		emu->game_controller = SDL_OpenGamepad(joysticks[0]);
+		if (emu->game_controller == NULL) {
+			AddLog("Unable to open game controller! SDL Error: %s", SDL_GetError());
+		}
+	}
+	else {
+		AddLog("no joysticks connected!");
+	}
+	SDL_free(joysticks);
+
+	*/
 
 	ImGuiContext* ig_ctx = NULL;
 	ImGuiIO* ioptr = NULL;
@@ -427,7 +447,7 @@ int debugger_run(args* emu_args) {
 					read8(emu.memory, emu.cpu->registers.pc + 1),
 					read8(emu.memory, emu.cpu->registers.pc + 2),
 					read8(emu.memory, emu.cpu->registers.pc + 3)
-					);
+				);
 				gbd_log << str_buf;
 			}
 
@@ -474,6 +494,7 @@ int debugger_run(args* emu_args) {
 			SDL_RenderTexture(renderer, screen_tex, nullptr, &emulator_screen_rect);
 			SDL_RenderTexture(renderer, tile_tex, nullptr, &tile_screen_rect);
 			SDL_RenderPresent(renderer);
+
 			if (!emu.should_run) {
 				run_once = false;
 			}
@@ -481,6 +502,8 @@ int debugger_run(args* emu_args) {
 	}
 end:
 	if (create_gbd_log) gbd_log.close();
+	SDL_DestroyTexture(screen_tex);
+	SDL_DestroyTexture(tile_tex);
 	destroy_emulator(&emu);
 	destroy_debug_ui(window, renderer, ig_ctx, ioptr);
 	return 0;

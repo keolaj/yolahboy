@@ -152,13 +152,7 @@ typedef struct {
 	Memory* memory;
 	Gpu* gpu;
 	Controller* controller;
-	// SDL_Window* emulator_window;
-	// SDL_Window* tile_window;
-	// SDL_Renderer* emulator_renderer;
-	// SDL_Renderer* tile_renderer;
-	SDL_Gamepad* game_controller;
-	int* breakpoints;
-	bool should_quit;
+	int clock;
 	bool should_run;
-	bool draw;
+	bool should_draw;
 } Emulator;
