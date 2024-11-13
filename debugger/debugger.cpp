@@ -41,6 +41,7 @@ void init_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 
 extern ExampleAppLog app_log;
 static bool create_gbd_log = false;
+static bool use_gamepad = true;
 
 void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_ctx, ImGuiIO* ioptr, Emulator* emu, SDL_FRect* emulator_screen_rect, SDL_FRect* tile_screen_rect, bool run_once) {
 
@@ -227,6 +228,7 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 	if (ImGui::BeginTabItem("SETTINGS")) {
 		// TODO
 		ImGui::Checkbox("Create GameboyDoctor Log", &create_gbd_log);
+		ImGui::Checkbox("Use Gamepad", &use_gamepad);
 		ImGui::EndTabItem();
 	}
 
@@ -359,8 +361,9 @@ int debugger_run(args* emu_args) {
 
 	SDL_Window* window = SDL_CreateWindow("Yolahboy Debugger", 850, 600, 0);
 	SDL_Renderer* renderer = SDL_CreateRenderer(window, NULL);
-	SDL_Texture* screen_tex;
-	SDL_Texture* tile_tex;
+	SDL_Texture* screen_tex = NULL;
+	SDL_Texture* tile_tex = NULL;
+	SDL_Gamepad* gamepad = NULL;
 	SDL_FRect emulator_screen_rect{ 0, 0, 160, 144 };
 	SDL_FRect tile_screen_rect{ 0, 0, 128, 192 };
 
@@ -383,7 +386,7 @@ int debugger_run(args* emu_args) {
 	}
 
 	Emulator emu;
-	if (init_emulator(&emu, emu_args->argv[1], emu_args->argv[2], emu_args->breakpoint_arr) < 0) {
+	if (init_emulator(&emu, emu_args->argv[1], emu_args->argv[2]) < 0) {
 		SDL_DestroyWindow(window);
 		SDL_DestroyRenderer(renderer);
 		destroy_emulator(&emu);
@@ -393,30 +396,12 @@ int debugger_run(args* emu_args) {
 	screen_tex = SDL_CreateTextureFromSurface(renderer, emu.gpu->screen);
 	tile_tex = SDL_CreateTextureFromSurface(renderer, emu.gpu->tile_screen);
 
-	/*
-		int num_joysticks = 0;
-	SDL_JoystickID* joysticks = SDL_GetJoysticks(&num_joysticks);
-
-	if (num_joysticks) {
-		emu->game_controller = SDL_OpenGamepad(joysticks[0]);
-		if (emu->game_controller == NULL) {
-			AddLog("Unable to open game controller! SDL Error: %s", SDL_GetError());
-		}
-	}
-	else {
-		AddLog("no joysticks connected!");
-	}
-	SDL_free(joysticks);
-
-	*/
-
 	ImGuiContext* ig_ctx = NULL;
 	ImGuiIO* ioptr = NULL;
 
 	init_debug_ui(window, renderer, ig_ctx, ioptr);
 
 	bool quit = false;
-	int clocks = 0;
 	bool run_once = false;
 	bool set_run_once = false;
 	SDL_Event e;
@@ -424,6 +409,22 @@ int debugger_run(args* emu_args) {
 	std::ofstream gbd_log;
 
 	while (!quit) {
+
+		if (use_gamepad && gamepad == NULL) {
+			int num_joysticks = 0;
+			SDL_JoystickID* joysticks = SDL_GetJoysticks(&num_joysticks);
+
+			if (num_joysticks) {
+				gamepad = SDL_OpenGamepad(joysticks[0]);
+				if (gamepad == NULL) {
+					app_log.AddLog("Unable to open game controller! SDL Error: %s", SDL_GetError());
+				}
+			}
+			else {
+				app_log.AddLog("no joysticks connected!");
+			}
+			SDL_free(joysticks);
+		}
 
 		if (emu.should_run) {
 			if (create_gbd_log && emu.memory->in_bios == false) {
@@ -450,10 +451,7 @@ int debugger_run(args* emu_args) {
 				);
 				gbd_log << str_buf;
 			}
-
-			int c = step(&emu);
-			if (c < 0) emu.should_run = false; // if step returns negative the operation failed to execute
-			clocks += c;
+			if (step(&emu) < 0) emu.should_run = false; // if step returns negative the operation failed to execute
 			set_run_once = false;
 
 		}
@@ -465,7 +463,8 @@ int debugger_run(args* emu_args) {
 				set_run_once = true;
 				app_log.AddLog("BREAKPOINT! 0x%04hX\n", emu.cpu->registers.pc);
 			}
-		} if (clocks > 29780 || !emu.should_run) {
+		}
+		if (emu.should_draw || !emu.should_run) {
 			while (SDL_PollEvent(&e)) {
 				switch (e.type) {
 				case SDL_EVENT_QUIT:
@@ -473,19 +472,19 @@ int debugger_run(args* emu_args) {
 					goto end;
 				case SDL_EVENT_GAMEPAD_BUTTON_DOWN:
 				case SDL_EVENT_GAMEPAD_BUTTON_UP:
-					update_emu_controller(&emu, get_controller_state(emu.game_controller)); // TODO make this logic less ugly. I think I should store SDL_Gamepad here instead of in emulator
+					if (use_gamepad && gamepad) update_emu_controller(&emu, get_controller_state(gamepad)); // TODO make this logic less ugly. I think I should store SDL_Gamepad here instead of in emulator
 					break;
 				}
 				ImGui_ImplSDL3_ProcessEvent(&e);
 			}
-			if (clocks > 29780) {
+			if (emu.should_draw) {
 				SDL_DestroyTexture(screen_tex);
 				screen_tex = SDL_CreateTextureFromSurface(renderer, emu.gpu->screen);
 				SDL_SetTextureScaleMode(screen_tex, SDL_SCALEMODE_NEAREST);
 				SDL_DestroyTexture(tile_tex);
 				tile_tex = SDL_CreateTextureFromSurface(renderer, emu.gpu->tile_screen);
 				SDL_SetTextureScaleMode(tile_tex, SDL_SCALEMODE_NEAREST);
-				clocks = 0;
+				emu.should_draw = false;
 			}
 			draw_debug_ui(window, renderer, ig_ctx, ioptr, &emu, &emulator_screen_rect, &tile_screen_rect, run_once);
 			SDL_SetRenderDrawColorFloat(renderer, clear_color.x, clear_color.y, clear_color.z, clear_color.w);

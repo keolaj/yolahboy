@@ -22,7 +22,7 @@ int init_emulator(Emulator* emu, const char* bootrom_path, const char* rom_path)
 
 	if (emu->cpu == NULL || emu->memory == NULL || emu->gpu == NULL || emu->controller == NULL) {
 		destroy_emulator(emu);
-		return -1; // make this actually clean things up
+		return -1;
 	}
 	set_gpu(emu->memory, emu->gpu);
 	return 0;
@@ -36,8 +36,16 @@ void update_emu_controller(Emulator* emu, Controller controller) {
 int step(Emulator* emu) {
 	Operation to_exec = get_operation(emu->cpu, emu->memory);
 	Cycles c = step_cpu(emu->cpu, emu->memory, to_exec);
+	if (c.t_cycles < 0) {
+		return -1; // push error to whatever is using emulator
+	}
+	emu->clock += c.t_cycles;
 	step_gpu(emu->gpu, c.t_cycles);
-	return c.t_cycles;
+	if (emu->clock > 29780) {
+		emu->clock = 0;
+		emu->should_draw = true;
+	}
+	return 0;
 }
 
 
