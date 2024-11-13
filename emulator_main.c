@@ -9,9 +9,9 @@
 //#include "components/emulator.h"
 //#include "components/operations.h"
 //#include "components/operation_defitions.h"
-//#include "components/cpu2.h"
-//#include "components/memory2.h"
-//#include "components/gpu2.h"
+//#include "components/cpu.h"
+//#include "components/memory.h"
+//#include "components/gpu.h"
 //
 //// extern Emulator emu;
 //extern LPHANDLE emu_breakpoint_event;

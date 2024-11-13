@@ -6,7 +6,7 @@ extern "C" {
 #include "../components/global_definitions.h"
 #include "../components/emulator.h"
 #include "../components/controller.h"
-#include "../components/memory2.h"
+#include "../components/memory.h"
 #include "../components/operations.h"
 #include "../components/operation_defitions.h"
 	extern Operation operations[];
@@ -44,8 +44,7 @@ void init_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 
 }	
 
-ExampleAppLog app_log;
-extern void* app_log_p = &app_log;
+extern ExampleAppLog app_log;
 static bool create_gbd_log = false;
 
 void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_ctx, ImGuiIO* ioptr, Emulator* emu, SDL_FRect* emulator_screen_rect, SDL_FRect* tile_screen_rect, bool run_once) {
@@ -78,6 +77,7 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 	}
 	ImGui::SameLine();
 	if (ImGui::Button("PAUSE", { 40, 15 })) {
+		app_log.AddLog("PAUSE\n");
 		emu->should_run = false;
 	}
 
@@ -191,7 +191,7 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 			}
 		}
 		if (run_once) {
-			float item_pos_y = clipper.ItemsHeight * (emu->cpu->registers.pc) + clipper.ItemsHeight;
+			float item_pos_y = clipper.ItemsHeight * (emu->cpu->registers.pc) + (clipper.ItemsHeight * 0.5);
 			ImGui::SetScrollY(item_pos_y);
 		}
 	}
@@ -440,9 +440,6 @@ int debugger_run(args* emu_args) {
 				}
 				ImGui_ImplSDL3_ProcessEvent(&e);
 			}
-			if (!emu.should_run) {
-				run_once = false;
-			}
 			if (clocks > 29780) {
 				SDL_DestroyTexture(screen_tex);
 				screen_tex = SDL_CreateTextureFromSurface(renderer, emu.gpu->screen);
@@ -459,6 +456,9 @@ int debugger_run(args* emu_args) {
 			SDL_RenderTexture(renderer, screen_tex, nullptr, &emulator_screen_rect);
 			SDL_RenderTexture(renderer, tile_tex, nullptr, &tile_screen_rect);
 			SDL_RenderPresent(renderer);
+			if (!emu.should_run) {
+				run_once = false;
+			}
 		}
 	}
 end:

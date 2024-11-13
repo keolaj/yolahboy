@@ -5,7 +5,8 @@
 #include <stdlib.h>
 #include <stdarg.h>
 
-extern void* app_log_p;
+ExampleAppLog app_log;
+extern void* app_log_p = &app_log;
 
 int vasprintf(char** strp, const char* fmt, va_list ap)
 {

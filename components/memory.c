@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <string.h>
-#include "memory2.h"
+#include "memory.h"
 #include "controller.h"
 #include "../debugger/imgui_custom_widget_wrapper.h"
 

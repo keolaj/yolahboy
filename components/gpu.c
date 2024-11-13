@@ -1,4 +1,4 @@
-#include "gpu2.h"
+#include "gpu.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>

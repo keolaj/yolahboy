@@ -2,7 +2,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include "cpu_definitions.h"
-#include "memory2.h"
+#include "memory.h"
 #include "operations.h"
 #include "controller.h"
 

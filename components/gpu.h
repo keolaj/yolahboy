@@ -1,7 +1,7 @@
 #pragma once
 #include "global_definitions.h"
 #include "gpu_definitions.h"
-#include "memory2.h"
+#include "memory.h"
 
 
 Gpu* create_gpu(Memory* mem);

@@ -3,11 +3,11 @@
 #include "emulator.h"
 #include "global_definitions.h"
 #include "controller.h"
-#include "cpu2.h"
-#include "memory2.h"
+#include "cpu.h"
+#include "memory.h"
 #include "operations.h"
 #include "controller.h"
-#include "gpu2.h"
+#include "gpu.h"
 #include "../debugger/imgui_custom_widget_wrapper.h"
 
 #include <SDL3/SDL.h>

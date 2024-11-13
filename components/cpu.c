@@ -1,6 +1,6 @@
 #include <stdlib.h>
 #include <assert.h>
-#include "cpu2.h"
+#include "cpu.h"
 #include "../debugger/imgui_custom_widget_wrapper.h"
 
 
