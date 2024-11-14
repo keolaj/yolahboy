@@ -856,7 +856,19 @@ u16 get_source_16(Cpu* cpu, Memory* mem, Operation* op) {
 	switch (op->source_addr_mode) {
 	case REGISTER16:
 		if (op->source == SP_ADD_I8) {
-			alu16_return alu_ret = run_alu16(cpu, *get_reg16_from_type(cpu, op->source), read8(mem, cpu->registers.pc++), ADD, MEM_READ, op->flag_actions);
+			u8 val = read8(mem, cpu->registers.pc++);
+			i8 relative;
+
+			if (val > 127) {
+				val = ~val + 1;
+				relative = -*(i8*)&val;
+			}
+			else {
+				relative = *(i8*)&val;
+			}
+
+
+			alu16_return alu_ret = run_alu16(cpu, *get_reg16_from_type(cpu, op->source), (i16)relative, ADD, MEM_READ, op->flag_actions);
 			sourceVal = alu_ret.result;
 			cpu->registers.f = alu_ret.flags;
 			break;
