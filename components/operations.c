@@ -161,8 +161,8 @@ Operation operations[0x100] = {
 [0x96] = { "SUB A, (HL)", SUB, REGISTER, ADDRESS_R16, A, HL, 0, 0, 2, 8, {DEPENDENT, SET, DEPENDENT, DEPENDENT} },
 [0xD6] = { "SUB A, u8", SUB, REGISTER, MEM_READ, A, U8, 0, 0, 2, 8, {DEPENDENT, SET, DEPENDENT, DEPENDENT} },
 
-[0x99] = {"SBC A, C", SBC, REGISTER, REGISTER, A, C, 0, 0, 1, 4, {DEPENDENT, SET, DEPENDENT, DEPENDENT}}, 
-[0xDE] = {"SBC A, u8", SBC, REGISTER, MEM_READ, A, U8, 0, 0, 2, 8, {DEPENDENT, SET, DEPENDENT, DEPENDENT}}, 
+[0x99] = {"SBC A, C", SBC, REGISTER, REGISTER, A, C, 0, 0, 1, 4, {DEPENDENT, SET, DEPENDENT, DEPENDENT}},
+[0xDE] = {"SBC A, u8", SBC, REGISTER, MEM_READ, A, U8, 0, 0, 2, 8, {DEPENDENT, SET, DEPENDENT, DEPENDENT}},
 
 // CP
 [0xB8] = { "CP A, B", CP, REGISTER, REGISTER, A, B, 0, 0, 2, 8, {DEPENDENT, SET, DEPENDENT, DEPENDENT} },
@@ -272,9 +272,9 @@ Operation operations[0x100] = {
 [0xD9] = {"RETI", RETI, ADDR_MODE_NONE, ADDR_MODE_NONE, OPERAND_NONE, OPERAND_NONE, CONDITION_NONE, SECONDARY_NONE, 1, 16},
 // MISC
 [0xCB] = {"PREFIX CB", CB, MEM_READ, ADDR_MODE_NONE, OPERAND_NONE, OPERAND_NONE, 0, 0, 1, 4},
-[0x27] = {"DAA", DAA, 0, 0, 0, 0, 0, 0, 1, 4}, 
-[0x3F] = {"CCF", CCF, 0, 0, 0, 0, 0, 0, 1, 4}, 
-[0x1F] = {"RRA", RR, REGISTER, ADDR_MODE_NONE, A, OPERAND_NONE, 0, 0, 1, 4, {RESET, RESET, RESET, DEPENDENT}}, 
+[0x27] = {"DAA", DAA, 0, 0, 0, 0, 0, 0, 1, 4},
+[0x3F] = {"CCF", CCF, 0, 0, 0, 0, 0, 0, 1, 4},
+[0x1F] = {"RRA", RR, REGISTER, ADDR_MODE_NONE, A, OPERAND_NONE, 0, 0, 1, 4, {RESET, RESET, RESET, DEPENDENT}},
 [0x07] = {"RLCA", RLC, REGISTER, ADDR_MODE_NONE, A, OPERAND_NONE, 0, 0, 1, 4, {RESET, RESET, RESET, DEPENDENT}},
 
 [0xFB] = {"EI", EI, 0, 0, 0, 0, 0, 0, 1, 4},
@@ -367,18 +367,18 @@ Operation cb_operations[0x100] = {
 
 	// SLA
 	[0x27] = {"SLA A", SLA, REGISTER, ADDR_MODE_NONE, A, OPERAND_NONE, 0, 0, 2, 8, {DEPENDENT, RESET, RESET, DEPENDENT}},
-	
+
 	// SRA
-	[0x3A] = {"SRA D", SRA, REGISTER, ADDR_MODE_NONE, D, OPERAND_NONE, 0, 0, 2, 8, {DEPENDENT, RESET, RESET, DEPENDENT}}, 
+	[0x3A] = {"SRA D", SRA, REGISTER, ADDR_MODE_NONE, D, OPERAND_NONE, 0, 0, 2, 8, {DEPENDENT, RESET, RESET, DEPENDENT}},
 
 	// SRL
-	[0x3F] = {"SRL A", SRL, REGISTER, ADDR_MODE_NONE, A, OPERAND_NONE, 0, 0, 2, 8, {DEPENDENT, RESET, RESET, DEPENDENT}}, 
-	[0x38] = {"SRL B", SRL, REGISTER, ADDR_MODE_NONE, B, OPERAND_NONE, 0, 0, 2, 8, {DEPENDENT, RESET, RESET, DEPENDENT}}, 
+	[0x3F] = {"SRL A", SRL, REGISTER, ADDR_MODE_NONE, A, OPERAND_NONE, 0, 0, 2, 8, {DEPENDENT, RESET, RESET, DEPENDENT}},
+	[0x38] = {"SRL B", SRL, REGISTER, ADDR_MODE_NONE, B, OPERAND_NONE, 0, 0, 2, 8, {DEPENDENT, RESET, RESET, DEPENDENT}},
 
 	// RES
 	[0x87] = {"RES 0, A", RES, REGISTER, ADDR_MODE_NONE, A, 0, 0, 0, 2, 8, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
 	[0x86] = {"RES 0, (HL)", RES, ADDRESS_R16, ADDR_MODE_NONE, HL, 0, 0, 0, 2, 16, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
-	
+
 	[0xBE] = {"RES 7, (HL)", RES, ADDRESS_R16, ADDR_MODE_NONE, HL, 7, 0, 0, 2, 16, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
 
 	// SWAP
@@ -391,7 +391,7 @@ Operation cb_operations[0x100] = {
 	[0x35] = {"SWAP L", SWAP, REGISTER, ADDR_MODE_NONE, L, OPERAND_NONE, 0, 0, 2, 8, {DEPENDENT, RESET, RESET, RESET}},
 
 	// SET
-	[0xFE] = {"SET 7, (HL)", SET_OP, ADDRESS_R16, ADDR_MODE_NONE, HL, 7, 0, 0, 2, 16, }, 
+	[0xFE] = {"SET 7, (HL)", SET_OP, ADDRESS_R16, ADDR_MODE_NONE, HL, 7, 0, 0, 2, 16, },
 
 };
 
@@ -565,18 +565,21 @@ alu_return run_alu(Cpu* cpu, u8 x, u8 y, instruction_type type, instruction_flag
 		}
 
 		break;
-	case ADC:
-		if (cpu->registers.f & FLAG_CARRY) {
-			y += 1;
-		}
-		result = x + y;
-		if (((x & 0x0f) + (y & 0x0f)) > 0x0f) { //  half carry			
+	case ADC: {
+		u8 carry = ((cpu->registers.f & FLAG_CARRY) ? 1 : 0);
+		if ((x & 0x0f) + (y & 0x0f) + carry > 0x0f) { //  half carry			
 			new_flags |= FLAG_HALFCARRY;
 		}
-		if ((int)x + (int)y > 255) {
+		if ((int)x + (int)y + carry > 255) {
+
 			new_flags |= FLAG_CARRY;
+
 		}
+
+		result = x + y + carry;
 		break;
+	}
+
 	case SUB:
 	case CP:
 	case DEC:
@@ -590,23 +593,23 @@ alu_return run_alu(Cpu* cpu, u8 x, u8 y, instruction_type type, instruction_flag
 		}
 		break;
 
-	case SBC:
-		if (cpu->registers.f & FLAG_CARRY) {
-			y -= 1;
-		}
-		result = x - y;
-		if ((y & 0x0f) > (x & 0x0f)) { //  half carry (there is a lot of different documentation on this so idk, this matches bgb) 
-			new_flags &= ~FLAG_HALFCARRY;
-		}
-		else {
+	case SBC: {
+		u8 carry = ((cpu->registers.f & FLAG_CARRY) ? 1 : 0);
+		result = x - y - carry;
+		if (((y & 0x0f)) > ((x & 0x0f) - carry)) { //  half carry (there is a lot of different documentation on this so idk, this matches bgb) 
 			new_flags |= FLAG_HALFCARRY;
 		}
-		if ((int)x - (int)y < 0) { //  carry
-			new_flags &= ~FLAG_CARRY;
-		}
 		else {
+			new_flags &= ~FLAG_HALFCARRY;	
+		}
+		if ((int)x - (int)y - carry < 0) { //  carry
 			new_flags |= FLAG_CARRY;
 		}
+		else {
+			new_flags &= ~FLAG_CARRY;
+		}
+		break;
+	}
 
 	case SWAP:
 		result = (x << 4) | (x >> 4);
@@ -635,7 +638,7 @@ alu_return run_alu(Cpu* cpu, u8 x, u8 y, instruction_type type, instruction_flag
 	case RES:
 		result = x & ~(1 << y);
 		break;
-	
+
 	case SLA: {
 		if (x & 0b10000000) new_flags |= FLAG_CARRY;
 		result = x << 1;
