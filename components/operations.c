@@ -31,7 +31,8 @@ Operation operations[0x100] = {
 	[0x44] = {"LD A, H", LD, REGISTER, REGISTER, B, H, 0, 0, 1, 4},
 	[0x45] = {"LD A, L", LD, REGISTER, REGISTER, B, L, 0, 0, 1, 4},
 	[0x46] = {"LD A, (HL)", LD, REGISTER, ADDRESS_R16, B, HL, 0, 0, 1, 8},
-	[0xF0] = {"LD A, (FF00 + u8)", LD, REGISTER, ADDRESS_R8_OFFSET, A, U8, 0, 0, 2, 12},
+	[0xF0] = {"LD A, (FF00 + u8)", LD, REGISTER, MEM_READ_ADDR_OFFSET, A, U8, 0, 0, 2, 12},
+	[0xF2] = {"LD A, (FF00 + C)", LD, REGISTER, ADDRESS_R8_OFFSET, A, C, 0, 0, 1, 8},
 
 	[0x4F] = {"LD C, A", LD, REGISTER, REGISTER, C, A, 0, 0, 1, 4},
 	[0x48] = {"LD C, B", LD, REGISTER, REGISTER, C, B, 0, 0, 1, 4},
@@ -102,6 +103,8 @@ Operation operations[0x100] = {
 	[0x71] = {"LD (HL), C", LD, ADDRESS_R16, REGISTER, HL, C, 0, SECONDARY_NONE, 1, 8 },
 	[0x72] = {"LD (HL), D", LD, ADDRESS_R16, REGISTER, HL, D, 0, SECONDARY_NONE, 1, 8 },
 	[0x73] = {"LD (HL), E", LD, ADDRESS_R16, REGISTER, HL, E, 0, SECONDARY_NONE, 1, 8 },
+	[0x74] = {"LD (HL), H", LD, ADDRESS_R16, REGISTER, HL, H, 0, SECONDARY_NONE, 1, 8 },
+	[0x75] = {"LD (HL), L", LD, ADDRESS_R16, REGISTER, HL, L, 0, SECONDARY_NONE, 1, 8 },
 	[0x36] = {"LD (HL), u8", LD, ADDRESS_R16, MEM_READ, HL, U8, 0, 0, 2, 12},
 
 	// 16 bit loads
@@ -254,12 +257,19 @@ Operation operations[0x100] = {
 
 // CALLS
 [0xCD] = { "CALL u16", CALL, ADDR_MODE_NONE, MEM_READ16, OPERAND_NONE, U16, CONDITION_NONE, SECONDARY_NONE, 3, 24 },
+[0xCC] = { "CALL Z u16", CALL, ADDR_MODE_NONE, MEM_READ16, OPERAND_NONE, U16, CONDITION_Z, ADD_T_12, 3, 12 },
 [0xC4] = { "CALL NZ u16", CALL, ADDR_MODE_NONE, MEM_READ16, OPERAND_NONE, U16, CONDITION_NZ, ADD_T_12, 3, 12 },
+[0xDC] = { "CALL C u16", CALL, ADDR_MODE_NONE, MEM_READ16, OPERAND_NONE, U16, CONDITION_C, ADD_T_12, 3, 12 },
+[0xD4] = { "CALL NC u16", CALL, ADDR_MODE_NONE, MEM_READ16, OPERAND_NONE, U16, CONDITION_NC, ADD_T_12, 3, 12 },
 
 // RST (store rst jump in dest)
+[0xC7] = { "RST 00", RST, ADDR_MODE_NONE, ADDR_MODE_NONE, 0x0, OPERAND_NONE, CONDITION_NONE, SECONDARY_NONE, 1, 16 },
 [0xCF] = { "RST 08", RST, ADDR_MODE_NONE, ADDR_MODE_NONE, 0x8, OPERAND_NONE, CONDITION_NONE, SECONDARY_NONE, 1, 16 },
+[0xD7] = { "RST 10", RST, ADDR_MODE_NONE, ADDR_MODE_NONE, 0x10, OPERAND_NONE, CONDITION_NONE, SECONDARY_NONE, 1, 16 },
 [0xDF] = { "RST 18", RST, ADDR_MODE_NONE, ADDR_MODE_NONE, 0x18, OPERAND_NONE, CONDITION_NONE, SECONDARY_NONE, 1, 16 },
+[0xE7] = { "RST 20", RST, ADDR_MODE_NONE, ADDR_MODE_NONE, 0x20, OPERAND_NONE, CONDITION_NONE, SECONDARY_NONE, 1, 16 },
 [0xEF] = { "RST 28", RST, ADDR_MODE_NONE, ADDR_MODE_NONE, 0x28, OPERAND_NONE, CONDITION_NONE, SECONDARY_NONE, 1, 16 },
+[0xF7] = { "RST 30", RST, ADDR_MODE_NONE, ADDR_MODE_NONE, 0x30, OPERAND_NONE, CONDITION_NONE, SECONDARY_NONE, 1, 16 },
 [0xFF] = { "RST 38", RST, ADDR_MODE_NONE, ADDR_MODE_NONE, 0x38, OPERAND_NONE, CONDITION_NONE, SECONDARY_NONE, 1, 16 },
 
 // RET
@@ -274,6 +284,7 @@ Operation operations[0x100] = {
 [0xCB] = {"PREFIX CB", CB, MEM_READ, ADDR_MODE_NONE, OPERAND_NONE, OPERAND_NONE, 0, 0, 1, 4},
 [0x27] = {"DAA", DAA, 0, 0, 0, 0, 0, 0, 1, 4},
 [0x3F] = {"CCF", CCF, 0, 0, 0, 0, 0, 0, 1, 4},
+[0x37] = {"SCF", SCF, 0, 0, 0, 0, 0, 0, 1, 4},
 [0x1F] = {"RRA", RR, REGISTER, ADDR_MODE_NONE, A, OPERAND_NONE, 0, 0, 1, 4, {RESET, RESET, RESET, DEPENDENT}},
 [0x07] = {"RLCA", RLC, REGISTER, ADDR_MODE_NONE, A, OPERAND_NONE, 0, 0, 1, 4, {RESET, RESET, RESET, DEPENDENT}},
 
@@ -284,13 +295,14 @@ Operation operations[0x100] = {
 Operation cb_operations[0x100] = {
 
 	// BIT B, X // PUT THE BIT YOU ARE COMPARING INTO DEST AND REGISTER INTO SOURCE AND DONT ASK ANY QUESTIONS (if you think about it this actually makes more sense)	
-	[0x47] = { "BIT 0, B", BIT, ADDR_MODE_NONE, REGISTER, 0, B, 0, 0, 2, 8, {DEPENDENT, RESET, SET, _IGNORE} },
-	[0x40] = { "BIT 0, C", BIT, ADDR_MODE_NONE, REGISTER, 0, C, 0, 0, 2, 8, {DEPENDENT, RESET, SET, _IGNORE} },
-	[0x41] = { "BIT 0, D", BIT, ADDR_MODE_NONE, REGISTER, 0, D, 0, 0, 2, 8, {DEPENDENT, RESET, SET, _IGNORE} },
-	[0x42] = { "BIT 0, E", BIT, ADDR_MODE_NONE, REGISTER, 0, E, 0, 0, 2, 8, {DEPENDENT, RESET, SET, _IGNORE} },
-	[0x43] = { "BIT 0, H", BIT, ADDR_MODE_NONE, REGISTER, 0, H, 0, 0, 2, 8, {DEPENDENT, RESET, SET, _IGNORE} },
-	[0x44] = { "BIT 0, L", BIT, ADDR_MODE_NONE, REGISTER, 0, L, 0, 0, 2, 8, {DEPENDENT, RESET, SET, _IGNORE} },
-	[0x45] = { "BIT 0, (HL)", BIT, ADDR_MODE_NONE, ADDRESS_R16, 0, HL, 0, 0, 2, 8, {DEPENDENT, RESET, SET, _IGNORE} },
+	[0x47] = { "BIT 0, A", BIT, ADDR_MODE_NONE, REGISTER, 0, A, 0, 0, 2, 8, {DEPENDENT, RESET, SET, _IGNORE} },
+	[0x40] = { "BIT 0, B", BIT, ADDR_MODE_NONE, REGISTER, 0, B, 0, 0, 2, 8, {DEPENDENT, RESET, SET, _IGNORE} },
+	[0x41] = { "BIT 0, C", BIT, ADDR_MODE_NONE, REGISTER, 0, C, 0, 0, 2, 8, {DEPENDENT, RESET, SET, _IGNORE} },
+	[0x42] = { "BIT 0, D", BIT, ADDR_MODE_NONE, REGISTER, 0, D, 0, 0, 2, 8, {DEPENDENT, RESET, SET, _IGNORE} },
+	[0x43] = { "BIT 0, E", BIT, ADDR_MODE_NONE, REGISTER, 0, E, 0, 0, 2, 8, {DEPENDENT, RESET, SET, _IGNORE} },
+	[0x44] = { "BIT 0, H", BIT, ADDR_MODE_NONE, REGISTER, 0, H, 0, 0, 2, 8, {DEPENDENT, RESET, SET, _IGNORE} },
+	[0x45] = { "BIT 0, L", BIT, ADDR_MODE_NONE, REGISTER, 0, L, 0, 0, 2, 8, {DEPENDENT, RESET, SET, _IGNORE} },
+	[0x46] = { "BIT 0, (HL)", BIT, ADDR_MODE_NONE, ADDRESS_R16, 0, HL, 0, 0, 2, 8, {DEPENDENT, RESET, SET, _IGNORE} },
 
 	[0x4F] = { "BIT 1, A", BIT, ADDR_MODE_NONE, REGISTER, 1, A, 0, 0, 2, 8, {DEPENDENT, RESET, SET, _IGNORE} },
 	[0x48] = { "BIT 1, B", BIT, ADDR_MODE_NONE, REGISTER, 1, B, 0, 0, 2, 8, {DEPENDENT, RESET, SET, _IGNORE} },
@@ -319,7 +331,7 @@ Operation cb_operations[0x100] = {
 	[0x5D] = { "BIT 3, L", BIT, ADDR_MODE_NONE, REGISTER, 3, L, 0, 0, 2, 8, {DEPENDENT, RESET, SET, _IGNORE} },
 	[0x5E] = { "BIT 3, (HL)", BIT, ADDR_MODE_NONE, ADDRESS_R16, 3, HL, 0, 0, 2, 8, {DEPENDENT, RESET, SET, _IGNORE} },
 
-	[0x67] = { "BIT 4, B", BIT, ADDR_MODE_NONE, REGISTER, 4, B, 0, 0, 2, 8, {DEPENDENT, RESET, SET, _IGNORE} },
+	[0x67] = { "BIT 4, A", BIT, ADDR_MODE_NONE, REGISTER, 4, A, 0, 0, 2, 8, {DEPENDENT, RESET, SET, _IGNORE} },
 	[0x60] = { "BIT 4, B", BIT, ADDR_MODE_NONE, REGISTER, 4, B, 0, 0, 2, 8, {DEPENDENT, RESET, SET, _IGNORE} },
 	[0x61] = { "BIT 4, C", BIT, ADDR_MODE_NONE, REGISTER, 4, C, 0, 0, 2, 8, {DEPENDENT, RESET, SET, _IGNORE} },
 	[0x62] = { "BIT 4, D", BIT, ADDR_MODE_NONE, REGISTER, 4, D, 0, 0, 2, 8, {DEPENDENT, RESET, SET, _IGNORE} },
@@ -337,7 +349,7 @@ Operation cb_operations[0x100] = {
 	[0x6D] = { "BIT 5, L", BIT, ADDR_MODE_NONE, REGISTER, 5, L, 0, 0, 2, 8, {DEPENDENT, RESET, SET, _IGNORE} },
 	[0x6E] = { "BIT 5, (HL)", BIT, ADDR_MODE_NONE, ADDRESS_R16, 5, HL, 0, 0, 2, 8, {DEPENDENT, RESET, SET, _IGNORE} },
 
-	[0x77] = { "BIT 6, B", BIT, ADDR_MODE_NONE, REGISTER, 6, B, 0, 0, 2, 8, {DEPENDENT, RESET, SET, _IGNORE} },
+	[0x77] = { "BIT 6, A", BIT, ADDR_MODE_NONE, REGISTER, 6, A, 0, 0, 2, 8, {DEPENDENT, RESET, SET, _IGNORE} },
 	[0x70] = { "BIT 6, B", BIT, ADDR_MODE_NONE, REGISTER, 6, B, 0, 0, 2, 8, {DEPENDENT, RESET, SET, _IGNORE} },
 	[0x71] = { "BIT 6, C", BIT, ADDR_MODE_NONE, REGISTER, 6, C, 0, 0, 2, 8, {DEPENDENT, RESET, SET, _IGNORE} },
 	[0x72] = { "BIT 6, D", BIT, ADDR_MODE_NONE, REGISTER, 6, D, 0, 0, 2, 8, {DEPENDENT, RESET, SET, _IGNORE} },
@@ -348,7 +360,6 @@ Operation cb_operations[0x100] = {
 
 
 	[0x7F] = { "BIT 7, A", BIT, ADDR_MODE_NONE, REGISTER, 7, A, 0, 0, 2, 8, {DEPENDENT, RESET, SET, _IGNORE} },
-	[0x78] = { "BIT 7, B", BIT, ADDR_MODE_NONE, REGISTER, 7, B, 0, 0, 2, 8, {DEPENDENT, RESET, SET, _IGNORE} },
 	[0x78] = { "BIT 7, B", BIT, ADDR_MODE_NONE, REGISTER, 7, B, 0, 0, 2, 8, {DEPENDENT, RESET, SET, _IGNORE} },
 	[0x79] = { "BIT 7, C", BIT, ADDR_MODE_NONE, REGISTER, 7, C, 0, 0, 2, 8, {DEPENDENT, RESET, SET, _IGNORE} },
 	[0x7A] = { "BIT 7, D", BIT, ADDR_MODE_NONE, REGISTER, 7, D, 0, 0, 2, 8, {DEPENDENT, RESET, SET, _IGNORE} },
@@ -377,9 +388,152 @@ Operation cb_operations[0x100] = {
 
 	// RES
 	[0x87] = {"RES 0, A", RES, REGISTER, ADDR_MODE_NONE, A, 0, 0, 0, 2, 8, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+	[0x80] = {"RES 0, B", RES, REGISTER, ADDR_MODE_NONE, B, 0, 0, 0, 2, 8, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+	[0x81] = {"RES 0, C", RES, REGISTER, ADDR_MODE_NONE, C, 0, 0, 0, 2, 8, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+	[0x82] = {"RES 0, D", RES, REGISTER, ADDR_MODE_NONE, D, 0, 0, 0, 2, 8, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+	[0x83] = {"RES 0, E", RES, REGISTER, ADDR_MODE_NONE, E, 0, 0, 0, 2, 8, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+	[0x84] = {"RES 0, H", RES, REGISTER, ADDR_MODE_NONE, H, 0, 0, 0, 2, 8, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+	[0x85] = {"RES 0, L", RES, REGISTER, ADDR_MODE_NONE, L, 0, 0, 0, 2, 8, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
 	[0x86] = {"RES 0, (HL)", RES, ADDRESS_R16, ADDR_MODE_NONE, HL, 0, 0, 0, 2, 16, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
 
+	[0x8F] = {"RES 1, A", RES, REGISTER, ADDR_MODE_NONE, A, 1, 0, 0, 2, 8, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+	[0x88] = {"RES 1, B", RES, REGISTER, ADDR_MODE_NONE, B, 1, 0, 0, 2, 8, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+	[0x89] = {"RES 1, C", RES, REGISTER, ADDR_MODE_NONE, C, 1, 0, 0, 2, 8, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+	[0x8A] = {"RES 1, D", RES, REGISTER, ADDR_MODE_NONE, D, 1, 0, 0, 2, 8, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+	[0x8B] = {"RES 1, E", RES, REGISTER, ADDR_MODE_NONE, E, 1, 0, 0, 2, 8, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+	[0x8C] = {"RES 1, H", RES, REGISTER, ADDR_MODE_NONE, H, 1, 0, 0, 2, 8, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+	[0x8D] = {"RES 1, L", RES, REGISTER, ADDR_MODE_NONE, L, 1, 0, 0, 2, 8, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+	[0x8E] = {"RES 1, (HL)", RES, ADDRESS_R16, ADDR_MODE_NONE, HL, 1, 0, 0, 2, 16, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+
+	[0x97] = {"RES 2, A", RES, REGISTER, ADDR_MODE_NONE, A, 2, 0, 0, 2, 8, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+	[0x90] = {"RES 2, B", RES, REGISTER, ADDR_MODE_NONE, B, 2, 0, 0, 2, 8, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+	[0x91] = {"RES 2, C", RES, REGISTER, ADDR_MODE_NONE, C, 2, 0, 0, 2, 8, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+	[0x92] = {"RES 2, D", RES, REGISTER, ADDR_MODE_NONE, D, 2, 0, 0, 2, 8, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+	[0x93] = {"RES 2, E", RES, REGISTER, ADDR_MODE_NONE, E, 2, 0, 0, 2, 8, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+	[0x94] = {"RES 2, H", RES, REGISTER, ADDR_MODE_NONE, H, 2, 0, 0, 2, 8, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+	[0x95] = {"RES 2, L", RES, REGISTER, ADDR_MODE_NONE, L, 2, 0, 0, 2, 8, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+	[0x96] = {"RES 2, (HL)", RES, ADDRESS_R16, ADDR_MODE_NONE, HL, 2, 0, 0, 2, 16, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+
+	[0x9F] = {"RES 3, A", RES, REGISTER, ADDR_MODE_NONE, A, 3, 0, 0, 2, 8, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+	[0x98] = {"RES 3, B", RES, REGISTER, ADDR_MODE_NONE, B, 3, 0, 0, 2, 8, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+	[0x99] = {"RES 3, C", RES, REGISTER, ADDR_MODE_NONE, C, 3, 0, 0, 2, 8, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+	[0x9A] = {"RES 3, D", RES, REGISTER, ADDR_MODE_NONE, D, 3, 0, 0, 2, 8, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+	[0x9B] = {"RES 3, E", RES, REGISTER, ADDR_MODE_NONE, E, 3, 0, 0, 2, 8, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+	[0x9C] = {"RES 3, H", RES, REGISTER, ADDR_MODE_NONE, H, 3, 0, 0, 2, 8, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+	[0x9D] = {"RES 3, L", RES, REGISTER, ADDR_MODE_NONE, L, 3, 0, 0, 2, 8, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+	[0x9E] = {"RES 3, (HL)", RES, ADDRESS_R16, ADDR_MODE_NONE, HL, 3, 0, 0, 2, 16, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+
+	[0xA7] = {"RES 4, A", RES, REGISTER, ADDR_MODE_NONE, A, 4, 0, 0, 2, 8, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+	[0xA0] = {"RES 4, B", RES, REGISTER, ADDR_MODE_NONE, B, 4, 0, 0, 2, 8, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+	[0xA1] = {"RES 4, C", RES, REGISTER, ADDR_MODE_NONE, C, 4, 0, 0, 2, 8, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+	[0xA2] = {"RES 4, D", RES, REGISTER, ADDR_MODE_NONE, D, 4, 0, 0, 2, 8, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+	[0xA3] = {"RES 4, E", RES, REGISTER, ADDR_MODE_NONE, E, 4, 0, 0, 2, 8, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+	[0xA4] = {"RES 4, H", RES, REGISTER, ADDR_MODE_NONE, H, 4, 0, 0, 2, 8, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+	[0xA5] = {"RES 4, L", RES, REGISTER, ADDR_MODE_NONE, L, 4, 0, 0, 2, 8, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+	[0xA6] = {"RES 4, (HL)", RES, ADDRESS_R16, ADDR_MODE_NONE, HL, 4, 0, 0, 2, 16, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+
+	[0xAF] = {"RES 5, A", RES, REGISTER, ADDR_MODE_NONE, A, 5, 0, 0, 2, 8, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+	[0xA8] = {"RES 5, B", RES, REGISTER, ADDR_MODE_NONE, B, 5, 0, 0, 2, 8, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+	[0xA9] = {"RES 5, C", RES, REGISTER, ADDR_MODE_NONE, C, 5, 0, 0, 2, 8, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+	[0xAA] = {"RES 5, D", RES, REGISTER, ADDR_MODE_NONE, D, 5, 0, 0, 2, 8, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+	[0xAB] = {"RES 5, E", RES, REGISTER, ADDR_MODE_NONE, E, 5, 0, 0, 2, 8, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+	[0xAC] = {"RES 5, H", RES, REGISTER, ADDR_MODE_NONE, H, 5, 0, 0, 2, 8, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+	[0xAD] = {"RES 5, L", RES, REGISTER, ADDR_MODE_NONE, L, 5, 0, 0, 2, 8, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+	[0xAE] = {"RES 5, (HL)", RES, ADDRESS_R16, ADDR_MODE_NONE, HL, 5, 0, 0, 2, 16, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+
+	[0xB7] = {"RES 6, A", RES, REGISTER, ADDR_MODE_NONE, A, 6, 0, 0, 2, 8, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+	[0xB0] = {"RES 6, B", RES, REGISTER, ADDR_MODE_NONE, B, 6, 0, 0, 2, 8, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+	[0xB1] = {"RES 6, C", RES, REGISTER, ADDR_MODE_NONE, C, 6, 0, 0, 2, 8, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+	[0xB2] = {"RES 6, D", RES, REGISTER, ADDR_MODE_NONE, D, 6, 0, 0, 2, 8, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+	[0xB3] = {"RES 6, E", RES, REGISTER, ADDR_MODE_NONE, E, 6, 0, 0, 2, 8, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+	[0xB4] = {"RES 6, H", RES, REGISTER, ADDR_MODE_NONE, H, 6, 0, 0, 2, 8, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+	[0xB5] = {"RES 6, L", RES, REGISTER, ADDR_MODE_NONE, L, 6, 0, 0, 2, 8, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+	[0xB6] = {"RES 6, (HL)", RES, ADDRESS_R16, ADDR_MODE_NONE, HL, 6, 0, 0, 2, 16, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+
+	[0xBF] = {"RES 7, A", RES, REGISTER, ADDR_MODE_NONE, A, 7, 0, 0, 2, 8, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+	[0xB8] = {"RES 7, B", RES, REGISTER, ADDR_MODE_NONE, B, 7, 0, 0, 2, 8, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+	[0xB9] = {"RES 7, C", RES, REGISTER, ADDR_MODE_NONE, C, 7, 0, 0, 2, 8, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+	[0xBA] = {"RES 7, D", RES, REGISTER, ADDR_MODE_NONE, D, 7, 0, 0, 2, 8, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+	[0xBB] = {"RES 7, E", RES, REGISTER, ADDR_MODE_NONE, E, 7, 0, 0, 2, 8, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+	[0xBC] = {"RES 7, H", RES, REGISTER, ADDR_MODE_NONE, H, 7, 0, 0, 2, 8, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+	[0xBD] = {"RES 7, L", RES, REGISTER, ADDR_MODE_NONE, L, 7, 0, 0, 2, 8, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
 	[0xBE] = {"RES 7, (HL)", RES, ADDRESS_R16, ADDR_MODE_NONE, HL, 7, 0, 0, 2, 16, {_IGNORE, _IGNORE, _IGNORE, _IGNORE}},
+
+	// SET
+
+	[0xC7] = {"SET 0, A", SET_OP, REGISTER, ADDR_MODE_NONE, A, 0, 0, 0, 2, 8 },
+	[0xC0] = {"SET 0, B", SET_OP, REGISTER, ADDR_MODE_NONE, B, 0, 0, 0, 2, 8 },
+	[0xC1] = {"SET 0, C", SET_OP, REGISTER, ADDR_MODE_NONE, C, 0, 0, 0, 2, 8 },
+	[0xC2] = {"SET 0, D", SET_OP, REGISTER, ADDR_MODE_NONE, D, 0, 0, 0, 2, 8 },
+	[0xC3] = {"SET 0, E", SET_OP, REGISTER, ADDR_MODE_NONE, E, 0, 0, 0, 2, 8 },
+	[0xC4] = {"SET 0, H", SET_OP, REGISTER, ADDR_MODE_NONE, H, 0, 0, 0, 2, 8 },
+	[0xC5] = {"SET 0, L", SET_OP, REGISTER, ADDR_MODE_NONE, L, 0, 0, 0, 2, 8 },
+	[0xC6] = {"SET 0, (HL)", SET_OP, ADDRESS_R16, ADDR_MODE_NONE, HL, 0, 0, 0, 2, 16, },
+
+	[0xCF] = {"SET 1, A", SET_OP, REGISTER, ADDR_MODE_NONE, A, 1, 0, 0, 2, 8 },
+	[0xC8] = {"SET 1, B", SET_OP, REGISTER, ADDR_MODE_NONE, B, 1, 0, 0, 2, 8 },
+	[0xC9] = {"SET 1, C", SET_OP, REGISTER, ADDR_MODE_NONE, C, 1, 0, 0, 2, 8 },
+	[0xCA] = {"SET 1, D", SET_OP, REGISTER, ADDR_MODE_NONE, D, 1, 0, 0, 2, 8 },
+	[0xCB] = {"SET 1, E", SET_OP, REGISTER, ADDR_MODE_NONE, E, 1, 0, 0, 2, 8 },
+	[0xCC] = {"SET 1, H", SET_OP, REGISTER, ADDR_MODE_NONE, H, 1, 0, 0, 2, 8 },
+	[0xCD] = {"SET 1, L", SET_OP, REGISTER, ADDR_MODE_NONE, L, 1, 0, 0, 2, 8 },
+	[0xCE] = {"SET 1, (HL)", SET_OP, ADDRESS_R16, ADDR_MODE_NONE, HL, 1, 0, 0, 2, 16, },
+
+	[0xD7] = {"SET 2, A", SET_OP, REGISTER, ADDR_MODE_NONE, A, 2, 0, 0, 2, 8 },
+	[0xD0] = {"SET 2, B", SET_OP, REGISTER, ADDR_MODE_NONE, B, 2, 0, 0, 2, 8 },
+	[0xD1] = {"SET 2, C", SET_OP, REGISTER, ADDR_MODE_NONE, C, 2, 0, 0, 2, 8 },
+	[0xD2] = {"SET 2, D", SET_OP, REGISTER, ADDR_MODE_NONE, D, 2, 0, 0, 2, 8 },
+	[0xD3] = {"SET 2, E", SET_OP, REGISTER, ADDR_MODE_NONE, E, 2, 0, 0, 2, 8 },
+	[0xD4] = {"SET 2, H", SET_OP, REGISTER, ADDR_MODE_NONE, H, 2, 0, 0, 2, 8 },
+	[0xD5] = {"SET 2, L", SET_OP, REGISTER, ADDR_MODE_NONE, L, 2, 0, 0, 2, 8 },
+	[0xD6] = {"SET 2, (HL)", SET_OP, ADDRESS_R16, ADDR_MODE_NONE, HL, 2, 0, 0, 2, 16, },
+
+	[0xDF] = {"SET 3, A", SET_OP, REGISTER, ADDR_MODE_NONE, A, 3, 0, 0, 2, 8 },
+	[0xD8] = {"SET 3, B", SET_OP, REGISTER, ADDR_MODE_NONE, B, 3, 0, 0, 2, 8 },
+	[0xD9] = {"SET 3, C", SET_OP, REGISTER, ADDR_MODE_NONE, C, 3, 0, 0, 2, 8 },
+	[0xDA] = {"SET 3, D", SET_OP, REGISTER, ADDR_MODE_NONE, D, 3, 0, 0, 2, 8 },
+	[0xDB] = {"SET 3, E", SET_OP, REGISTER, ADDR_MODE_NONE, E, 3, 0, 0, 2, 8 },
+	[0xDC] = {"SET 3, H", SET_OP, REGISTER, ADDR_MODE_NONE, H, 3, 0, 0, 2, 8 },
+	[0xDD] = {"SET 3, L", SET_OP, REGISTER, ADDR_MODE_NONE, L, 3, 0, 0, 2, 8 },
+	[0xDE] = {"SET 3, (HL)", SET_OP, ADDRESS_R16, ADDR_MODE_NONE, HL, 3, 0, 0, 2, 16, },
+
+	[0xE7] = {"SET 4, A", SET_OP, REGISTER, ADDR_MODE_NONE, A, 4, 0, 0, 2, 8 },
+	[0xE0] = {"SET 4, B", SET_OP, REGISTER, ADDR_MODE_NONE, B, 4, 0, 0, 2, 8 },
+	[0xE1] = {"SET 4, C", SET_OP, REGISTER, ADDR_MODE_NONE, C, 4, 0, 0, 2, 8 },
+	[0xE2] = {"SET 4, D", SET_OP, REGISTER, ADDR_MODE_NONE, D, 4, 0, 0, 2, 8 },
+	[0xE3] = {"SET 4, E", SET_OP, REGISTER, ADDR_MODE_NONE, E, 4, 0, 0, 2, 8 },
+	[0xE4] = {"SET 4, H", SET_OP, REGISTER, ADDR_MODE_NONE, H, 4, 0, 0, 2, 8 },
+	[0xE5] = {"SET 4, L", SET_OP, REGISTER, ADDR_MODE_NONE, L, 4, 0, 0, 2, 8 },
+	[0xE6] = {"SET 4, (HL)", SET_OP, ADDRESS_R16, ADDR_MODE_NONE, HL, 4, 0, 0, 2, 16, },
+
+	[0xEF] = {"SET 5, A", SET_OP, REGISTER, ADDR_MODE_NONE, A, 5, 0, 0, 2, 8 },
+	[0xE8] = {"SET 5, B", SET_OP, REGISTER, ADDR_MODE_NONE, B, 5, 0, 0, 2, 8 },
+	[0xE9] = {"SET 5, C", SET_OP, REGISTER, ADDR_MODE_NONE, C, 5, 0, 0, 2, 8 },
+	[0xEA] = {"SET 5, D", SET_OP, REGISTER, ADDR_MODE_NONE, D, 5, 0, 0, 2, 8 },
+	[0xEB] = {"SET 5, E", SET_OP, REGISTER, ADDR_MODE_NONE, E, 5, 0, 0, 2, 8 },
+	[0xEC] = {"SET 5, H", SET_OP, REGISTER, ADDR_MODE_NONE, H, 5, 0, 0, 2, 8 },
+	[0xED] = {"SET 5, L", SET_OP, REGISTER, ADDR_MODE_NONE, L, 5, 0, 0, 2, 8 },
+	[0xEE] = {"SET 5, (HL)", SET_OP, ADDRESS_R16, ADDR_MODE_NONE, HL, 5, 0, 0, 2, 16, },
+
+	[0xF7] = {"SET 6, A", SET_OP, REGISTER, ADDR_MODE_NONE, A, 6, 0, 0, 2, 8 },
+	[0xF0] = {"SET 6, B", SET_OP, REGISTER, ADDR_MODE_NONE, B, 6, 0, 0, 2, 8 },
+	[0xF1] = {"SET 6, C", SET_OP, REGISTER, ADDR_MODE_NONE, C, 6, 0, 0, 2, 8 },
+	[0xF2] = {"SET 6, D", SET_OP, REGISTER, ADDR_MODE_NONE, D, 6, 0, 0, 2, 8 },
+	[0xF3] = {"SET 6, E", SET_OP, REGISTER, ADDR_MODE_NONE, E, 6, 0, 0, 2, 8 },
+	[0xF4] = {"SET 6, H", SET_OP, REGISTER, ADDR_MODE_NONE, H, 6, 0, 0, 2, 8 },
+	[0xF5] = {"SET 6, L", SET_OP, REGISTER, ADDR_MODE_NONE, L, 6, 0, 0, 2, 8 },
+	[0xF6] = {"SET 6, (HL)", SET_OP, ADDRESS_R16, ADDR_MODE_NONE, HL, 6, 0, 0, 2, 16, },
+
+	[0xFF] = {"SET 7, A", SET_OP, REGISTER, ADDR_MODE_NONE, A, 7, 0, 0, 2, 8 },
+	[0xF8] = {"SET 7, B", SET_OP, REGISTER, ADDR_MODE_NONE, B, 7, 0, 0, 2, 8 },
+	[0xF9] = {"SET 7, C", SET_OP, REGISTER, ADDR_MODE_NONE, C, 7, 0, 0, 2, 8 },
+	[0xFA] = {"SET 7, D", SET_OP, REGISTER, ADDR_MODE_NONE, D, 7, 0, 0, 2, 8 },
+	[0xFB] = {"SET 7, E", SET_OP, REGISTER, ADDR_MODE_NONE, E, 7, 0, 0, 2, 8 },
+	[0xFC] = {"SET 7, H", SET_OP, REGISTER, ADDR_MODE_NONE, H, 7, 0, 0, 2, 8 },
+	[0xFD] = {"SET 7, L", SET_OP, REGISTER, ADDR_MODE_NONE, L, 7, 0, 0, 2, 8 },
+	[0xFE] = {"SET 7, (HL)", SET_OP, ADDRESS_R16, ADDR_MODE_NONE, HL, 7, 0, 0, 2, 16, },
+
+
 
 	// SWAP
 	[0x37] = {"SWAP A", SWAP, REGISTER, ADDR_MODE_NONE, A, OPERAND_NONE, 0, 0, 2, 8, {DEPENDENT, RESET, RESET, RESET}},
@@ -390,8 +544,6 @@ Operation cb_operations[0x100] = {
 	[0x34] = {"SWAP H", SWAP, REGISTER, ADDR_MODE_NONE, H, OPERAND_NONE, 0, 0, 2, 8, {DEPENDENT, RESET, RESET, RESET}},
 	[0x35] = {"SWAP L", SWAP, REGISTER, ADDR_MODE_NONE, L, OPERAND_NONE, 0, 0, 2, 8, {DEPENDENT, RESET, RESET, RESET}},
 
-	// SET
-	[0xFE] = {"SET 7, (HL)", SET_OP, ADDRESS_R16, ADDR_MODE_NONE, HL, 7, 0, 0, 2, 16, },
 
 };
 
@@ -403,8 +555,11 @@ void push(Cpu* cpu, Memory* mem, u16 value) {
 	write16(mem, cpu->registers.sp - 2, value);
 	cpu->registers.sp -= 2;
 }
-void pop(Cpu* cpu, Memory* mem, u16* reg) {
+void pop(Cpu* cpu, Memory* mem, u16* reg, operand_type operand) {
 	*reg = read16(mem, cpu->registers.sp);
+	if (operand == AF) {
+		cpu->registers.f &= 0xF0;
+	}
 	cpu->registers.sp += 2;
 }
 void jump(Cpu* cpu, u16 jump_to) {
@@ -425,7 +580,7 @@ u16 interrupt_address_from_flag(u8 flag) {
 	case JOYPAD_INTERRUPT:
 		return JOYPAD_ADDRESS;
 	default:
-		printf("how did we get here: 0x%02X", flag);
+		AddLog("how did we get here: 0x%02X", flag);
 		return 0;
 	}
 }
@@ -709,7 +864,7 @@ alu16_return run_alu16(Cpu* cpu, u16 x, u16 y, instruction_type type, address_mo
 		break;
 
 	default:
-		printf("TODO: Unimplemented run_alu16 type");
+		AddLog("TODO: Unimplemented run_alu16 type");
 		result = 0;
 		assert(false);
 		break;
@@ -799,7 +954,7 @@ void write_dest(Cpu* cpu, Memory* mem, Operation* op, u8 value) {
 		break;
 	}
 	default:
-		printf("unimplemented write dest addr mode");
+		AddLog("unimplemented write dest addr mode");
 		assert(false);
 	}
 }
@@ -810,7 +965,7 @@ void write_dest16(Cpu* cpu, Memory* mem, address_mode mode, operand_type dest, u
 		*get_reg16_from_type(cpu, dest) = value;
 		break;
 	default:
-		printf("unimplemented write dest16 type");
+		AddLog("unimplemented write dest16 type");
 		assert(false);
 		break;
 	}
@@ -897,14 +1052,14 @@ u16 get_source_16(Cpu* cpu, Memory* mem, Operation* op) {
 			break;
 		}
 		default:
-			printf("What are we doing here");
+			AddLog("What are we doing here");
 			assert(false);
 		}
 		break;
 	}
 	default:
 		sourceVal = 0;
-		printf("unimplemented 16 bit source read\n");
+		AddLog("unimplemented 16 bit source read\n");
 		print_operation(*op);
 		assert(false);
 	}
@@ -935,19 +1090,21 @@ u8 get_source(Cpu* cpu, Memory* mem, Operation* op) { // maybe I'll change this 
 		sourceVal = read8(mem, *get_reg16_from_type(cpu, op->source));
 		break;
 	case ADDRESS_R8_OFFSET:
-		sourceVal = read8(mem, 0xff00 + read8(mem, cpu->registers.pc));
-		++cpu->registers.pc;
+		sourceVal = read8(mem, 0xff00 + *get_reg_from_type(cpu, op->source));
 		break;
 	case MEM_READ_ADDR:
 		sourceVal = read8(mem, read16(mem, cpu->registers.pc));
 		cpu->registers.pc += 2;
+		break;
+	case MEM_READ_ADDR_OFFSET:
+		sourceVal = read8(mem, 0xFF00 + read8(mem, cpu->registers.pc++));
 		break;
 	case ADDR_MODE_NONE:
 		sourceVal = op->source; // this should be fine
 		break;
 	default:
 		sourceVal = 0;
-		printf("unimplemented 8 bit source read\n");
+		AddLog("unimplemented 8 bit source read\n");
 		print_operation(*op);
 		assert(false);
 	}
@@ -971,7 +1128,7 @@ u8 get_dest(Cpu* cpu, Memory* mem, Operation* op) {
 		break;
 	default:
 		destVal = 0;
-		printf("unimplemented 8 bit dest read\n");
+		AddLog("unimplemented 8 bit dest read\n");
 		print_operation(*op);
 		assert(false);
 	}
@@ -987,7 +1144,7 @@ u16 get_dest16(Cpu* cpu, Memory* mem, Operation* op) {
 		dest_val = read16(mem, *get_reg16_from_type(cpu, op->dest));
 		break;
 	default:
-		printf("unimplemented get_dest16");
+		AddLog("unimplemented get_dest16");
 		assert(false);
 		break;
 	}

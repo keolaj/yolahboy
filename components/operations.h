@@ -5,7 +5,7 @@
 
 
 void push(Cpu* cpu, Memory* mem, u16 value);
-void pop(Cpu* cpu, Memory* mem, u16* reg);
+void pop(Cpu* cpu, Memory* mem, u16* reg, operand_type op);
 void jump(Cpu* cpu, u16 jump_to);
 
 bool condition_passed(Cpu* cpu, Operation* op);

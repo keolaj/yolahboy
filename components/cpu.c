@@ -272,7 +272,8 @@ void PUSH_impl(Cpu* cpu, Memory* mem, Operation* op) {
 
 void POP_impl(Cpu* cpu, Memory* mem, Operation* op) {
 	u16* reg = get_reg16_from_type(cpu, op->dest);
-	pop(cpu, mem, reg);
+
+	pop(cpu, mem, reg, op->dest);
 }
 
 void RL_impl(Cpu* cpu, Memory* mem, Operation* op) {
@@ -283,7 +284,7 @@ void RL_impl(Cpu* cpu, Memory* mem, Operation* op) {
 
 void RET_impl(Cpu* cpu, Memory* mem, Operation* op) {
 	if (condition_passed(cpu, op)) {
-		pop(cpu, mem, get_reg16_from_type(cpu, PC));
+		pop(cpu, mem, get_reg16_from_type(cpu, PC), 0);
 	}
 }
 
@@ -328,6 +329,10 @@ void CCF_impl(Cpu* cpu, Memory* mem, Operation* op) {
 	u8 new_carry = ~cpu->registers.f & FLAG_CARRY;
 	u8 old_zero = cpu->registers.f & FLAG_ZERO;
 	cpu->registers.f |= new_carry | old_zero;
+}
+
+void SCF_impl(Cpu* cpu, Memory* mem, Operation* op) {
+	cpu->registers.f |= FLAG_CARRY;
 }
 
 Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op) {
@@ -421,6 +426,10 @@ Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op) {
 
 	case CB: {
 		Cycles cb_ret = step_cpu(cpu, mem, get_cb_operation(cpu, mem));
+		if (cb_ret.t_cycles == -1) {
+			AddLog("Unimplemented CB op\n");
+			return (Cycles) { -1, -1 };
+		}
 		op.m_cycles += cb_ret.m_cycles;
 		op.t_cycles += cb_ret.t_cycles;
 		break;
@@ -438,11 +447,13 @@ Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op) {
 	case CCF:
 		CCF_impl(cpu, mem, &op);
 		break;
+	case SCF:
+		SCF_impl(cpu, mem, &op);
+		break;
 	case UNIMPLEMENTED:
 	default:
 		--cpu->registers.pc;
-		print_registers(cpu);
-		AddLog("unimplemented operation type\t");
+		AddLog("\nunimplemented operation\t");
 		print_operation(op);
 		return (Cycles) { -1, -1 };
 	}

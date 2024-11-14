@@ -92,6 +92,7 @@ typedef enum {
 	PUSH,
 	POP,
 	CCF,
+	SCF,
 	CB,
 	DI,
 	EI,
