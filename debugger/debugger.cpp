@@ -410,6 +410,7 @@ int debugger_run(char* rom_path, char* bootrom_path) {
 		}
 
 		if (emu.should_run) {
+			set_use_gbd_log(emu.memory, create_gbd_log);
 			if (create_gbd_log && emu.memory->in_bios == false) {
 				if (!gbd_log.is_open()) {
 					app_log.AddLog("opening gbd log\n");

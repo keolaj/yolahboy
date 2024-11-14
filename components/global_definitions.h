@@ -72,6 +72,7 @@ typedef struct mem_ctx {
 	u8 memory[0x10000];
 	Cartridge cartridge;
 	bool in_bios;
+	bool use_gbd_log;
 	Gpu* gpu;
 	Controller controller;
 } Memory;
