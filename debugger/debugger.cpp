@@ -436,8 +436,6 @@ int debugger_run(char* rom_path, char* bootrom_path) {
 				gbd_log << str_buf;
 			}
 			if (step(&emu) < 0) emu.should_run = false; // if step returns negative the operation failed to execute
-			set_run_once = false;
-
 		}
 
 		if (breakpoints[emu.cpu->registers.pc]) {
@@ -479,7 +477,7 @@ int debugger_run(char* rom_path, char* bootrom_path) {
 				SDL_RenderPresent(renderer);
 				SDL_Delay(1);
 			}
-			run_once = false;
+			set_run_once = false;
 
 		}
 		else {
@@ -503,7 +501,10 @@ int debugger_run(char* rom_path, char* bootrom_path) {
 				SDL_RenderTexture(renderer, screen_tex, nullptr, &emulator_screen_rect);
 				SDL_RenderTexture(renderer, tile_tex, nullptr, &tile_screen_rect);
 				SDL_RenderPresent(renderer);
+				
 				timer = 0;
+				run_once = false;
+
 				SDL_Delay(1);
 			}
 		}
