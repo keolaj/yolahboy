@@ -148,12 +148,35 @@ struct gpu_ctx {
 	bool drawline;
 };
 
+typedef enum {
+	MODE256,
+	MODE4,
+	MODE16,
+	MODE64
+} TimerMode;
+
+typedef struct { // TODO finish this for timer emulation
+	TimerMode mode;
+	int count;
+} Timer;
+
 typedef struct {
 	Cpu* cpu;
 	Memory* memory;
 	Gpu* gpu;
 	Controller* controller;
-	int clock;
+	int clock;	
 	bool should_run;
 	bool should_draw;
 } Emulator;
+
+typedef struct {
+	SDL_Scancode a;
+	SDL_Scancode b;
+	SDL_Scancode start;
+	SDL_Scancode select;
+	SDL_Scancode up;
+	SDL_Scancode down;
+	SDL_Scancode left;
+	SDL_Scancode right;
+} KeyboardConfig;

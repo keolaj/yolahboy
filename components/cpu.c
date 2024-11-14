@@ -210,23 +210,6 @@ void DEC_impl(Cpu* cpu, Memory* mem, Operation* op) {
 
 void XOR_impl(Cpu* cpu, Memory* mem, Operation* op) {
 	u8 source = get_source(cpu, mem, op);
-
-	//switch (op->dest_addr_mode) {
-	//case REGISTER: {
-	//	u8* dest_addr = get_reg_from_type(cpu, op->dest);
-	//	alu_return alu_ret = run_alu(cpu, *dest_addr, source, op->type, op->flag_actions);
-	//	*dest_addr = alu_ret.result;
-	//	cpu->registers.f = alu_ret.flags;
-
-
-	//	break;
-	//}
-	//default:
-	//	AddLog("unimplemented dest_addr_mode\t");
-	//	print_operation(*op);
-	//	assert(false);
-	//}
-
 	alu_return alu_ret = run_alu(cpu, get_dest(cpu, mem, op), source, op->type, op->flag_actions);
 	write_dest(cpu, mem, op, alu_ret.result);
 	cpu->registers.f = alu_ret.flags;
@@ -306,30 +289,6 @@ void RST_impl(Cpu* cpu, Memory* mem, Operation* op) {
 }
 
 void DAA_impl(Cpu* cpu, Memory* mem, Operation* op) {
-	//u8 a = cpu->registers.a;
-	//u8 flags = cpu->registers.f;
-	//cpu->registers.f = 0;
-	//if (flags & FLAG_SUB) {
-	//	cpu->registers.f |= FLAG_SUB;
-	//	if (flags & FLAG_HALFCARRY) a = (a - 0x6) & 0xFF;
-	//	if (flags & FLAG_CARRY) {
-	//		a -= 0x60;
-	//	}
-	//}
-	//else {
-	//	if ((flags & FLAG_HALFCARRY) || (a & 0xf) > 0x9) {
-	//		a += 0x6;
-	//	}
-	//	if ((flags & FLAG_CARRY) || (a > 0x9F)) {
-	//		a += 0x60;
-	//	}
-	//}
-	//cpu->registers.a = a;
-
-	//if (a == 0) {
-	//	cpu->registers.f |= FLAG_ZERO;
-	//}
-	//if (a > 0x99) cpu->registers.f |= FLAG_CARRY;
 
 	u8 offset = 0;
 	u8 a = cpu->registers.a;

@@ -5,6 +5,7 @@
 
 extern "C" {
 #include <SDL3/SDL.h>
+#include <SDL3/SDL_render.h>
 #include "debugger.h"
 #include "../components/global_definitions.h"
 #include "../components/emulator.h"
@@ -49,8 +50,8 @@ void init_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 }
 
 extern ExampleAppLog app_log;
-static bool create_gbd_log = true;
-static bool use_gamepad = true;
+static bool create_gbd_log = false;
+static bool use_gamepad = false;
 
 void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_ctx, ImGuiIO* ioptr, Emulator* emu, SDL_FRect* emulator_screen_rect, SDL_FRect* tile_screen_rect, bool run_once) {
 
@@ -332,11 +333,11 @@ SDL_Gamepad* get_first_gamepad() {
 	if (num_joysticks) {
 		ret = SDL_OpenGamepad(joysticks[0]);
 		if (ret == NULL) {
-			app_log.AddLog("Unable to open game controller! SDL Error: %s", SDL_GetError());
+			app_log.AddLog("Unable to open game controller! SDL Error: %s\n", SDL_GetError());
 		}
 	}
 	else {
-		app_log.AddLog("no joysticks connected!");
+		app_log.AddLog("No Controllers Connected!\n");
 	}
 	SDL_free(joysticks);
 	return ret;
@@ -345,12 +346,28 @@ SDL_Gamepad* get_first_gamepad() {
 int debugger_run(char* rom_path, char* bootrom_path) {
 
 	SDL_Window* window = SDL_CreateWindow("Yolahboy Debugger", 950, 600, 0);
+
+	app_log.AddLog("AVAILABLE RENDER DRIVERS:\n");
+	for (int i = 0; i < SDL_GetNumRenderDrivers(); ++i) {
+		app_log.AddLog("render driver: %s\n", SDL_GetRenderDriver(i));
+	}
+
 	SDL_Renderer* renderer = SDL_CreateRenderer(window, NULL);
 	SDL_Texture* screen_tex = NULL;
 	SDL_Texture* tile_tex = NULL;
-	SDL_Gamepad* gamepad = NULL;
+	SDL_Gamepad* gamepad = get_first_gamepad();
 	SDL_FRect emulator_screen_rect{ 0, 0, 160, 144 };
 	SDL_FRect tile_screen_rect{ 0, 0, 128, 192 };
+
+	KeyboardConfig k_config{};
+	k_config.a = SDL_SCANCODE_J;
+	k_config.b = SDL_SCANCODE_K;
+	k_config.start = SDL_SCANCODE_I;
+	k_config.select = SDL_SCANCODE_U;
+	k_config.up = SDL_SCANCODE_W;
+	k_config.left = SDL_SCANCODE_A;
+	k_config.down = SDL_SCANCODE_S;
+	k_config.right = SDL_SCANCODE_D;
 
 	ImVec4 clear_color = {
 			0.45f,
@@ -369,6 +386,8 @@ int debugger_run(char* rom_path, char* bootrom_path) {
 		SDL_DestroyWindow(window);
 		return -1;
 	}
+
+	// app_log.AddLog("Render driver: %s\nVsync number: %d", SDL_GetStringProperty(props, SDL_PROP_RENDERER_NAME_STRING, NULL), SDL_GetNumberProperty(props, SDL_PROP_RENDERER_VSYNC_NUMBER, 0));
 
 	Emulator emu;
 	if (init_emulator(&emu) < 0) {
@@ -406,9 +425,9 @@ int debugger_run(char* rom_path, char* bootrom_path) {
 		timer += deltaTime;
 
 
-		if (use_gamepad && gamepad == NULL) {
-			gamepad = get_first_gamepad();
-		}
+		//if (use_gamepad && gamepad == NULL) {
+		//	gamepad = get_first_gamepad();
+		//}
 
 		if (emu.should_run) {
 			set_use_gbd_log(emu.memory, create_gbd_log);
@@ -448,7 +467,7 @@ int debugger_run(char* rom_path, char* bootrom_path) {
 			}
 		}
 
-		if (emu.should_run) {
+		if (emu.should_run) { // emulator controls rendering
 			if (emu.should_draw) {
 				while (SDL_PollEvent(&e)) {
 					ImGui_ImplSDL3_ProcessEvent(&e);
@@ -460,6 +479,9 @@ int debugger_run(char* rom_path, char* bootrom_path) {
 					case SDL_EVENT_GAMEPAD_BUTTON_UP:
 						if (use_gamepad && gamepad) update_emu_controller(&emu, get_controller_state(gamepad)); // TODO make this logic less ugly. I think I should store SDL_Gamepad here instead of in emulator
 						break;
+					case SDL_EVENT_KEY_DOWN:
+					case SDL_EVENT_KEY_UP:
+						if (!use_gamepad) update_emu_controller(&emu, get_keyboard_state(*emu.controller, &e, &k_config));
 					}
 				}
 				draw_debug_ui(window, renderer, ig_ctx, ioptr, &emu, &emulator_screen_rect, &tile_screen_rect, run_once);
@@ -476,12 +498,11 @@ int debugger_run(char* rom_path, char* bootrom_path) {
 				SDL_RenderTexture(renderer, screen_tex, nullptr, &emulator_screen_rect);
 				SDL_RenderTexture(renderer, tile_tex, nullptr, &tile_screen_rect);
 				SDL_RenderPresent(renderer);
-				SDL_Delay(1);
 			}
 			set_run_once = false;
 
 		}
-		else {
+		else { // emulator isn't running and we go to 60fps
 			if (timer > 16.6) {
 				while (SDL_PollEvent(&e)) {
 					ImGui_ImplSDL3_ProcessEvent(&e);

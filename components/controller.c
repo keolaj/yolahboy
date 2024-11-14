@@ -8,7 +8,7 @@ void print_controller(Controller c) {
 	printf("CONTROLLER STATE:\nA: %d\nB: %d\nUP: %d\nDOWN: %d\nLEFT: %d\nRIGHT: %d\nSELECT: %d\nSTART: %d\n", c.a, c.b, c.up, c.down, c.left, c.right, c.select, c.start);
 }
 
-Controller get_controller_state(SDL_Gamepad* sdl_c) {
+Controller get_controller_state(SDL_Gamepad* sdl_c) { // doesn't need previous state as every button is set
 	Controller c;
 	c.a = SDL_GetGamepadButton(sdl_c, SDL_GAMEPAD_BUTTON_SOUTH);
 	c.b = SDL_GetGamepadButton(sdl_c, SDL_GAMEPAD_BUTTON_SOUTH);
@@ -18,6 +18,22 @@ Controller get_controller_state(SDL_Gamepad* sdl_c) {
 	c.down = SDL_GetGamepadButton(sdl_c, SDL_GAMEPAD_BUTTON_DPAD_DOWN);
 	c.left = SDL_GetGamepadButton(sdl_c, SDL_GAMEPAD_BUTTON_DPAD_LEFT);
 	c.right = SDL_GetGamepadButton(sdl_c, SDL_GAMEPAD_BUTTON_DPAD_RIGHT);
+
+	return c;
+}
+
+Controller get_keyboard_state(Controller prev, SDL_Event* e, KeyboardConfig* config) {
+	
+	Controller c = prev;
+
+	if (e->key.scancode == config->a) c.a = e->key.down;	
+	if (e->key.scancode == config->b) c.b = e->key.down;
+	if (e->key.scancode == config->select) c.select = e->key.down;
+	if (e->key.scancode == config->start) c.start = e->key.down;
+	if (e->key.scancode == config->up) c.up = e->key.down;
+	if (e->key.scancode == config->down) c.down = e->key.down;
+	if (e->key.scancode == config->left) c.left = e->key.down;
+	if (e->key.scancode == config->right) c.right = e->key.down;
 
 	return c;
 }
