@@ -2,12 +2,12 @@
 
 #include "emulator.h"
 #include "global_definitions.h"
-#include "controller.h"
-#include "cpu.h"
-#include "memory.h"
-#include "operations.h"
-#include "controller.h"
-#include "gpu.h"
+#include "./controller/controller.h"
+#include "./cpu/cpu.h"
+#include "./memory/memory.h"
+#include "./cpu/operations.h"
+#include "./controller/controller.h"
+#include "./gpu/gpu.h"
 #include "../debugger/imgui_custom_widget_wrapper.h"
 
 #include <SDL3/SDL.h>
@@ -16,21 +16,22 @@ int init_emulator(Emulator* emu) {
 	emu->cpu = create_cpu();
 	emu->memory = create_memory();
 	emu->gpu = create_gpu(emu->memory);
-	emu->controller = create_controller();
 	emu->should_run = false;
 	emu->clock = 0;
+	memset(&emu->controller, 0, sizeof(Controller));
 
-	if (emu->cpu == NULL || emu->memory == NULL || emu->gpu == NULL || emu->controller == NULL) {
+	if (emu->cpu == NULL || emu->memory == NULL || emu->gpu == NULL) {
 		destroy_emulator(emu);
 		return -1;
 	}
 	set_gpu(emu->memory, emu->gpu);
+	set_mem_controller(emu->memory, &emu->controller);
 	return 0;
 }
 
 
 void update_emu_controller(Emulator* emu, Controller controller) {
-	set_mem_controller(emu->memory, controller);
+	emu->controller = controller;
 }
 
 int step(Emulator* emu) {

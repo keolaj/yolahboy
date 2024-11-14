@@ -9,10 +9,10 @@ extern "C" {
 #include "debugger.h"
 #include "../components/global_definitions.h"
 #include "../components/emulator.h"
-#include "../components/controller.h"
-#include "../components/memory.h"
-#include "../components/operations.h"
-#include "../components/operation_defitions.h"
+#include "../components/controller/controller.h"
+#include "../components/memory/memory.h"
+#include "../components/cpu/operations.h"
+#include "../components/cpu/operation_defitions.h"
 	extern Operation operations[];
 	extern Operation cb_operations[];
 }
@@ -481,7 +481,7 @@ int debugger_run(char* rom_path, char* bootrom_path) {
 						break;
 					case SDL_EVENT_KEY_DOWN:
 					case SDL_EVENT_KEY_UP:
-						if (!use_gamepad) update_emu_controller(&emu, get_keyboard_state(*emu.controller, &e, &k_config));
+						if (!use_gamepad) update_emu_controller(&emu, get_keyboard_state(emu.controller, &e, &k_config));
 					}
 				}
 				draw_debug_ui(window, renderer, ig_ctx, ioptr, &emu, &emulator_screen_rect, &tile_screen_rect, run_once);

@@ -1,5 +1,5 @@
 #pragma once
-#include "global_definitions.h"
+#include "../global_definitions.h"
 #include "gpu_definitions.h"
 #include "memory.h"
 

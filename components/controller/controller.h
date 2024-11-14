@@ -1,6 +1,6 @@
 #pragma once
 
-#include "global_definitions.h"
+#include "../global_definitions.h"
 #include "SDL3/SDL_gamepad.h"
 
 Controller* create_controller();

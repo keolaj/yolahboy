@@ -3,7 +3,7 @@
 #include <assert.h>
 #include <string.h>
 #include "memory.h"
-#include "controller.h"
+#include "../controller/controller.h"
 #include "../debugger/imgui_custom_widget_wrapper.h"
 
 Memory* create_memory() {
@@ -24,7 +24,7 @@ Memory* create_memory() {
 void set_gpu(Memory* mem, Gpu* gpu) {
 	mem->gpu = gpu;
 }
-void set_mem_controller(Memory* mem, Controller controller) {
+void set_mem_controller(Memory* mem, Controller* controller) {
 	mem->controller = controller;
 }
 
@@ -38,7 +38,7 @@ u8 read8(Memory* mem, u16 address) {
 		}
 	}
 	if (address == 0xFF00) {
-		u8 j_ret = joypad_return(mem->controller, mem->memory[address]);
+		u8 j_ret = joypad_return(*mem->controller, mem->memory[address]);
 		return j_ret; 
 	}
 	if (address == 0xFF44 && mem->use_gbd_log) return 0x90; 

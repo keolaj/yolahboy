@@ -74,7 +74,7 @@ typedef struct mem_ctx {
 	bool in_bios;
 	bool use_gbd_log;
 	Gpu* gpu;
-	Controller controller;
+	Controller* controller;
 } Memory;
 
 typedef struct {
@@ -164,7 +164,7 @@ typedef struct {
 	Cpu* cpu;
 	Memory* memory;
 	Gpu* gpu;
-	Controller* controller;
+	Controller controller;
 	int clock;	
 	bool should_run;
 	bool should_draw;

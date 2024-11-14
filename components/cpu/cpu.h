@@ -2,9 +2,8 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include "cpu_definitions.h"
-#include "memory.h"
+#include "../memory/memory.h"
 #include "operations.h"
-#include "controller.h"
 
 
 Cpu* create_cpu();
