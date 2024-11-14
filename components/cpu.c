@@ -307,22 +307,33 @@ void RST_impl(Cpu* cpu, Memory* mem, Operation* op) {
 
 void DAA_impl(Cpu* cpu, Memory* mem, Operation* op) {
 	u8 a = cpu->registers.a;
+	if (a == 0xFF) {
+		AddLog("Breakpoint\n");
+	}
 	u8 flags = cpu->registers.f;
+	cpu->registers.f = 0;
 	if (flags & FLAG_SUB) {
-		if (flags & FLAG_HALFCARRY) a = (a - 0x06) & 0xFF;
-		if (flags & FLAG_CARRY) a -= 0x60;
+		cpu->registers.f |= FLAG_SUB;
+		if (flags & FLAG_HALFCARRY) a -= 0x6;
+		if (flags & FLAG_CARRY) {
+			a -= 0x60;
+			cpu->registers.f |= FLAG_CARRY;
+		}
 	}
 	else {
-		if (flags & FLAG_HALFCARRY || (a & 0xf) > 9) a += 0x06;
-		if (flags & FLAG_CARRY || a > 0x9F) a += 0x60;
+		if ((flags & FLAG_CARRY) || (a > 0x9F)) {
+			a += 0x60;
+			cpu->registers.f |= FLAG_CARRY;
+		}
+		if ((flags & FLAG_HALFCARRY) || ((a & 0xf) > 0x9)) {
+			a += 0x6;
+		}
 	}
 	cpu->registers.a = a;
-	cpu->registers.f &= ~FLAG_HALFCARRY;
 
-	if (a) cpu->registers.f &= ~FLAG_ZERO;
-	else cpu->registers.f |= FLAG_ZERO;
-
-	if (a >= 0x100) cpu->registers.f |= FLAG_CARRY;
+	if (a == 0) {
+		cpu->registers.f |= FLAG_ZERO;
+	}
 }
 
 void CCF_impl(Cpu* cpu, Memory* mem, Operation* op) {
