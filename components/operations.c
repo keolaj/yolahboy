@@ -187,7 +187,7 @@ Operation operations[0x100] = {
 [0x29] = { "ADD HL, HL", ADD, REGISTER16, REGISTER16, HL, HL, 0, 0, 1, 8, {_IGNORE, RESET, DEPENDENT, DEPENDENT} },
 [0x39] = { "ADD HL, SP", ADD, REGISTER16, REGISTER16, HL, SP, 0, 0, 1, 8, {_IGNORE, RESET, DEPENDENT, DEPENDENT} },
 
-[0xE8] = { "ADD SP, i8", LD, REGISTER16, REGISTER16, SP, SP_ADD_I8, 0, 0, 2, 16, {RESET, RESET, DEPENDENT, DEPENDENT} }, // TRUST ME THIS IS THE EASIEST WAY
+[0xE8] = { "ADD SP, i8", ADD, REGISTER16, MEM_READ, SP, I8, 0, 0, 2, 16, {RESET, RESET, DEPENDENT, DEPENDENT} }, // TRUST ME THIS IS THE EASIEST WAY
 
 [0x17] = { "RLA", RL, REGISTER, ADDR_MODE_NONE, A, OPERAND_NONE, 0, 0, 1, 4, {DEPENDENT, RESET, RESET, DEPENDENT} },
 
@@ -254,7 +254,7 @@ Operation operations[0x100] = {
 
 // CALLS
 [0xCD] = { "CALL u16", CALL, ADDR_MODE_NONE, MEM_READ16, OPERAND_NONE, U16, CONDITION_NONE, SECONDARY_NONE, 3, 24 },
-[0xC4] = { "CALL NZ u16", CALL, ADDR_MODE_NONE, MEM_READ16, OPERAND_NONE, U16, CONDITION_NONE, ADD_T_12, 3, 12 },
+[0xC4] = { "CALL NZ u16", CALL, ADDR_MODE_NONE, MEM_READ16, OPERAND_NONE, U16, CONDITION_NZ, ADD_T_12, 3, 12 },
 
 // RST (store rst jump in dest)
 [0xCF] = { "RST 08", RST, ADDR_MODE_NONE, ADDR_MODE_NONE, 0x8, OPERAND_NONE, CONDITION_NONE, SECONDARY_NONE, 1, 16 },
@@ -557,7 +557,7 @@ alu_return run_alu(Cpu* cpu, u8 x, u8 y, instruction_type type, instruction_flag
 	case INC:
 	case ADD:
 		result = x + y;
-		if (((x & 0x0f) + (y & 0x0f)) > 0x0f) { //  half carry			
+		if (((x & 0x0f) + (y & 0x0f)) > 0x0f) { //  half carry	
 			new_flags |= FLAG_HALFCARRY;
 		}
 		if ((int)x + (int)y > 255) {
@@ -626,7 +626,7 @@ alu_return run_alu(Cpu* cpu, u8 x, u8 y, instruction_type type, instruction_flag
 	case RR:
 	{
 		u8 new_carry = x & 0b00000001;
-		result = x > 1;
+		result = x >> 1;
 		result |= ((cpu->registers.f & FLAG_CARRY) << 3);
 		new_flags |= (new_carry << 4);
 		break;
@@ -670,25 +670,41 @@ alu_return run_alu(Cpu* cpu, u8 x, u8 y, instruction_type type, instruction_flag
 		new_flags |= FLAG_ZERO;
 	}
 
-	new_flags |= (generate_ignore_mask(flag_actions) & cpu->registers.f);
+	u8 ignore_mask = generate_ignore_mask(flag_actions);
+	new_flags &= ~ignore_mask;
+	new_flags |= ignore_mask & cpu->registers.f;
+
 	new_flags &= generate_reset_mask(flag_actions);
 
 
 	return (alu_return) { result, new_flags };
 }
 
-alu16_return run_alu16(Cpu* cpu, u16 x, u16 y, instruction_type type, instruction_flags flag_actions) {
+alu16_return run_alu16(Cpu* cpu, u16 x, u16 y, instruction_type type, address_mode source_addr_mode, instruction_flags flag_actions) {
 	u8 new_flags = 0;
 	new_flags |= generate_set_mask(flag_actions);
 	u16 result;
 	switch (type) {
 	case ADD:
 		result = x + y;
-		if ((int)x + (int)y > 0xFFFF) {
-			new_flags |= FLAG_CARRY;
+		if (source_addr_mode == REGISTER16) {
+
 		}
-		if (((x & 0xff) + (y & 0xff)) > 0xff) {
-			new_flags |= FLAG_HALFCARRY;
+		if (source_addr_mode == REGISTER16) {
+			if (((x & 0x0FFF) + (y & 0x0FFF)) > 0x0FFF) {
+				new_flags |= FLAG_HALFCARRY;
+			}
+			if ((int)x + (int)y > 0xFFFF) {
+				new_flags |= FLAG_CARRY;
+			}
+		}
+		else {
+			if (((x & 0x0F) + (y & 0x0F)) > 0x0F) {
+				new_flags |= FLAG_HALFCARRY;
+			}
+			if (((x & 0xFF) + (y & 0xFF)) > 0xFF) {
+				new_flags |= FLAG_CARRY;
+			}
 		}
 		break;
 
@@ -701,7 +717,9 @@ alu16_return run_alu16(Cpu* cpu, u16 x, u16 y, instruction_type type, instructio
 	if (result == 0) {
 		new_flags |= FLAG_ZERO;
 	}
-	new_flags |= (generate_ignore_mask(flag_actions) & cpu->registers.f);
+	u8 ignore_mask = generate_ignore_mask(flag_actions);
+	new_flags &= ~ignore_mask;
+	new_flags |= ignore_mask & cpu->registers.f;
 	new_flags &= generate_reset_mask(flag_actions);
 
 	return (alu16_return) { result, new_flags };

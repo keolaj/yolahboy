@@ -41,7 +41,7 @@ u8 read8(Memory* mem, u16 address) {
 		u8 j_ret = joypad_return(mem->controller, mem->memory[address]);
 		return j_ret; // joypad emulation for now
 	}
-	// if (address == 0xFF44) return 0x90; // this is for gameboy doctor TODO: add settings struct to emulator to conditionally control this
+	if (address == 0xFF44) return 0x90; // this is for gameboy doctor TODO: add settings struct to emulator to conditionally control this
 	return mem->memory[address];
 }
 

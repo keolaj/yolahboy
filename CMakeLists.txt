@@ -18,7 +18,6 @@ find_package(SDL3 REQUIRED)
 
 set(IMGUI_SRC 
 	./imgui/imgui.cpp
-	./imgui/imgui_demo.cpp
 	./imgui/imgui_draw.cpp
 	./imgui/imgui_tables.cpp
 	./imgui/imgui_widgets.cpp
@@ -27,7 +26,7 @@ set(IMGUI_SRC
 )
 
 # Add source to this project's executable.
-add_executable (yolahboy WIN32 "yolahboy.c" "yolahboy.h" "components/cpu.h" "components/cpu.c"  "components/emulator.h" "components/emulator.c" "components/memory.h" "components/memory.c" "components/operation_defitions.h" "components/operations.h" "components/operations.c" "components/cpu_definitions.h" "components/gpu.h" "components/gpu.c" "components/memory_definitions.h" "components/controller.h" "components/controller.c" "debugger/debugger.cpp" "debugger/debugger.h" "imgui_memory_editor.h" ${IMGUI_SRC} "debugger/imgui_custom_widgets.h" "debugger/imgui_custom_widget_wrapper.h" "debugger/imgui_custom_widget_wrapper.cpp")
+add_executable (yolahboy WIN32 "yolahboy.c" "yolahboy.h" "components/cpu.h" "components/cpu.c"  "components/emulator.h" "components/emulator.c" "components/memory.h" "components/memory.c" "components/operation_defitions.h" "components/operations.h" "components/operations.c" "components/cpu_definitions.h" "components/gpu.h" "components/gpu.c" "components/memory_definitions.h" "components/controller.h" "components/controller.c" "debugger/debugger.cpp" "debugger/debugger.h" "imgui_memory_editor.h" ${IMGUI_SRC} "debugger/imgui_custom_widgets.h" "debugger/imgui_custom_widget_wrapper.h" "debugger/imgui_custom_widget_wrapper.cpp" "debugger/imgui_custom_widgets.cpp" "debugger/ImGuiFileDialog.cpp")
 target_include_directories(yolahboy PUBLIC ./imgui)
 target_link_libraries(yolahboy PUBLIC SDL3::SDL3)
 set_property(TARGET yolahboy PROPERTY CXX_STANDARD 20)

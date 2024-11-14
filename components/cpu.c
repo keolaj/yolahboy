@@ -99,8 +99,8 @@ void LD_impl(Cpu* cpu, Memory* mem, Operation* op) {
 
 void CALL_impl(Cpu* cpu, Memory* mem, Operation* op) {
 	// Calls should only be u16 address mode
+	u16 addr = get_source_16(cpu, mem, op);
 	if (condition_passed(cpu, op)) {
-		u16 addr = get_source_16(cpu, mem, op);
 		push(cpu, mem, cpu->registers.pc);
 		jump(cpu, addr);
 	}
@@ -254,7 +254,7 @@ void SUB_impl(Cpu* cpu, Memory* mem, Operation* op) {
 
 void ALU_impl(Cpu* cpu, Memory* mem, Operation* op) {
 	if (bit_mode_16(op)) {
-		alu16_return alu_ret = run_alu16(cpu, get_dest16(cpu, mem, op), get_source_16(cpu, mem, op), op->type, op->flag_actions);
+		alu16_return alu_ret = run_alu16(cpu, get_dest16(cpu, mem, op), get_source_16(cpu, mem, op), op->type, op->source_addr_mode, op->flag_actions);
 		write_dest16(cpu, mem, op->dest_addr_mode, op->dest, alu_ret.result);
 		cpu->registers.f = alu_ret.flags;
 	}
@@ -343,7 +343,7 @@ Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op) {
 		++cpu->registers.pc;
 	}
 
-	if (cpu->registers.pc - 1 == 0x100) {
+	if (cpu->registers.pc + 1 == 0x100) {
 		mem->in_bios = false;
 	}
 

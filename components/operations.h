@@ -28,5 +28,5 @@ i16 unsigned_to_relative16(u8 x);
 
 
 alu_return run_alu(Cpu* cpu, u8 x, u8 y, instruction_type type, instruction_flags flag_actions);
-alu16_return run_alu16(Cpu* cpu, u16 x, u16 y, instruction_type type, instruction_flags flag_actions);
+alu16_return run_alu16(Cpu* cpu, u16 x, u16 y, instruction_type type, address_mode source_addr_mode, instruction_flags flag_actions);
 void print_operation(Operation op);

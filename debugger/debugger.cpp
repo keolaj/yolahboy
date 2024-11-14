@@ -49,7 +49,7 @@ void init_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 }
 
 extern ExampleAppLog app_log;
-static bool create_gbd_log = false;
+static bool create_gbd_log = true;
 static bool use_gamepad = true;
 
 void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_ctx, ImGuiIO* ioptr, Emulator* emu, SDL_FRect* emulator_screen_rect, SDL_FRect* tile_screen_rect, bool run_once) {
@@ -262,7 +262,43 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 		ImGui::Checkbox("Use Gamepad", &use_gamepad);
 
 		ImGui::InputText("Bootrom Path", bootrom_path_buf, 200);
+		ImGui::SameLine();
+		if (ImGui::Button("Open##1")) {
+			IGFD::FileDialogConfig config;
+			config.filePathName = std::string{ bootrom_path_buf };
+			ImGuiFileDialog::Instance()->OpenDialog("ChooseBootrom", "Choose File", ".bin", config);
+		}		
+		if (ImGuiFileDialog::Instance()->Display("ChooseBootrom")) {
+			if (ImGuiFileDialog::Instance()->IsOk()) { // action if OK
+				std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
+				std::string filePath = ImGuiFileDialog::Instance()->GetCurrentPath();
+				// action
+				strcpy(bootrom_path_buf, filePathName.c_str());
+			}
+
+			// close
+			ImGuiFileDialog::Instance()->Close();
+		}
+
 		ImGui::InputText("Rom Path", rom_path_buf, 200);
+		ImGui::SameLine();
+		if (ImGui::Button("Open##2")) {
+			IGFD::FileDialogConfig config;
+			config.filePathName = std::string{ rom_path_buf };
+			ImGuiFileDialog::Instance()->OpenDialog("ChooseRom", "Choose File", ".gb,.bin", config);
+		}		
+		if (ImGuiFileDialog::Instance()->Display("ChooseRom")) {
+			if (ImGuiFileDialog::Instance()->IsOk()) { // action if OK
+				std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
+				std::string filePath = ImGuiFileDialog::Instance()->GetCurrentPath();
+				// action
+				strcpy(rom_path_buf, filePathName.c_str());
+			}
+
+			// close
+			ImGuiFileDialog::Instance()->Close();
+		}
+
 
 		ImGui::EndTabItem();
 	}
@@ -376,11 +412,11 @@ int debugger_run(char* rom_path, char* bootrom_path) {
 		if (emu.should_run) {
 			if (create_gbd_log && emu.memory->in_bios == false) {
 				if (!gbd_log.is_open()) {
-					app_log.AddLog("gbd log file is closed!");
+					app_log.AddLog("opening gbd log\n");
 					gbd_log.open("./gbd_log.txt");
 				}
 				char str_buf[200];
-				sprintf(str_buf, "A:%2hX F:%2hX B:%2hX C:%2hX D:%2hX E:%2hX H:%2hX L:%2hX SP:%4hX PC:%4hX PCMEM:%2hX,%2hX,%2hX,%2hX\n",
+				sprintf(str_buf, "A:%02hX F:%02hX B:%02hX C:%02hX D:%02hX E:%02hX H:%02hX L:%02hX SP:%04hX PC:%04hX PCMEM:%02hX,%02hX,%02hX,%02hX\n",
 					emu.cpu->registers.a,
 					emu.cpu->registers.f,
 					emu.cpu->registers.b,
@@ -459,13 +495,13 @@ int debugger_run(char* rom_path, char* bootrom_path) {
 						break;
 					}
 				}
-					draw_debug_ui(window, renderer, ig_ctx, ioptr, &emu, &emulator_screen_rect, &tile_screen_rect, run_once);
-					SDL_SetRenderDrawColorFloat(renderer, clear_color.x, clear_color.y, clear_color.z, clear_color.w);
-					SDL_RenderClear(renderer);
-					ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), renderer);
-					SDL_RenderTexture(renderer, screen_tex, nullptr, &emulator_screen_rect);
-					SDL_RenderTexture(renderer, tile_tex, nullptr, &tile_screen_rect);
-					SDL_RenderPresent(renderer);
+				draw_debug_ui(window, renderer, ig_ctx, ioptr, &emu, &emulator_screen_rect, &tile_screen_rect, run_once);
+				SDL_SetRenderDrawColorFloat(renderer, clear_color.x, clear_color.y, clear_color.z, clear_color.w);
+				SDL_RenderClear(renderer);
+				ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), renderer);
+				SDL_RenderTexture(renderer, screen_tex, nullptr, &emulator_screen_rect);
+				SDL_RenderTexture(renderer, tile_tex, nullptr, &tile_screen_rect);
+				SDL_RenderPresent(renderer);
 				timer = 0;
 				SDL_Delay(1);
 			}
