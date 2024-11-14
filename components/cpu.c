@@ -56,7 +56,6 @@ Operation get_cb_operation(Cpu* cpu, Memory* mem) {
 void LD_impl(Cpu* cpu, Memory* mem, Operation* op) {
 	if (bit_mode_16(op)) {
 		u16 source = get_source_16(cpu, mem, op);
-
 		switch (op->dest_addr_mode) {
 		case REGISTER16:
 			*get_reg16_from_type(cpu, op->dest) = source;

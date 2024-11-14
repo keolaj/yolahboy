@@ -118,7 +118,7 @@ Operation operations[0x100] = {
 
 	// LD HL
 [0x21] = { "LD HL, u16", LD, REGISTER16, MEM_READ16, HL, U16, 0, 0, 3, 12, },
-[0xF8] = { "LD HL, SP + i8", LD, REGISTER16, REGISTER16, HL, SP_ADD_I8, 0, 0, 3, 12, },
+[0xF8] = { "LD HL, SP + i8", LD, REGISTER16, REGISTER16, HL, SP_ADD_I8, 0, 0, 3, 12, {RESET, RESET, DEPENDENT, DEPENDENT} },
 
 // ALU
 // INC r8
@@ -688,9 +688,6 @@ alu16_return run_alu16(Cpu* cpu, u16 x, u16 y, instruction_type type, address_mo
 	case ADD:
 		result = x + y;
 		if (source_addr_mode == REGISTER16) {
-
-		}
-		if (source_addr_mode == REGISTER16) {
 			if (((x & 0x0FFF) + (y & 0x0FFF)) > 0x0FFF) {
 				new_flags |= FLAG_HALFCARRY;
 			}
@@ -859,13 +856,9 @@ u16 get_source_16(Cpu* cpu, Memory* mem, Operation* op) {
 	switch (op->source_addr_mode) {
 	case REGISTER16:
 		if (op->source == SP_ADD_I8) {
-			u8 value = read8(mem, cpu->registers.pc++);
-			if (value > 127) {
-				sourceVal = *get_reg16_from_type(cpu, op->source) - (~value + 1);
-			}
-			else {
-				sourceVal = *get_reg16_from_type(cpu, op->source) + value;
-			}
+			alu16_return alu_ret = run_alu16(cpu, *get_reg16_from_type(cpu, op->source), read8(mem, cpu->registers.pc++), ADD, MEM_READ, op->flag_actions);
+			sourceVal = alu_ret.result;
+			cpu->registers.f = alu_ret.flags;
 			break;
 		}
 		sourceVal = *get_reg16_from_type(cpu, op->source);
