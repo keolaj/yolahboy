@@ -63,7 +63,7 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 	static float SCREEN_Y = 323;
 	static float TILE_X = 144;
 	static float TILE_Y = 323;
-	static float INSTRUCTION_X = 210;
+	static float INSTRUCTION_X = 310;
 	static float INSTRUCTION_Y = 600;
 	static float TABS_X = 640;
 	static float TABS_Y = 277;
@@ -216,6 +216,7 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 				ImGui::Text(op_buf);
 				break;
 			case MEM_READ16:
+			case MEM_READ_ADDR:
 				clipper.DisplayEnd += 2;
 				i += 2;
 				sprintf(op_buf, "%04hX", read16(emu->memory, i - 1));
@@ -343,7 +344,7 @@ SDL_Gamepad* get_first_gamepad() {
 
 int debugger_run(char* rom_path, char* bootrom_path) {
 
-	SDL_Window* window = SDL_CreateWindow("Yolahboy Debugger", 850, 600, 0);
+	SDL_Window* window = SDL_CreateWindow("Yolahboy Debugger", 950, 600, 0);
 	SDL_Renderer* renderer = SDL_CreateRenderer(window, NULL);
 	SDL_Texture* screen_tex = NULL;
 	SDL_Texture* tile_tex = NULL;

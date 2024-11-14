@@ -329,10 +329,7 @@ void CCF_impl(Cpu* cpu, Memory* mem, Operation* op) {
 	u8 new_carry = ~cpu->registers.f & FLAG_CARRY;
 	u8 old_zero = cpu->registers.f & FLAG_ZERO;
 	cpu->registers.f |= new_carry | old_zero;
-}
-
-void SCF_impl(Cpu* cpu, Memory* mem, Operation* op) {
-	cpu->registers.f |= FLAG_CARRY;
+	cpu->registers.f &= (FLAG_CARRY & FLAG_ZERO);
 }
 
 Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op) {
@@ -389,6 +386,8 @@ Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op) {
 	case RR:
 	case RLC:
 	case RRC:
+	case SCF:
+	case CCF:
 		ALU_impl(cpu, mem, &op);
 		break;
 	case JP:
@@ -445,12 +444,6 @@ Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op) {
 
 	case DAA:
 		DAA_impl(cpu, mem, &op);
-		break;
-	case CCF:
-		CCF_impl(cpu, mem, &op);
-		break;
-	case SCF:
-		SCF_impl(cpu, mem, &op);
 		break;
 	case UNIMPLEMENTED:
 	default:

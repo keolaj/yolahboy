@@ -188,8 +188,13 @@ Operation operations[0x100] = {
 [0xDE] = { "SBC A, u8", SBC, REGISTER, MEM_READ, A, U8, 0, 0, 2, 8, {DEPENDENT, SET, DEPENDENT, DEPENDENT}},
 
 // CP
-[0xB8] = { "CP A, B", CP, REGISTER, REGISTER, A, B, 0, 0, 2, 8, {DEPENDENT, SET, DEPENDENT, DEPENDENT} },
-[0xB9] = { "CP A, C", CP, REGISTER, REGISTER, A, C, 0, 0, 2, 8, {DEPENDENT, SET, DEPENDENT, DEPENDENT} },
+[0xBF] = { "CP A, A", CP, REGISTER, REGISTER, A, A, 0, 0, 1, 4, {DEPENDENT, SET, DEPENDENT, DEPENDENT} },
+[0xB8] = { "CP A, B", CP, REGISTER, REGISTER, A, B, 0, 0, 1, 4, {DEPENDENT, SET, DEPENDENT, DEPENDENT} },
+[0xB9] = { "CP A, C", CP, REGISTER, REGISTER, A, C, 0, 0, 1, 4, {DEPENDENT, SET, DEPENDENT, DEPENDENT} },
+[0xBA] = { "CP A, D", CP, REGISTER, REGISTER, A, D, 0, 0, 1, 4, {DEPENDENT, SET, DEPENDENT, DEPENDENT} },
+[0xBB] = { "CP A, E", CP, REGISTER, REGISTER, A, E, 0, 0, 1, 4, {DEPENDENT, SET, DEPENDENT, DEPENDENT} },
+[0xBC] = { "CP A, H", CP, REGISTER, REGISTER, A, H, 0, 0, 1, 4, {DEPENDENT, SET, DEPENDENT, DEPENDENT} },
+[0xBD] = { "CP A, L", CP, REGISTER, REGISTER, A, L, 0, 0, 1, 4, {DEPENDENT, SET, DEPENDENT, DEPENDENT} },
 [0xBE] = { "CP A, (HL)", CP, REGISTER, ADDRESS_R16, A, HL, 0, 0, 1, 8, {DEPENDENT, SET, DEPENDENT, DEPENDENT} },
 [0xFE] = { "CP A, u8", CP, REGISTER, MEM_READ, A, U8, 0, 0, 2, 8, {DEPENDENT, SET, DEPENDENT, DEPENDENT} },
 
@@ -304,10 +309,11 @@ Operation operations[0x100] = {
 // MISC
 [0xCB] = {"PREFIX CB", CB, MEM_READ, ADDR_MODE_NONE, OPERAND_NONE, OPERAND_NONE, 0, 0, 1, 4},
 [0x27] = {"DAA", DAA, 0, 0, 0, 0, 0, 0, 1, 4},
-[0x3F] = {"CCF", CCF, 0, 0, 0, 0, 0, 0, 1, 4},
-[0x37] = {"SCF", SCF, 0, 0, 0, 0, 0, 0, 1, 4},
+[0x3F] = { "CCF", CCF, 0, 0, 0, 0, 0, 0, 1, 4, {_IGNORE, RESET, RESET, DEPENDENT} },
+[0x37] = { "SCF", SCF, 0, 0, 0, 0, 0, 0, 1, 4, {_IGNORE, RESET, RESET, SET} },
 [0x1F] = {"RRA", RR, REGISTER, ADDR_MODE_NONE, A, OPERAND_NONE, 0, 0, 1, 4, {RESET, RESET, RESET, DEPENDENT}},
 [0x07] = {"RLCA", RLC, REGISTER, ADDR_MODE_NONE, A, OPERAND_NONE, 0, 0, 1, 4, {RESET, RESET, RESET, DEPENDENT}},
+[0x0F] = { "RRCA", RRC, REGISTER, ADDR_MODE_NONE, A, OPERAND_NONE, 0, 0, 1, 4, {DEPENDENT, RESET, RESET, DEPENDENT}},
 
 [0xFB] = {"EI", EI, 0, 0, 0, 0, 0, 0, 1, 4},
 [0xF3] = {"DI", DI, 0, 0, 0, 0, 0, 0, 1, 4},
@@ -902,6 +908,16 @@ alu_return run_alu(Cpu* cpu, u8 x, u8 y, instruction_type type, instruction_flag
 		}
 		break;
 	}
+	case SCF: 
+		break;
+	case CCF:
+		if (cpu->registers.f & FLAG_CARRY) {
+
+		}
+		else {
+			new_flags |= FLAG_CARRY;
+		}
+		break;
 
 
 	}
@@ -1037,6 +1053,8 @@ void write_dest(Cpu* cpu, Memory* mem, Operation* op, u8 value) {
 		write8(mem, (0xFF00 + offset), value);
 		break;
 	}
+	case OPERAND_NONE:
+		break;
 	default:
 		AddLog("unimplemented write dest addr mode");
 		assert(false);
@@ -1209,6 +1227,9 @@ u8 get_dest(Cpu* cpu, Memory* mem, Operation* op) {
 	case MEM_READ:
 		destVal = read8(mem, cpu->registers.pc);
 		++cpu->registers.pc;
+		break;
+	case OPERAND_NONE:
+		destVal = 0;
 		break;
 	default:
 		destVal = 0;
