@@ -41,6 +41,7 @@ int step(Emulator* emu) {
 	}
 	emu->clock += c.t_cycles;
 	step_gpu(emu->gpu, c.t_cycles);
+	++emu->memory->memory[0xFF04];
 	if (emu->clock > 29780) {
 		emu->clock = 0;
 		emu->should_draw = true;

@@ -77,6 +77,7 @@ void write8(Memory* mem, u16 address, u8 data) {
 	if (address == 0xFF02 && data == 0x81) {
 		AddLog("%c", read8(mem, 0xff01));
 	}
+	if (address == 0xFF04) mem->memory[address] = 0;
 
 }
 
