@@ -1,9 +1,7 @@
 #include "gpu.h"
-#include <stdlib.h>
 #include <stdio.h>
-#include <assert.h>
-#include <string.h>
 #include <SDL3/SDL.h>
+#include "../memory/memory.h"
 
 Gpu* create_gpu(Memory* mem) {
 	Gpu* ret = (Gpu*)malloc(sizeof(Gpu));
@@ -53,6 +51,7 @@ int init_gpu(Gpu* gpu, Memory* mem) {
 			}
 		}
 	}
+	return 0;
 }
 
 u32 createPixelFromPaletteId(u8 palette, u8 id) {
@@ -73,7 +72,6 @@ u32 createPixelFromPaletteId(u8 palette, u8 id) {
 	default:
 		value = 0;
 		printf("createPixelFromPalette bad value");
-		assert(false);
 	}
 	switch (value) {
 	case 0:
@@ -86,7 +84,6 @@ u32 createPixelFromPaletteId(u8 palette, u8 id) {
 		return BLACK;
 	default:
 		printf("invalid color");
-		assert(false);
 		return 0;
 	}
 }
@@ -99,7 +96,7 @@ void writePixel(SDL_Surface* surface, int x, int y, u32 pixel) {
 void write_buffer_to_screen(Gpu* gpu) {
 	if (SDL_LockSurface(gpu->screen) < 0) {
 		printf("could not lock screen surface");
-		assert(false);
+		return;
 	}
 
 	for (int x = 0; x < SCREEN_WIDTH; ++x) {
@@ -113,7 +110,7 @@ void write_buffer_to_screen(Gpu* gpu) {
 void write_tile_buffer_to_screen(Gpu* gpu) {
 	if (SDL_LockSurface(gpu->tile_screen) < 0) {
 		printf("could not lock tile screen");
-		assert(false);
+		return;
 	}
 
 	for (int y = 0; y < TILES_Y; ++y) {

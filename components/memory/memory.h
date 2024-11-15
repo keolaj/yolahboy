@@ -1,8 +1,6 @@
 #pragma once
 #include <stdbool.h>
-#include "memory_definitions.h"
-#include "../gpu/gpu_definitions.h"
-
+#include "../global_definitions.h"
 
 Memory* create_memory();
 int load_bootrom(Memory* mem, const char* path);
