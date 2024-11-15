@@ -4,6 +4,11 @@
 #include <stdlib.h>
 #include <SDL3/SDL.h>
 
+#define BANKSIZE 0x4000
+#define TITLE 0x134
+#define TITLE_SIZE 0x10
+#define CARTRIDGE_TYPE 0x147
+
 #define SCREEN_WIDTH 160
 #define SCREEN_HEIGHT 144
 
@@ -84,11 +89,32 @@ typedef struct {
 typedef enum {
 	ROM_ONLY,
 	MBC1,
-} MBC_TYPE;
+	MBC1_RAM,
+	MBC1_RAM_BATTERY,
+	MBC2
+} CART_TYPE;
+
+typedef enum {
+	RAM_NONE,
+	RAM_UNUSED,
+	RAM_8KB,
+	RAM_32KB,
+	RAM128KB,
+	RAM_64KB
+} RAM_TYPE;
+
+#define BANKMODESIMPLE false
+#define BANKMODEADVANCED true
 
 typedef struct {
 	u8* rom;
 	u8* ram;
+	u8 type;
+	u8 rom_bank;
+	u8 ram_bank;
+	bool banking_mode;
+	bool ram_enabled;
+	u8 cgb_flag;
 } Cartridge;
 
 typedef struct mem_ctx Memory;

@@ -5,6 +5,7 @@
 #include "memory.h"
 #include "../controller/controller.h"
 #include "../debugger/imgui_custom_widget_wrapper.h"
+#include "./cartridge.h"
 
 Memory* create_memory() {
 	Memory* ret = (Memory*)malloc(sizeof(Memory));
@@ -14,6 +15,8 @@ Memory* create_memory() {
 	}
 	ret->cartridge.rom = NULL;
 	ret->cartridge.ram = NULL;
+	ret->cartridge.rom_bank = 1;
+	ret->cartridge.banking_mode = BANKMODESIMPLE;
 	memset((void*)&ret->controller, 0, sizeof(Controller));
 	memset(ret->memory, 0, 0x10000);
 	memset(ret->bios, 0, 0x100);
@@ -29,19 +32,19 @@ void set_mem_controller(Memory* mem, Controller* controller) {
 }
 
 u8 read8(Memory* mem, u16 address) {
-	if (address < 0x100) {
-		if (mem->in_bios) {
-			return mem->bios[(u8)address];
+	if (mem->in_bios) {
+		if (address < 0x100) {
+			return mem->bios[address];
 		}
-		else {
-			return mem->memory[address];
-		}
+	}
+	if (address < 0xC000) {
+		return cart_read8(&mem->cartridge, address);
 	}
 	if (address == 0xFF00) {
 		u8 j_ret = joypad_return(*mem->controller, mem->memory[address]);
-		return j_ret; 
+		return j_ret;
 	}
-	if (address == 0xFF44 && mem->use_gbd_log) return 0x90; 
+	if (address == 0xFF44 && mem->use_gbd_log) return 0x90;
 	return mem->memory[address];
 }
 
@@ -91,6 +94,7 @@ int load_bootrom(Memory* mem, const char* path) {
 	fread(mem->bios, sizeof(u8), 0x100, fp);
 	return 0;
 }
+
 int load_rom(Memory* mem, const char* path) {
 	FILE* fp;
 	fp = fopen(path, "rb");
@@ -99,14 +103,75 @@ int load_rom(Memory* mem, const char* path) {
 		return -1;
 	}
 	memset(mem->memory, 0, sizeof(mem->memory));
-	fread(mem->memory, sizeof(u8), 0x8000, fp);
 
-	mem->cartridge.rom = (u8*)malloc(sizeof(u8) * 0x8000);
+	u8 cart_type_val;
+	if (fseek(fp, 0x147, SEEK_SET) != 0) {
+		AddLog("Error seeking to Cart Type!");
+		fclose(fp);
+		return -1;
+	}
+	fread(&cart_type_val, sizeof(u8), 1, fp);
+	rewind(fp);
+
+	mem->cartridge.type = cart_type_val;
+
+	u8 rom_size_val; // read rom file into mem->cartridge.rom
+	if (fseek(fp, 0x148, SEEK_SET) != 0) {
+		AddLog("error seeking to position 0x148");
+		fclose(fp);
+		return -1;
+	}
+	if (fread(&rom_size_val, sizeof(u8), 1, fp) != 1) {
+		AddLog("couldnt read to rom_size_val");
+		fclose(fp);
+		return -1;
+	}
+	rewind(fp);
+	int actual_rom_size = (BANKSIZE * 2) * (1 << rom_size_val);
+	mem->cartridge.rom = (u8*)malloc(sizeof(u8) * actual_rom_size);
 	if (mem->cartridge.rom == NULL) {
 		AddLog("could not allocate cartridge rom");
 		return -1;
 	}
-	fread(mem->cartridge.rom, sizeof(u8), 0x8000, fp);
+	fread(mem->cartridge.rom, sizeof(u8), actual_rom_size, fp);
+	rewind(fp);
+
+	u8 ram_size_val;
+	fseek(fp, 0x149, SEEK_SET);
+	fread(&ram_size_val, sizeof(u8), 1, fp);
+	rewind(fp);
+	int actual_ram_size;
+	switch (ram_size_val) {
+	case 0:
+		actual_ram_size = 0;
+		break;
+	case 1:
+		actual_ram_size = 0;
+		break;
+	case 2:
+		actual_ram_size = 0x8000;
+		break;
+	case 3:
+		actual_ram_size = 0x8000 * 4;
+		break;
+	case 4:
+		actual_ram_size = 0x8000 * 16;
+		break;
+	case 5:
+		actual_ram_size = 0x8000 * 8;
+		break;
+	default:
+		actual_ram_size = 0;
+		AddLog("bad read from cartridge ram size");
+		break;
+	}
+	if (actual_ram_size) {
+		mem->cartridge.ram = (u8*)malloc(sizeof(u8) * actual_ram_size);
+		if (mem->cartridge.ram == NULL) {
+			AddLog("couldn't allocate cartridge ram!");
+			return -1;
+		}
+	}
 	fclose(fp);
 	return 0;
 }
@@ -115,11 +180,8 @@ void destroy_memory(Memory* mem) {
 	if (mem == NULL) return;
 	
 	if (mem->cartridge.rom) free(mem->cartridge.rom);
+	if (mem->cartridge.ram) free(mem->cartridge.ram);
 	free(mem);
-}
-
-void write_mem_layout_to_buffer(u8* buffer) {
-
 }
 
 void set_use_gbd_log(Memory* mem, bool use_gbd_log) {
