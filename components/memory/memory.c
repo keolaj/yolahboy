@@ -20,6 +20,7 @@ Memory* create_memory() {
 	ret->cartridge.ram_bank = 0;
 	ret->cartridge.banking_mode = BANKMODESIMPLE;
 	ret->cartridge.ram_enabled = false;
+	ret->wrote_dma = false;
 	memset((void*)&ret->controller, 0, sizeof(Controller));
 	memset(ret->memory, 0, 0x10000);
 	memset(ret->bios, 0, 0x100);
@@ -83,6 +84,7 @@ void write8(Memory* mem, u16 address, u8 data) {
 	}
 
 	if (address == DMA && data <= 0xDF) {
+		mem->wrote_dma = true;
 		for (int i = 0; i < 0x100; ++i) {
 			mem->memory[0xFE00 + i] = mem->memory[(data << 8) + i];
 		}

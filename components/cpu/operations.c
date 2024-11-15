@@ -1216,6 +1216,7 @@ u8 get_source(Cpu* cpu, Memory* mem, Operation* op) { // maybe I'll change this 
 }
 
 u8 get_dest(Cpu* cpu, Memory* mem, Operation* op) {
+
 	u8 destVal;
 	switch (op->dest_addr_mode) {
 	case ADDRESS_R8_OFFSET:

@@ -84,6 +84,7 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 			if (strlen(bootrom_path_buf) > 0) {
 				if (load_bootrom(emu->memory, bootrom_path_buf) < 0) {
 					app_log.AddLog("Couldn't load bootrom!\n");
+					skip_bootrom(emu);
 				}
 			}
 			else {
@@ -97,9 +98,21 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 					emu->should_run = true;
 				}
 			}
+
 		}
 		else {
-			emu->should_run = true;
+			if (load_bootrom(emu->memory, bootrom_path_buf) < 0) {
+				app_log.AddLog("Couldn't load bootrom!\n");
+				skip_bootrom(emu);
+			}
+			if (strlen(rom_path_buf) > 0) {
+				if (load_rom(emu->memory, rom_path_buf) < 0) {
+					app_log.AddLog("Couldn't load rom!\n");
+				}
+				else {
+					emu->should_run = true;
+				}
+			}
 		}
 	}
 
@@ -108,6 +121,9 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 	if (ImGui::IsItemClicked()) { // for some reason this is how I got it to work...
 		app_log.AddLog("PAUSE\n");
 		emu->should_run = false;
+		//for (int i = 0; i < 0x10000; ++i) {
+		//	emu->memory->memory[i] = read8(emu->memory, i);
+		//}
 	}
 
 	ImGui::SameLine();
@@ -115,7 +131,7 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 		destroy_emulator(emu);
 		init_emulator(emu);
 	}
-	
+
 	if (ImGui::Button("STEP", { 40, 15 })) {
 		step(emu);
 	}
@@ -288,12 +304,41 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 	ImGui::Begin("OTHER", 0, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoResize);
 	ImGui::BeginTabBar("##SETTINGSTABS");
 	if (ImGui::BeginTabItem("RAM")) {
+		//if (run_once) {
+		//	for (int i = 0; i < 0x10000; ++i) {
+		//		emu->memory->memory[i] = read8(emu->memory, i);
+		//	}
+		//}
 		ram_viewer.DrawContents(emu->memory->memory, 0x10000);
 		ImGui::EndTabItem();
 	}
 	if (ImGui::BeginTabItem("CONSOLE")) {
 		// TODO
 		app_log.Draw();
+		ImGui::EndTabItem();
+	}
+	if (ImGui::BeginTabItem("CARTRIDGE")) {
+		char title_buf[0x11];
+		char full_title[0x30];
+		char type_buf[0x20];
+		char rom_size_buf[0x30];
+		char ram_size_buf[0x20];
+
+		if (emu->memory->cartridge.rom != NULL) {
+			Cartridge cart = emu->memory->cartridge;
+			memcpy(title_buf, emu->memory->cartridge.rom + 0x134, 0x10);
+			title_buf[0x10] = '\0';
+			sprintf_s(full_title, "TITLE: %s", title_buf);
+			sprintf_s(type_buf, "TYPE: %d", cart.type);
+			sprintf_s(rom_size_buf, "ROM SIZE: 0x%X", cart.rom_size);
+			sprintf_s(ram_size_buf, "RAM SIZE: 0x%X", cart.ram_size);
+
+			ImGui::Text(full_title);
+			ImGui::Text(type_buf);
+			ImGui::Text(rom_size_buf);
+			ImGui::Text(ram_size_buf);
+		}
+
 		ImGui::EndTabItem();
 	}
 	if (ImGui::BeginTabItem("SETTINGS")) {
@@ -307,7 +352,7 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 			IGFD::FileDialogConfig config;
 			config.filePathName = std::string{ bootrom_path_buf };
 			ImGuiFileDialog::Instance()->OpenDialog("ChooseBootrom", "Choose File", ".bin", config);
-		}		
+		}
 		if (ImGuiFileDialog::Instance()->Display("ChooseBootrom")) {
 			if (ImGuiFileDialog::Instance()->IsOk()) { // action if OK
 				std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
@@ -326,7 +371,7 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 			IGFD::FileDialogConfig config;
 			config.filePathName = std::string{ rom_path_buf };
 			ImGuiFileDialog::Instance()->OpenDialog("ChooseRom", "Choose File", ".gb,.bin", config);
-		}		
+		}
 		if (ImGuiFileDialog::Instance()->Display("ChooseRom")) {
 			if (ImGuiFileDialog::Instance()->IsOk()) { // action if OK
 				std::string filePathName = ImGuiFileDialog::Instance()->GetFilePathName();
@@ -343,11 +388,11 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 		ImGui::EndTabItem();
 	}
 
+	ImGui::EndTabBar();
+	ImGui::End();
 	if (run_once) {
 	}
 
-	ImGui::EndTabBar();
-	ImGui::End();
 	ImGui::Render();
 }
 
@@ -428,6 +473,10 @@ int debugger_run(char* rom_path, char* bootrom_path) {
 		SDL_DestroyRenderer(renderer);
 		destroy_emulator(&emu);
 		return -1;
+	}
+
+	if (rom_path) {
+		load_rom(emu.memory, rom_path);
 	}
 
 	screen_tex = SDL_CreateTextureFromSurface(renderer, emu.gpu->screen);
@@ -560,7 +609,7 @@ int debugger_run(char* rom_path, char* bootrom_path) {
 				SDL_RenderTexture(renderer, screen_tex, nullptr, &emulator_screen_rect);
 				SDL_RenderTexture(renderer, tile_tex, nullptr, &tile_screen_rect);
 				SDL_RenderPresent(renderer);
-				
+
 				timer = 0;
 				run_once = false;
 

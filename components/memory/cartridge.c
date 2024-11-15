@@ -89,33 +89,56 @@ void cart_write8(Cartridge* cart, u16 address, u8 data) {
 	}
 	if (address >= 0x4000 && address <= 0x5FFF) { // ram bank number or upper bits of rom bank number
 		if (cart->type == ROM_ONLY) return;
-		cart->ram_bank = (data & 0b00000011);
-		return;
+		switch (cart->type) {
+		case ROM_ONLY:
+			return;
+		case MBC1:
+		case MBC1_RAM:
+		case MBC1_RAM_BATTERY: {
+			cart->ram_bank = (data & 0b00000011);
+			return;
+		}
+		}
 	}
 	if (address >= 0x6000 && address <= 0x7FFF) { // bank mode select
 		if (cart->type == ROM_ONLY) return;
-		if ((data & 0b00000001) == 1) {
-			cart->banking_mode = BANKMODEADVANCED;
-		}
-		else {
-			cart->banking_mode = BANKMODESIMPLE;
-		}
-		return;
-	}
-	if (address >= 0xA000 && address <= 0xBFFF) { // ram write
-		if (cart->type == ROM_ONLY) return;
-		if (cart->ram_enabled && cart->ram != NULL) {
-			if (cart->banking_mode == BANKMODESIMPLE) {
-				int newaddr = address - 0xA000;
-				cart->ram[newaddr] = data;
+		switch (cart->type) {
+		case MBC1: 
+		case MBC1_RAM:
+		case MBC1_RAM_BATTERY: {
+			if ((data & 0b00000001) == 1) {
+				cart->banking_mode = BANKMODEADVANCED;
 			}
 			else {
-				int num_banks = cart->ram_size / 0x2000;
-				int current_bank = cart->ram_bank & (num_banks - 1);
-				int offset = current_bank * 0x2000;
-				int newaddr = address - 0xA000;
-				cart->ram[offset + newaddr] = data;
+				cart->banking_mode = BANKMODESIMPLE;
 			}
+			return;
+
+		}
+		}
+	}
+	if (address >= 0xA000 && address <= 0xBFFF) { // ram write
+		switch (cart->type) {
+		case ROM_ONLY:
+			return;
+		case MBC1:
+		case MBC1_RAM:
+		case MBC1_RAM_BATTERY: {
+			if (cart->ram_enabled && cart->ram != NULL) {
+				if (cart->banking_mode == BANKMODESIMPLE) {
+					int newaddr = address - 0xA000;
+					cart->ram[newaddr] = data;
+				}
+				else {
+					int num_banks = cart->ram_size / 0x2000;
+					int current_bank = cart->ram_bank & (num_banks - 1);
+					int offset = current_bank * 0x2000;
+					int newaddr = address - 0xA000;
+					cart->ram[offset + newaddr] = data;
+				}
+			}
+
+		}
 		}
 	}
 }

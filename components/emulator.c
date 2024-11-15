@@ -2,6 +2,7 @@
 
 #include "emulator.h"
 #include "global_definitions.h"
+#include "./timer/timer.h"
 #include "./controller/controller.h"
 #include "./cpu/cpu.h"
 #include "./memory/memory.h"
@@ -16,6 +17,7 @@ int init_emulator(Emulator* emu) {
 	emu->cpu = create_cpu();
 	emu->memory = create_memory();
 	emu->gpu = create_gpu(emu->memory);
+	emu->timer = create_timer();
 	emu->should_run = false;
 	emu->clock = 0;
 	memset(&emu->controller, 0, sizeof(Controller));
@@ -43,8 +45,8 @@ int step(Emulator* emu) {
 		return -1; // push error to whatever is using emulator
 	}
 	emu->clock += c.t_cycles;
+	tick(emu, c.t_cycles);
 	step_gpu(emu->gpu, c.t_cycles);
-	++emu->memory->memory[0xFF04];
 	if (emu->clock > 29780) {
 		emu->clock = 0;
 		emu->should_draw = true;
@@ -57,6 +59,7 @@ void destroy_emulator(Emulator* emu) {
 	if (emu->gpu) destroy_gpu(emu->gpu);
 	if (emu->memory) destroy_memory(emu->memory);
 	if (emu->cpu) destroy_cpu(emu->cpu);
+	if (emu->timer) free(emu->timer);
 	emu->cpu = NULL;
 }
 

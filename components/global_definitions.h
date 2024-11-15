@@ -38,6 +38,11 @@
 
 #define MAX_BREAKPOINTS 0x100
 
+#define DIV 0xFF04
+#define TIMA 0xFF05
+#define TMA 0xFF06
+#define TAC 0xFF07
+
 #define IF 0xFF0F
 #define IE 0xFFFF
 
@@ -137,6 +142,7 @@ typedef struct mem_ctx {
 	bool use_gbd_log;
 	Gpu* gpu;
 	Controller* controller;
+	bool wrote_dma;
 } Memory;
 
 typedef struct {
@@ -171,6 +177,7 @@ typedef struct {
 	u16 sp;
 	u16 pc;
 } Registers;
+
 
 typedef struct {
 	Registers registers;
@@ -219,16 +226,19 @@ typedef enum {
 	MODE64
 } TimerMode;
 
-typedef struct { // TODO finish this for timer emulation
+typedef struct {
+	u16 clock;
 	TimerMode mode;
-	int count;
 } Timer;
+
 
 typedef struct {
 	Cpu* cpu;
 	Memory* memory;
 	Gpu* gpu;
+	Timer* timer;
 	Controller controller;
+
 	int clock;	
 	bool should_run;
 	bool should_draw;

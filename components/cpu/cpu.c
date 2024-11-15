@@ -327,15 +327,6 @@ void CCF_impl(Cpu* cpu, Memory* mem, Operation* op) {
 Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op) {
 	++cpu->registers.pc;
 
-	if (cpu->registers.pc - 1 == 0x2cd && false) { // works to here
-		AddLog("BREAKPOINT!!! REGISTERS: \n");
-		--cpu->registers.pc;
-		print_registers(cpu);
-		AddLog("IE: 0x%04X\n", read8(mem, IE));
-		AddLog("BGP: 0x%04X\n", read8(mem, BGP));
-		++cpu->registers.pc;
-	}
-
 	if (cpu->registers.pc + 1 == 0x100) {
 		mem->in_bios = false;
 	}
@@ -456,6 +447,12 @@ Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op) {
 		else {
 			--cpu->update_IME_counter;
 		}
+	}
+
+	if (mem->wrote_dma) {
+		op.m_cycles += 162;
+		op.t_cycles += 648;
+		mem->wrote_dma = false;
 	}
 
 	if (should_run_interrupt(cpu, mem)) {
