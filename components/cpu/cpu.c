@@ -13,6 +13,7 @@ void init_cpu(Cpu* cpu) {
 	cpu->registers.pc = 0;
 	cpu->IME = false;
 	cpu->should_update_IME = false;
+	cpu->halted = false;
 }
 
 Cpu* create_cpu() {
@@ -274,7 +275,9 @@ void RET_impl(Cpu* cpu, Memory* mem, Operation* op) {
 bool should_run_interrupt(Cpu* cpu, Memory* mem) {
 	u8 j_ret = joypad_return(mem->controller, mem->memory[0xFF00]);
 	if ((~j_ret & 0b00001111)) mem->memory[IF] = mem->memory[IF] | JOYPAD_INTERRUPT; // I think this is right
-	if (cpu->IME && read8(mem, IF)) {
+	u8 interrupt_flag = mem->memory[IF];
+	u8 interrupt_enable = mem->memory[IE];
+	if (cpu->IME && (interrupt_flag & interrupt_enable)) {
 		return true;
 	}
 	else {
@@ -339,6 +342,9 @@ Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op) {
 
 	switch (op.type) {
 	case NOP:
+		break;
+	case HALT:
+		cpu->halted = true;
 		break;
 	case LD:
 		LD_impl(cpu, mem, &op);
@@ -453,6 +459,7 @@ Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op) {
 	}
 
 	if (should_run_interrupt(cpu, mem)) {
+		cpu->halted = false;
 		run_interrupt(cpu, mem);
 	}
 

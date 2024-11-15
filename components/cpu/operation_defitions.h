@@ -59,6 +59,7 @@ typedef enum {
 	UNIMPLEMENTED,
 	NOP,
 	STOP,
+	HALT,
 	LD,
 	INC,
 	DEC,

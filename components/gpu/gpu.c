@@ -24,6 +24,7 @@ int init_gpu(Gpu* gpu, Memory* mem) {
 	memset(gpu->framebuffer, 0, sizeof(gpu->framebuffer));
 	gpu->screen = SDL_CreateSurface(SCREEN_WIDTH, SCREEN_HEIGHT, SDL_PIXELFORMAT_ARGB32);
 	gpu->tile_screen = SDL_CreateSurface(TILES_X * TILE_WIDTH, TILES_Y * TILE_HEIGHT, SDL_PIXELFORMAT_ARGB32);
+	gpu->drawline = false;
 
 	// setup Tiles array
 	gpu->tiles = (Tile*)malloc(NUM_TILES * sizeof(Tile));
@@ -121,7 +122,6 @@ void write_tile_buffer_to_screen(Gpu* gpu) {
 					int pixelY = y * TILE_HEIGHT + tiley;
 					int pixelX = x * TILE_WIDTH + tilex;
 					writePixel(gpu->tile_screen, pixelX, pixelY, createPixelFromPaletteId(read8(gpu->mem, BGP), gpu->tiles[tile][tiley][tilex]));
-
 				}
 			}
 		}

@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <string.h>
 #include "memory.h"
+#include "../gpu/gpu.h"
 #include "../controller/controller.h"
 #include "../debugger/imgui_custom_widget_wrapper.h"
 #include "./cartridge.h"
@@ -18,6 +19,7 @@ Memory* create_memory() {
 	ret->cartridge.rom_bank = 1;
 	ret->cartridge.ram_bank = 0;
 	ret->cartridge.banking_mode = BANKMODESIMPLE;
+	ret->cartridge.ram_enabled = false;
 	memset((void*)&ret->controller, 0, sizeof(Controller));
 	memset(ret->memory, 0, 0x10000);
 	memset(ret->bios, 0, 0x100);
@@ -38,10 +40,12 @@ u8 read8(Memory* mem, u16 address) {
 			return mem->bios[address];
 		}
 	}
-	if (address < 0x8000) {
+	if (address < 0x8000) { // cartridge rom
 		return cart_read8(&mem->cartridge, address);
 	}
-	if (address >= 0xA000 && address < 0xC000) return cart_read8(&mem->cartridge, address);
+	if (address >= 0xA000 && address < 0xC000) { // cartridge ram
+		return cart_read8(&mem->cartridge, address);
+	}
 	if (address == 0xFF00) {
 		u8 j_ret = joypad_return(*mem->controller, mem->memory[address]);
 		return j_ret;
@@ -74,6 +78,10 @@ void write8(Memory* mem, u16 address, u8 data) {
 		if (address % 2 == 0) update_tile(mem->gpu, address, data);
 		if (address % 2 != 0) update_tile(mem->gpu, address - 1, data);
 	}
+	if (address >= 0xA000 && address < 0xC000) { // cartridge ram
+		cart_write8(&mem->cartridge, address, data);
+	}
+
 	if (address == DMA && data <= 0xDF) {
 		for (int i = 0; i < 0x100; ++i) {
 			mem->memory[0xFE00 + i] = mem->memory[(data << 8) + i];
@@ -83,7 +91,6 @@ void write8(Memory* mem, u16 address, u8 data) {
 		AddLog("%c", read8(mem, 0xff01));
 	}
 	if (address == 0xFF04) mem->memory[address] = 0;
-
 }
 
 int load_bootrom(Memory* mem, const char* path) {
@@ -97,9 +104,9 @@ int load_bootrom(Memory* mem, const char* path) {
 	return 0;
 }
 
-int load_rom(Memory* mem, const char* path) {
+int load_rom(Memory* mem, const char* path) { // I believe this is working
 	FILE* fp;
-	fp = fopen("D:\\Downloads\\Legend of Zelda, The - Link's Awakening (USA, Europe)\\Legend of Zelda, The - Link's Awakening (USA, Europe).gb", "rb");
+	fp = fopen(path, "rb");
 	if (fp == NULL) {
 		AddLog("error opening rom");
 		return -1;
@@ -129,13 +136,16 @@ int load_rom(Memory* mem, const char* path) {
 		return -1;
 	}
 	rewind(fp);
-	int actual_rom_size = (BANKSIZE * 2) * (1 << rom_size_val);
-	mem->cartridge.rom = (u8*)malloc(sizeof(u8) * actual_rom_size);
+
+	int rom_size = (BANKSIZE * 2) * (1 << rom_size_val);
+	mem->cartridge.rom_size = rom_size;
+	mem->cartridge.num_rom_banks = rom_size / BANKSIZE;
+	mem->cartridge.rom = (u8*)malloc(sizeof(u8) * rom_size);
 	if (mem->cartridge.rom == NULL) {
 		AddLog("could not allocate cartridge rom");
 		return -1;
 	}
-	fread(mem->cartridge.rom, sizeof(u8), actual_rom_size, fp);
+	fread(mem->cartridge.rom, sizeof(u8), rom_size, fp);
 	rewind(fp);
 
 	u8 ram_size_val;
@@ -167,12 +177,14 @@ int load_rom(Memory* mem, const char* path) {
 		AddLog("bad read from cartridge ram size");
 		break;
 	}
+	mem->cartridge.ram_size = actual_ram_size;
 	if (actual_ram_size) {
 		mem->cartridge.ram = (u8*)malloc(sizeof(u8) * actual_ram_size);
 		if (mem->cartridge.ram == NULL) {
 			AddLog("couldn't allocate cartridge ram!");
 			return -1;
 		}
+		memset(mem->cartridge.ram, 0, actual_ram_size);
 	}
 	fclose(fp);
 	return 0;

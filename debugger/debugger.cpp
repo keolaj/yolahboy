@@ -13,6 +13,7 @@ extern "C" {
 #include "../components/memory/memory.h"
 #include "../components/cpu/operations.h"
 #include "../components/cpu/operation_defitions.h"
+#include "../components/gpu/gpu.h"
 	extern Operation operations[];
 	extern Operation cb_operations[];
 }
@@ -127,13 +128,17 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 	char hl_buf[10];
 	char sp_buf[10];
 	char pc_buf[10];
+	char rom_bank_buf[20];
+	char ram_bank_buf[10];
 
-	sprintf(af_buf, "AF: %04hX", emu->cpu->registers.af);
-	sprintf(bc_buf, "BC: %04hX", emu->cpu->registers.bc);
-	sprintf(de_buf, "DE: %04hX", emu->cpu->registers.de);
-	sprintf(hl_buf, "HL: %04hX", emu->cpu->registers.hl);
-	sprintf(sp_buf, "SP: %04hX", emu->cpu->registers.sp);
-	sprintf(pc_buf, "PC: %04hX", emu->cpu->registers.pc);
+	sprintf_s(af_buf, "AF: %04hX", emu->cpu->registers.af);
+	sprintf_s(bc_buf, "BC: %04hX", emu->cpu->registers.bc);
+	sprintf_s(de_buf, "DE: %04hX", emu->cpu->registers.de);
+	sprintf_s(hl_buf, "HL: %04hX", emu->cpu->registers.hl);
+	sprintf_s(sp_buf, "SP: %04hX", emu->cpu->registers.sp);
+	sprintf_s(pc_buf, "PC: %04hX", emu->cpu->registers.pc);
+	sprintf_s(rom_bank_buf, "ROM BANK: %04hX", emu->memory->cartridge.rom_bank);
+
 
 	ImGui::Text(af_buf);
 	ImGui::Text(bc_buf);
@@ -141,6 +146,7 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 	ImGui::Text(hl_buf);
 	ImGui::Text(sp_buf);
 	ImGui::Text(pc_buf);
+	ImGui::Text(rom_bank_buf);
 	ImGui::Text("FPS: %.4f", ImGui::GetIO().Framerate);
 	ImGui::EndChild();
 	ImGui::End();
@@ -376,11 +382,6 @@ int debugger_run(char* rom_path, char* bootrom_path) {
 
 	SDL_Window* window = SDL_CreateWindow("Yolahboy Debugger", 950, 600, 0);
 
-	app_log.AddLog("AVAILABLE RENDER DRIVERS:\n");
-	for (int i = 0; i < SDL_GetNumRenderDrivers(); ++i) {
-		app_log.AddLog("render driver: %s\n", SDL_GetRenderDriver(i));
-	}
-
 	SDL_Renderer* renderer = SDL_CreateRenderer(window, NULL);
 	SDL_Texture* screen_tex = NULL;
 	SDL_Texture* tile_tex = NULL;
@@ -490,6 +491,10 @@ int debugger_run(char* rom_path, char* bootrom_path) {
 		if (breakpoints[emu.cpu->registers.pc]) {
 			emu.should_run = false;
 			if (!set_run_once) { // logic for only running a function once in draw debug ui
+				SDL_DestroyTexture(tile_tex);
+				write_tile_buffer_to_screen(emu.gpu);
+				tile_tex = SDL_CreateTextureFromSurface(renderer, emu.gpu->tile_screen);
+
 				run_once = true;
 				set_run_once = true;
 				app_log.AddLog("BREAKPOINT! 0x%04hX\n", emu.cpu->registers.pc);
