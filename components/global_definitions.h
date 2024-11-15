@@ -86,13 +86,19 @@ typedef struct {
 	bool b;
 } Controller;
 
-typedef enum {
-	ROM_ONLY,
-	MBC1,
-	MBC1_RAM,
-	MBC1_RAM_BATTERY,
-	MBC2
-} CART_TYPE;
+//typedef enum {
+//	ROM_ONLY,
+//	MBC1,
+//	MBC1_RAM,
+//	MBC1_RAM_BATTERY,
+//	MBC2
+//} CART_TYPE;
+
+#define ROM_ONLY 0
+#define MBC1 1
+#define MBC1_RAM 2
+#define MBC1_RAM_BATTERY 3
+#define MBC2 4
 
 typedef enum {
 	RAM_NONE,

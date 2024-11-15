@@ -16,6 +16,7 @@ Memory* create_memory() {
 	ret->cartridge.rom = NULL;
 	ret->cartridge.ram = NULL;
 	ret->cartridge.rom_bank = 1;
+	ret->cartridge.ram_bank = 0;
 	ret->cartridge.banking_mode = BANKMODESIMPLE;
 	memset((void*)&ret->controller, 0, sizeof(Controller));
 	memset(ret->memory, 0, 0x10000);
@@ -37,9 +38,10 @@ u8 read8(Memory* mem, u16 address) {
 			return mem->bios[address];
 		}
 	}
-	if (address < 0xC000) {
+	if (address < 0x8000) {
 		return cart_read8(&mem->cartridge, address);
 	}
+	if (address >= 0xA000 && address < 0xC000) return cart_read8(&mem->cartridge, address);
 	if (address == 0xFF00) {
 		u8 j_ret = joypad_return(*mem->controller, mem->memory[address]);
 		return j_ret;
@@ -64,7 +66,7 @@ void update_tile(Gpu* gpu, int address, u8 value);
 
 void write8(Memory* mem, u16 address, u8 data) {
 	if (address < 0x8000) {
-		return;
+		return cart_write8(&mem->cartridge, address, data);
 	}
 	mem->memory[address] = data;
 
@@ -97,7 +99,7 @@ int load_bootrom(Memory* mem, const char* path) {
 
 int load_rom(Memory* mem, const char* path) {
 	FILE* fp;
-	fp = fopen(path, "rb");
+	fp = fopen("D:\\Downloads\\Legend of Zelda, The - Link's Awakening (USA, Europe)\\Legend of Zelda, The - Link's Awakening (USA, Europe).gb", "rb");
 	if (fp == NULL) {
 		AddLog("error opening rom");
 		return -1;

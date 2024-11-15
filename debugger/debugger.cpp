@@ -114,6 +114,10 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 		destroy_emulator(emu);
 		init_emulator(emu);
 	}
+	
+	if (ImGui::Button("STEP", { 40, 15 })) {
+		step(emu);
+	}
 
 	ImGui::BeginChild("REGISTERS");
 
@@ -186,9 +190,16 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 	ImGui::SetNextWindowSize({ ImGui::GetContentRegionMax().x, ImGui::GetContentRegionMax().y - GOTO_Y });
 	ImGui::BeginChild("INST_VIEW");
 	clipper.Begin(0x10000);
+
 	while (clipper.Step()) {
 		for (int i = clipper.DisplayStart; i < clipper.DisplayEnd; ++i) {
-			Operation* currentOp = &operations[read8(emu->memory, i)];
+			Operation* currentOp;
+			if (emu->memory->cartridge.rom == NULL) {
+				currentOp = &operations[0];
+			}
+			else {
+				currentOp = &operations[read8(emu->memory, i)];
+			}
 			if (currentOp->type == CB) {
 				++i;
 				clipper.DisplayEnd += 1;
@@ -224,6 +235,24 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 				ImGui::SameLine();
 				ImGui::Text(op_buf);
 				break;
+			}
+			switch (currentOp->dest_addr_mode) {
+			case MEM_READ_ADDR_OFFSET:
+				clipper.DisplayEnd += 1;
+				i += 1;
+				sprintf(op_buf, "%04hX", read8(emu->memory, i));
+
+				ImGui::SameLine();
+				ImGui::Text(op_buf);
+				break;
+			case MEM_READ_ADDR:
+				clipper.DisplayEnd += 2;
+				i += 2;
+				sprintf(op_buf, "%04hX", read16(emu->memory, i - 1));
+				ImGui::SameLine();
+				ImGui::Text(op_buf);
+				break;
+
 			}
 		}
 		if (run_once) {
