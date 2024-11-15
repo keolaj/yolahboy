@@ -23,12 +23,23 @@ u8 cart_read8(Cartridge* cart, u16 address) {
 	case MBC1_RAM:
 	case MBC1_RAM_BATTERY: {
 		if (address < 0x4000) { // bank 0
-			return cart->rom[address];
+			if (cart->banking_mode == BANKMODESIMPLE) {
+				return cart->rom[address];
+			}
+			else {
+				u8 current_bank = (cart->ram_bank << 5);
+				u8 num_banks = (cart->rom_size / BANKSIZE);
+				current_bank &= (num_banks - 1);
+				int offset = current_bank * BANKSIZE;
+				return cart->rom[offset + address];
+			}
 		}
 		if (address < 0x8000) { // selectable rom bank (this is working so far)
 			u8 current_bank = cart->rom_bank;
 			u8 num_banks = (cart->rom_size / BANKSIZE);
+			current_bank |= (cart->ram_bank << 5);
 			current_bank &= (num_banks - 1);
+
 			int offset = current_bank * BANKSIZE;
 			u16 newaddr = address - 0x4000;
 			return cart->rom[offset + newaddr];
@@ -36,14 +47,14 @@ u8 cart_read8(Cartridge* cart, u16 address) {
 		if (address >= 0xA000 && address < 0xC000) { // ram read
 			if (cart->ram_enabled && cart->ram != NULL) {
 				int newaddr = address - 0xA000;
-				int offset = 0;
 				if (cart->banking_mode == BANKMODEADVANCED) {
-					offset = (cart->ram_bank * 0x2000);
+					int offset = (cart->ram_bank * 0x2000);
+					newaddr += offset;
+					return cart->ram[newaddr];
 				}
 				else {
-					offset = 0;
+					return cart->ram[newaddr];
 				}
-				return cart->ram[offset + newaddr];
 			}
 			else { // if ram disabled return 0xFF
 				return 0xFF;
@@ -75,7 +86,8 @@ void cart_write8(Cartridge* cart, u16 address, u8 data) {
 		}
 	}
 	if (address >= 0x4000 && address <= 0x5FFF) { // ram bank number or upper bits of rom bank number
-		cart->ram_bank = data & 0b00000011;
+		cart->ram_bank = (data & 0b00000011);
+		return;
 	}
 	if (address >= 0x6000 && address <= 0x7FFF) { // bank mode select
 		if ((data & 0b00000001) == 1) {

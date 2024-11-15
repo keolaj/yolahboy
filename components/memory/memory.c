@@ -165,16 +165,16 @@ int load_rom(Memory* mem, const char* path) { // I believe this is working
 		actual_ram_size = 0;
 		break;
 	case 2:
-		actual_ram_size = 0x8000;
+		actual_ram_size = 0x2000;
 		break;
 	case 3:
-		actual_ram_size = 0x8000 * 4;
+		actual_ram_size = 0x2000 * 4;
 		break;
 	case 4:
-		actual_ram_size = 0x8000 * 16;
+		actual_ram_size = 0x2000 * 16;
 		break;
 	case 5:
-		actual_ram_size = 0x8000 * 8;
+		actual_ram_size = 0x2000 * 8;
 		break;
 	default:
 		actual_ram_size = 0;
