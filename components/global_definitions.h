@@ -118,8 +118,8 @@ typedef struct {
 	u8 type;
 	u8 rom_bank;
 	u8 ram_bank;
-	u16 rom_size;
-	u16 ram_size;
+	int rom_size;
+	int ram_size;
 	u8 num_rom_banks;
 	bool banking_mode;
 	bool ram_enabled;

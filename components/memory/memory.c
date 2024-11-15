@@ -69,17 +69,17 @@ void write16(Memory* mem, u16 address, u16 value) {
 void update_tile(Gpu* gpu, int address, u8 value);
 
 void write8(Memory* mem, u16 address, u8 data) {
-	if (address < 0x8000) {
-		return cart_write8(&mem->cartridge, address, data);
-	}
 	mem->memory[address] = data;
 
-	if (address >= 0x8000 && address <= 0x97FF) {
+	if (address < 0x8000) { // cartridge rom
+		return cart_write8(&mem->cartridge, address, data);
+	}
+	if (address >= 0x8000 && address <= 0x97FF) { // vram
 		if (address % 2 == 0) update_tile(mem->gpu, address, data);
 		if (address % 2 != 0) update_tile(mem->gpu, address - 1, data);
 	}
 	if (address >= 0xA000 && address < 0xC000) { // cartridge ram
-		cart_write8(&mem->cartridge, address, data);
+		return cart_write8(&mem->cartridge, address, data);
 	}
 
 	if (address == DMA && data <= 0xDF) {
@@ -90,7 +90,11 @@ void write8(Memory* mem, u16 address, u8 data) {
 	if (address == 0xFF02 && data == 0x81) {
 		AddLog("%c", read8(mem, 0xff01));
 	}
-	if (address == 0xFF04) mem->memory[address] = 0;
+	if (address == 0xFF04) {
+		mem->memory[address] = 0;
+		return;
+	}
+
 }
 
 int load_bootrom(Memory* mem, const char* path) {

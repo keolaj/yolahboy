@@ -129,7 +129,7 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 	char sp_buf[10];
 	char pc_buf[10];
 	char rom_bank_buf[20];
-	char ram_bank_buf[10];
+	char ram_bank_buf[20];
 
 	sprintf_s(af_buf, "AF: %04hX", emu->cpu->registers.af);
 	sprintf_s(bc_buf, "BC: %04hX", emu->cpu->registers.bc);
@@ -138,6 +138,8 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 	sprintf_s(sp_buf, "SP: %04hX", emu->cpu->registers.sp);
 	sprintf_s(pc_buf, "PC: %04hX", emu->cpu->registers.pc);
 	sprintf_s(rom_bank_buf, "ROM BANK: %04hX", emu->memory->cartridge.rom_bank);
+	sprintf_s(ram_bank_buf, "RAM BANK: %04hX", emu->memory->cartridge.ram_bank);
+
 
 
 	ImGui::Text(af_buf);
@@ -147,6 +149,7 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 	ImGui::Text(sp_buf);
 	ImGui::Text(pc_buf);
 	ImGui::Text(rom_bank_buf);
+	ImGui::Text(ram_bank_buf);
 	ImGui::Text("FPS: %.4f", ImGui::GetIO().Framerate);
 	ImGui::EndChild();
 	ImGui::End();
