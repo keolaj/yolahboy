@@ -150,7 +150,7 @@ void update_tile(Gpu* gpu, int address, u8 value) {
 void draw_line(Gpu* gpu) {
 	int scx = read8(gpu->mem, SCX);
 	int scy = read8(gpu->mem, SCY);
-	int control = read8(gpu->mem, LCD_CONTROL);
+	u8 control = read8(gpu->mem, LCD_CONTROL);
 
 	bool BGTileMapArea = (control & (1 << 3));
 	bool BGTileAddressMode = !(control & (1 << 4));
@@ -160,14 +160,13 @@ void draw_line(Gpu* gpu) {
 	int lineOffset = (scx >> 3);
 	int tileX = scx & 7;
 	int tileY = (gpu->line + scy) & 7;
-
 	int tile = read8(gpu->mem, mapAddress + lineOffset);
 
 	if (BGTileAddressMode && tile < 128) tile += 256;
 
 	for (int i = 0; i < SCREEN_WIDTH; ++i) {
-		uint32_t pixel = createPixelFromPaletteId(read8(gpu->mem, BGP), gpu->tiles[tile][tileY][tileX]);
-		gpu->framebuffer[gpu->line * SCREEN_WIDTH + i] = pixel;
+		uint32_t bg_pixel = createPixelFromPaletteId(read8(gpu->mem, BGP), gpu->tiles[tile][tileY][tileX]);
+		gpu->framebuffer[gpu->line * SCREEN_WIDTH + i] = bg_pixel;
 
 		++tileX;
 		if (tileX == 8) {
@@ -178,9 +177,42 @@ void draw_line(Gpu* gpu) {
 		}
 	}
 
+	// draw window
+	int windowx = gpu->mem->memory[WX] - 7;
+	int windowy = gpu->mem->memory[WY];
+	if (control & (1 << 5) && gpu->line >= windowy) { // draw window
+		BGTileMapArea = (control & (1 << 6));
+		BGTileAddressMode = !(control & (1 << 4));
+		mapAddress = (BGTileMapArea) ? 0x9C00 : 0x9800; // if bit 3 of the LCD Control registers is set we use the tilemap at 0x9C00, else use tile map at 0x9800
+		mapAddress += (((gpu->line + windowy) & 0xFF) >> 3) << 5;
+
+		if (BGTileAddressMode && tile < 128) tile += 256;
+
+
+		int lineOffset = (windowx >> 3);
+		int tileX = windowx & 7;
+		int tileY = (gpu->line + windowy) & 7;
+		int tile = read8(gpu->mem, mapAddress + lineOffset);
+
+		for (int i = windowx; i < SCREEN_WIDTH; ++i) {
+			uint32_t window_pixel = createPixelFromPaletteId(read8(gpu->mem, BGP), gpu->tiles[tile][tileY][tileX]);
+			gpu->framebuffer[gpu->line * SCREEN_WIDTH + i] = window_pixel;
+
+			++tileX;
+			if (tileX == 8) {
+				tileX = 0;
+				lineOffset = (lineOffset + 1) & 31;
+				tile = read8(gpu->mem, mapAddress + lineOffset);
+				if (BGTileAddressMode && tile < 128) tile += 256;
+			}
+		}
+
+
+	}
+
 	// draw sprites
 
-	if (control & (1 << 1)) {
+	if (control & (1 << 1)) { // if sprites enabled in LDC Control
 		bool eight_by_16_mode = control & (1 << 2);
 		u16 current_OAM_address = 0xFE00;
 		int sprite_count_for_line = 0;
@@ -191,12 +223,18 @@ void draw_line(Gpu* gpu) {
 			u8 sprite_pos_x = read8(gpu->mem, current_OAM_address + 1);
 			u8 tile_index = read8(gpu->mem, current_OAM_address + 2);
 			u8 attributes = read8(gpu->mem, current_OAM_address + 3);
+			bool palette_mode = attributes & (1 << 4);
+			bool x_flip = attributes & (1 << 5);
+			bool y_flip = attributes & (1 << 6);
+			bool priority = attributes & (1 << 7);
+
 
 			int sprite_bottom = sprite_pos_y - 16 + (eight_by_16_mode ? 16 : 8);
 			int sprite_top = sprite_pos_y - 16;
 			// draw sprite
 			if (gpu->line < sprite_bottom && gpu->line >= sprite_top) { // if current line within sprite (i think this is right, no way to check until I implement OAM dma and HBLANK interrupt)
 				++sprite_count_for_line;
+				if (y_flip) sprite_top = 7 - sprite_top;
 				int sprite_line = gpu->line - sprite_top;
 
 				if (sprite_line >= 8) { // address next tile if we are in 16 bit mode
@@ -204,8 +242,6 @@ void draw_line(Gpu* gpu) {
 					tile_index += 1;
 				}
 
-				bool palette_mode = attributes & (1 << 4);
-				bool x_flip = attributes & (1 << 5);
 				u8 palette = read8(gpu->mem, (palette_mode ? OBP1 : OBP0));
 
 				for (int i = 0; i < 8; ++i) {
@@ -214,9 +250,7 @@ void draw_line(Gpu* gpu) {
 					if (id == 0) continue;
 					u32 pixel = createPixelFromPaletteId(palette, id);
 					int x = i;
-					if (x_flip) {
-						x = 7 - i;
-					}
+					if (x_flip) x = 7 - i;
 					gpu->framebuffer[gpu->line * SCREEN_WIDTH + sprite_pos_x - 8 + x] = pixel;
 				}
 			}
