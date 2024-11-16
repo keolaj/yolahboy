@@ -115,6 +115,7 @@ typedef enum {
 typedef struct {
 	u16 clock;
 	TimerMode mode;
+	bool old_and;
 } Timer;
 
 typedef enum {
