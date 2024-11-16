@@ -436,12 +436,6 @@ Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op) {
 		}
 	}
 
-	if (mem->wrote_dma) {
-		op.m_cycles += 162;
-		op.t_cycles += 648;
-		mem->wrote_dma = false;
-	}
-
 	if (should_run_interrupt(cpu, mem)) {
 		run_interrupt(cpu, mem);
 

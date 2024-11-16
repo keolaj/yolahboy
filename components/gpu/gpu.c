@@ -301,15 +301,15 @@ void destroy_gpu(Gpu* gpu) {
 
 void handle_oam(Gpu* gpu) {
 	if (gpu->clock >= 80) {
+		gpu->clock -= 80;
 		gpu->mode = VRAM_ACCESS;
-		gpu->clock = 0;
 	}
 }
 
 void handle_vram(Gpu* gpu) {
 	if (gpu->clock >= 172) {
+		gpu->clock -= 172;
 		gpu->mode = HBLANK;
-		gpu->clock = 0;
 		draw_line(gpu);
 		if (gpu->mem->memory[LCD_STATUS] & (1 << 3)) {
 			write8(gpu->mem, IF, read8(gpu->mem, IF) | LCDSTAT_INTERRUPT);
@@ -319,7 +319,7 @@ void handle_vram(Gpu* gpu) {
 
 void handle_hblank(Gpu* gpu) {
 	if (gpu->clock >= 204) {
-		gpu->clock = 0;
+		gpu->clock -= 204;
 		++gpu->line;
 		gpu->mem->memory[LY] = gpu->line;
 		if (gpu->mem->memory[LYC] == gpu->line) {
@@ -331,8 +331,6 @@ void handle_hblank(Gpu* gpu) {
 		else {
 			write8(gpu->mem, LCD_STATUS, read8(gpu->mem, LCD_STATUS) & ~(1 << 2));
 		}
-
-
 
 		if (gpu->line == 143) {
 			u8 interrupt = read8(gpu->mem, IF);
@@ -356,7 +354,7 @@ void handle_hblank(Gpu* gpu) {
 
 void handle_vblank(Gpu* gpu) {
 	if (gpu->clock >= 456) {
-		gpu->clock = 0;
+		gpu->clock -= 456;
 		++gpu->line;
 		write8(gpu->mem, LY, gpu->line);
 
@@ -374,9 +372,11 @@ void handle_vblank(Gpu* gpu) {
 }
 
 void step_gpu(Gpu* gpu, u8 cycles) {
+	u8 stat = gpu->mem->memory[LCD_CONTROL];
+	bool lcd_enabled = stat & (1 << 7);
 	gpu->should_draw = false;
-	if (!(gpu->mem->memory[LCD_CONTROL] & (1 << 7))) {
-		return; // if ppu off return
+	if (!lcd_enabled) {
+		return; 
 	}
 	gpu->clock += cycles;
 	switch (gpu->mode) {

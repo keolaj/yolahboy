@@ -353,7 +353,7 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 		ImGui::BeginChild("LCDC", {contentSize.x / 3, contentSize.y});
 		ImGui::Text("LCD CONTROL (LCDC FF40)");
 		ImGui::Separator();
-		ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, { 15, 3 });
+		ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, { 15, 2 });
 		if (ImGui::BeginTable("LCDC TABLE", 2)) {
 
 			ImGui::TableNextRow();
@@ -427,7 +427,7 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 		ImGui::BeginChild("STAT", {contentSize.x / 3, contentSize.y});
 		ImGui::Text("LCD STATUS (STAT FF41)");
 		ImGui::Separator();
-		ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, { 25, 2 });
+		ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, { 15, 2 });
 		if (ImGui::BeginTable("STAT TABLE", 2)) {
 
 
@@ -493,7 +493,51 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 		ImGui::PopStyleVar();
 		ImGui::EndChild();
 
-		
+		ImGui::SameLine();
+		ImGui::BeginChild("GPUGEN");
+		ImGui::Text("GENERAL");
+		ImGui::Separator();
+		if (ImGui::BeginTable("GPU GENERAL TABLE", 2)) {
+
+			ImGui::TableNextRow();
+			ImGui::TableNextColumn();
+			ImGui::Text("LY");
+			ImGui::TableNextColumn();
+			ImGui::Text("%d", emu->gpu->line);
+			ImGui::Separator();
+
+			ImGui::TableNextRow();
+			ImGui::TableNextColumn();
+			ImGui::Text("SCX");
+			ImGui::TableNextColumn();
+			ImGui::Text("%d", emu->memory->memory[SCX]);
+			ImGui::Separator();
+
+			ImGui::TableNextRow();
+			ImGui::TableNextColumn();
+			ImGui::Text("SCY");
+			ImGui::TableNextColumn();
+			ImGui::Text("%d", emu->memory->memory[SCY]);
+			ImGui::Separator();
+
+			ImGui::TableNextRow();
+			ImGui::TableNextColumn();
+			ImGui::Text("WY");
+			ImGui::TableNextColumn();
+			ImGui::Text("%d", emu->memory->memory[WY]);
+			ImGui::Separator();
+
+			ImGui::TableNextRow();
+			ImGui::TableNextColumn();
+			ImGui::Text("WX");
+			ImGui::TableNextColumn();
+			ImGui::Text("%d", emu->memory->memory[WX]);
+			ImGui::Separator();
+
+			ImGui::EndTable();
+		}
+
+		ImGui::EndChild();
 
 		ImGui::EndTabItem();
 	}

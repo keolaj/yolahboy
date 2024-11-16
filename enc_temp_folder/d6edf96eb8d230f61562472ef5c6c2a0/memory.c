@@ -85,8 +85,10 @@ void write8(Memory* mem, u16 address, u8 data) {
 	}
 
 	if (address == DMA && data <= 0xDF) {
+		//step_gpu(mem->gpu, 4);
 		for (int i = 0; i < 0x9F; ++i) {
 			mem->memory[0xFE00 + i] = mem->memory[(data << 8) + i];
+			//step_gpu(mem->gpu, 4);
 		}
 	}
 	if (address == 0xFF02 && data == 0x81) {
