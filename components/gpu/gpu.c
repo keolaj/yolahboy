@@ -25,6 +25,7 @@ int init_gpu(Gpu* gpu, Memory* mem) {
 	gpu->screen = SDL_CreateSurface(SCREEN_WIDTH, SCREEN_HEIGHT, SDL_PIXELFORMAT_ARGB32);
 	gpu->tile_screen = SDL_CreateSurface(TILES_X * TILE_WIDTH, TILES_Y * TILE_HEIGHT, SDL_PIXELFORMAT_ARGB32);
 	gpu->drawline = false;
+	gpu->should_draw = false;
 
 	// setup Tiles array
 	gpu->tiles = (Tile*)malloc(NUM_TILES * sizeof(Tile));
@@ -290,6 +291,7 @@ void handle_vblank(Gpu* gpu) {
 		write8(gpu->mem, LY, gpu->line);
 
 		if (gpu->line > 153) {
+			gpu->should_draw = true;
 			gpu->mode = OAM_ACCESS;
 			gpu->line = 0;
 			write8(gpu->mem, LY, 0);
@@ -302,6 +304,7 @@ void handle_vblank(Gpu* gpu) {
 }
 
 void step_gpu(Gpu* gpu, u8 cycles) {
+	gpu->should_draw = false;
 	gpu->clock += cycles;
 	switch (gpu->mode) {
 	case OAM_ACCESS:

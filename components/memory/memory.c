@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <string.h>
 #include "memory.h"
+#include "../timer/timer.h"
 #include "../gpu/gpu.h"
 #include "../controller/controller.h"
 #include "../debugger/imgui_custom_widget_wrapper.h"
@@ -92,8 +93,9 @@ void write8(Memory* mem, u16 address, u8 data) {
 	if (address == 0xFF02 && data == 0x81) {
 		AddLog("%c", read8(mem, 0xff01));
 	}
-	if (address == 0xFF04) {
+	if (address == DIV) {
 		mem->memory[address] = 0;
+		mem->timer->clock = 0;
 		return;
 	}
 

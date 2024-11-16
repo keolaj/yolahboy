@@ -18,6 +18,9 @@ int init_emulator(Emulator* emu) {
 	emu->memory = create_memory();
 	emu->gpu = create_gpu(emu->memory);
 	emu->timer = create_timer();
+	emu->timer->clock = 0;
+	emu->cpu->timer = emu->timer;
+	emu->memory->timer = emu->timer;
 	emu->should_run = false;
 	emu->clock = 0;
 	memset(&emu->controller, 0, sizeof(Controller));
@@ -47,10 +50,6 @@ int step(Emulator* emu) {
 	emu->clock += c.t_cycles;
 	tick(emu, c.t_cycles);
 	step_gpu(emu->gpu, c.t_cycles);
-	if (emu->clock > 29780) {
-		emu->clock = 0;
-		emu->should_draw = true;
-	}
 	return 0;
 }
 

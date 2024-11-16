@@ -14,46 +14,26 @@ Timer* create_timer() {
 static u16 freq_divider[] = { 1024, 16, 64, 256 };
 
 void tick(Emulator* emu, int t_cycles) {
-	t_cycles = t_cycles / 4;
+	t_cycles = t_cycles;
 
 	u16 old_clock = emu->timer->clock;
 
-	if ((old_clock & 0x00FF) + t_cycles > 0xFF) {
+	if ((old_clock & 0xFF) + t_cycles > 0xFF) {
 		++emu->memory->memory[DIV];
 	}
+
+
 
 	emu->timer->clock += t_cycles;
 	u8 tac = emu->memory->memory[TAC];
 
-	bool tac_enable = (tac & (1 << 2) >> 2);
+	bool tac_enable = tac & (1 << 2);
 	u8 tac_mode = tac & 3;
 
 	bool should_inc_tima = false;
 
 	if (tac_enable) {
-		switch (tac_mode) {
-		case MODE256:
-			if (emu->timer->clock % 256 == 0) {
-				should_inc_tima = true;
-			}
-			break;
-
-		case MODE4:
-			if (emu->timer->clock % 4 == 0) {
-				should_inc_tima = true;
-			}	
-			break;
-		case MODE16:
-			if (emu->timer->clock % 16 == 0) {
-				should_inc_tima = true;
-			}
-			break;
-		case MODE64:
-			if (emu->timer->clock % 64 == 0) {
-				should_inc_tima = true;
-			}
-			break;
-		}
+		should_inc_tima = (emu->timer->clock) % (freq_divider[tac_mode] * 4) == 0;
 		if (should_inc_tima) {
 			++emu->memory->memory[TIMA];
 			if (emu->memory->memory[TIMA] == 0) {

@@ -106,6 +106,18 @@ typedef struct {
 #define MBC2 4
 
 typedef enum {
+	MODE256,
+	MODE4,
+	MODE16,
+	MODE64
+} TimerMode;
+
+typedef struct {
+	u16 clock;
+	TimerMode mode;
+} Timer;
+
+typedef enum {
 	RAM_NONE,
 	RAM_UNUSED,
 	RAM_8KB,
@@ -142,6 +154,7 @@ typedef struct mem_ctx {
 	bool use_gbd_log;
 	Gpu* gpu;
 	Controller* controller;
+	Timer* timer;
 	bool wrote_dma;
 } Memory;
 
@@ -181,6 +194,7 @@ typedef struct {
 
 typedef struct {
 	Registers registers;
+	Timer* timer;
 	bool halted;
 	bool IME;
 	bool should_update_IME;
@@ -216,20 +230,10 @@ struct gpu_ctx {
 
 	gpu_mode mode;
 	bool drawline;
+	bool should_draw;
 	bool drawtile;
 };
 
-typedef enum {
-	MODE256,
-	MODE4,
-	MODE16,
-	MODE64
-} TimerMode;
-
-typedef struct {
-	u16 clock;
-	TimerMode mode;
-} Timer;
 
 
 typedef struct {

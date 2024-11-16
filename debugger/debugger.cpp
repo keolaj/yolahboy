@@ -101,18 +101,7 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 
 		}
 		else {
-			if (load_bootrom(emu->memory, bootrom_path_buf) < 0) {
-				app_log.AddLog("Couldn't load bootrom!\n");
-				skip_bootrom(emu);
-			}
-			if (strlen(rom_path_buf) > 0) {
-				if (load_rom(emu->memory, rom_path_buf) < 0) {
-					app_log.AddLog("Couldn't load rom!\n");
-				}
-				else {
-					emu->should_run = true;
-				}
-			}
+			emu->should_run = true;
 		}
 	}
 
@@ -130,6 +119,10 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 	if (ImGui::Button("RESET", { 40, 15 })) {
 		destroy_emulator(emu);
 		init_emulator(emu);
+		if (load_bootrom(emu->memory, bootrom_path_buf) < 0) {
+			skip_bootrom(emu);
+		}
+		load_rom(emu->memory, rom_path_buf);
 	}
 
 	if (ImGui::Button("STEP", { 40, 15 })) {
@@ -146,6 +139,9 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 	char pc_buf[10];
 	char rom_bank_buf[20];
 	char ram_bank_buf[20];
+	char clock_buf[20];
+	char div_buf[20];
+	char ly_buf[20];
 
 	sprintf_s(af_buf, "AF: %04hX", emu->cpu->registers.af);
 	sprintf_s(bc_buf, "BC: %04hX", emu->cpu->registers.bc);
@@ -155,8 +151,9 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 	sprintf_s(pc_buf, "PC: %04hX", emu->cpu->registers.pc);
 	sprintf_s(rom_bank_buf, "ROM BANK: %04hX", emu->memory->cartridge.rom_bank);
 	sprintf_s(ram_bank_buf, "RAM BANK: %04hX", emu->memory->cartridge.ram_bank);
-
-
+	sprintf_s(clock_buf, "CLOCK: %04hX", emu->timer->clock);
+	sprintf_s(div_buf, "DIV: %02hX", emu->memory->memory[DIV]);
+	sprintf_s(ly_buf, "LY: %02hX", emu->gpu->line);
 
 	ImGui::Text(af_buf);
 	ImGui::Text(bc_buf);
@@ -166,6 +163,9 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 	ImGui::Text(pc_buf);
 	ImGui::Text(rom_bank_buf);
 	ImGui::Text(ram_bank_buf);
+	ImGui::Text(clock_buf);
+	ImGui::Text(div_buf);
+	ImGui::Text(ly_buf);
 	ImGui::Text("FPS: %.4f", ImGui::GetIO().Framerate);
 	ImGui::EndChild();
 	ImGui::End();
@@ -359,6 +359,10 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 				std::string filePath = ImGuiFileDialog::Instance()->GetCurrentPath();
 				// action
 				strcpy(bootrom_path_buf, filePathName.c_str());
+				if (load_bootrom(emu->memory, bootrom_path_buf) < 0) {
+					app_log.AddLog("Couldn't load bootrom\n");
+					skip_bootrom(emu);
+				}
 			}
 
 			// close
@@ -378,6 +382,9 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 				std::string filePath = ImGuiFileDialog::Instance()->GetCurrentPath();
 				// action
 				strcpy(rom_path_buf, filePathName.c_str());
+				if (load_rom(emu->memory, rom_path_buf) < 0) {
+					app_log.AddLog("Couldn't load rom!\n");
+				}
 			}
 
 			// close
@@ -475,8 +482,16 @@ int debugger_run(char* rom_path, char* bootrom_path) {
 		return -1;
 	}
 
+	if (bootrom_path) {
+		if (load_bootrom(emu.memory, bootrom_path) < 0) {
+			app_log.AddLog("Couldn't load bootrom!\n");
+			skip_bootrom(&emu);
+		}
+	}
 	if (rom_path) {
-		load_rom(emu.memory, rom_path);
+		if (load_rom(emu.memory, rom_path) < 0) {
+			app_log.AddLog("Couldn't load rom!\n");
+		}
 	}
 
 	screen_tex = SDL_CreateTextureFromSurface(renderer, emu.gpu->screen);
@@ -554,7 +569,7 @@ int debugger_run(char* rom_path, char* bootrom_path) {
 		}
 
 		if (emu.should_run) { // emulator controls rendering
-			if (emu.should_draw) {
+			if (emu.gpu->should_draw) {
 				while (SDL_PollEvent(&e)) {
 					ImGui_ImplSDL3_ProcessEvent(&e);
 					switch (e.type) {
