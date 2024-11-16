@@ -48,7 +48,6 @@ int step(Emulator* emu) {
 	else {
 		--emu->cpu->registers.pc;
 		c = step_cpu(emu->cpu, emu->memory, operations[0]);
-		AddLog("HALTED!");
 	}
 	if (c.t_cycles < 0) {
 		return -1; // push error to whatever is using emulator

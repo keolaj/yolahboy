@@ -202,11 +202,44 @@ int load_rom(Memory* mem, const char* path) { // I believe this is working
 		memset(mem->cartridge.ram, 0, actual_ram_size);
 	}
 	fclose(fp);
+
+	if (mem->cartridge.type == MBC1_RAM_BATTERY) {
+
+		fp = fopen("game.sav", "rb");
+		if (fp == NULL) {
+			AddLog("no save for game\n");
+		}
+		else {
+			fread(mem->cartridge.ram, sizeof(u8), actual_ram_size, fp);
+			AddLog("loaded save!");
+		}
+	}
+
 	return 0;
 }
 
 void destroy_memory(Memory* mem) {
 	if (mem == NULL) return;
+
+	if (mem->cartridge.type == MBC1_RAM_BATTERY) {
+		FILE* fp = fopen("game.sav", "wb");
+		if (fp == NULL) {
+			AddLog("couldn't save file");
+		}
+		else {
+			size_t save_size = mem->cartridge.ram_size;
+			size_t written = fwrite(mem->cartridge.ram, sizeof(u8), save_size, fp);
+
+			if (written != save_size) {
+				AddLog("error writing to file\n");
+				fclose(fp);
+			}
+			else {
+				AddLog("saved\n");
+				fclose(fp);
+			}
+		}
+	}
 	
 	if (mem->cartridge.rom) free(mem->cartridge.rom);
 	if (mem->cartridge.ram) free(mem->cartridge.ram);
