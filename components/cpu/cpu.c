@@ -459,6 +459,9 @@ Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op) {
 	if (should_run_interrupt(cpu, mem)) {
 		cpu->halted = false;
 		run_interrupt(cpu, mem);
+
+		op.m_cycles += 5;
+		op.t_cycles += 20;
 	}
 
 	return (Cycles) { op.m_cycles, op.t_cycles };
