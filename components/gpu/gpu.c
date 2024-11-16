@@ -234,13 +234,27 @@ void draw_line(Gpu* gpu) {
 			// draw sprite
 			if (gpu->line < sprite_bottom && gpu->line >= sprite_top) { // if current line within sprite (i think this is right, no way to check until I implement OAM dma and HBLANK interrupt)
 				++sprite_count_for_line;
-				if (y_flip) sprite_top = 7 - sprite_top;
-				int sprite_line = gpu->line - sprite_top;
-
-				if (sprite_line >= 8) { // address next tile if we are in 16 bit mode
-					sprite_line -= 8;
-					tile_index += 1;
+				u8 sprite_line = gpu->line - sprite_top;
+				if (y_flip) {
+					if (eight_by_16_mode) {
+						tile_index += 1;
+						sprite_line = 15 - sprite_line;
+						if (sprite_line >= 8) {
+							sprite_line -= 8;
+							tile_index -= 1;
+						}
+					}
+					else {
+						sprite_line = 7 - sprite_line;
+					}
 				}
+				else {
+					if (sprite_line >= 8) { // address next tile if we are in 16 bit mode
+						sprite_line -= 8;
+						tile_index += 1;
+					}
+				}
+
 
 				u8 palette = read8(gpu->mem, (palette_mode ? OBP1 : OBP0));
 
