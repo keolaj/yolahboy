@@ -651,46 +651,7 @@ void jump(Cpu* cpu, u16 jump_to) {
 }
 
 
-u16 interrupt_address_from_flag(u8 flag) {
-	switch (flag) {
-	case VBLANK_INTERRUPT:
-		return VBLANK_ADDRESS;
-	case LCDSTAT_INTERRUPT:
-		return LCDSTAT_ADDRESS;
-	case TIMER_INTERRUPT:
-		return TIMER_ADDRESS;
-	case SERIAL_INTERRUPT:
-		return SERIAL_ADDRESS;
-	case JOYPAD_INTERRUPT:
-		return JOYPAD_ADDRESS;
-	default:
-		AddLog("how did we get here: 0x%02X", flag);
-		return 0;
-	}
-}
 
-u16 interrupt_priority(Cpu* cpu, Memory* mem, u8 interrupt_flag) {
-	for (int i = 0; i < 5; ++i) {
-		u8 itX = interrupt_flag & (1 << i);
-		itX = (read8(mem, IE) & itX);
-		if (itX) {
-			write8(mem, IF, interrupt_flag & ~itX);
-			cpu->halted = false;
-			return interrupt_address_from_flag(itX);
-		}
-	}
-	return 0;
-}
-
-void run_interrupt(Cpu* cpu, Memory* mem) {
-	u16 jump_to = interrupt_priority(cpu, mem, read8(mem, IF));
-	if (jump_to != 0) {
-		
-		cpu->IME = false;
-		push(cpu, mem, cpu->registers.pc);
-		jump(cpu, jump_to);
-	}
-}
 
 u8 generate_set_mask(instruction_flags flag_actions) {
 	u8 ret = 0;

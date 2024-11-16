@@ -99,7 +99,7 @@ void write8(Memory* mem, u16 address, u8 data) {
 		return;
 	}
 	if (address == LCD_CONTROL) {
-		if (data & (1 << 7) == 0) {
+		if (data & (1 << 7) == 0) { 
 			mem->gpu->line = 0;
 			mem->gpu->mode = 0;
 			mem->gpu->clock = 0;

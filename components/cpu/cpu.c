@@ -273,20 +273,6 @@ void RET_impl(Cpu* cpu, Memory* mem, Operation* op) {
 	}
 }
 
-bool should_run_interrupt(Cpu* cpu, Memory* mem) {
-	u8 j_ret = joypad_return(mem->controller, mem->memory[0xFF00]);
-	if ((~j_ret & 0b00001111)) mem->memory[IF] = mem->memory[IF] | JOYPAD_INTERRUPT; // I think this is right
-	u8 interrupt_flag = mem->memory[IF];
-	u8 interrupt_enable = mem->memory[IE];
-	
-	if (cpu->IME && (interrupt_flag & interrupt_enable)) {
-		return true;
-	}
-	else {
-		return false;
-	}
-}
-
 void RST_impl(Cpu* cpu, Memory* mem, Operation* op) {
 	push(cpu, mem, cpu->registers.pc);
 	jump(cpu, op->dest);
@@ -389,7 +375,7 @@ Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op) {
 		break;
 	case RETI:
 		RET_impl(cpu, mem, &op);
-		cpu->IME = true;
+		update_IME(cpu, true);
 		break;
 
 	case RST:
@@ -457,11 +443,10 @@ Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op) {
 	}
 
 	if (should_run_interrupt(cpu, mem)) {
-		cpu->halted = false;
 		run_interrupt(cpu, mem);
 
-		op.m_cycles += 5;
-		op.t_cycles += 20;
+		// op.m_cycles += 5;
+		// op.t_cycles += 20;
 	}
 
 	return (Cycles) { op.m_cycles, op.t_cycles };
@@ -470,4 +455,82 @@ Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op) {
 void destroy_cpu(Cpu* cpu) {
 	if (cpu == NULL) return;
 	free(cpu);
+}
+
+Cycles run_halted(Cpu* cpu, Memory* mem) {
+	Cycles cycles = { 1, 4 };
+
+	if (cpu->should_update_IME) {
+		if (cpu->update_IME_counter == 0) {
+			cpu->IME = cpu->update_IME_value;
+			cpu->should_update_IME = false;
+		}
+		else {
+			--cpu->update_IME_counter;
+		}
+	}
+
+	if (should_run_interrupt(cpu, mem)) {
+
+		run_interrupt(cpu, mem);
+		cycles.m_cycles += 5;
+		cycles.t_cycles += 20;
+	}
+	return cycles;
+}
+
+u16 interrupt_address_from_flag(u8 flag) {
+	switch (flag) {
+	case VBLANK_INTERRUPT:
+		return VBLANK_ADDRESS;
+	case LCDSTAT_INTERRUPT:
+		return LCDSTAT_ADDRESS;
+	case TIMER_INTERRUPT:
+		return TIMER_ADDRESS;
+	case SERIAL_INTERRUPT:
+		return SERIAL_ADDRESS;
+	case JOYPAD_INTERRUPT:
+		return JOYPAD_ADDRESS;
+	default:
+		AddLog("how did we get here: 0x%02X", flag);
+		return 0;
+	}
+}
+
+u16 interrupt_priority(Cpu* cpu, Memory* mem, u8 interrupt_flag) {
+	for (int i = 0; i < 5; ++i) {
+		u8 itX = interrupt_flag & (1 << i);
+		itX = (read8(mem, IE) & itX);
+		if (itX) {
+			write8(mem, IF, interrupt_flag & ~itX);
+			return interrupt_address_from_flag(itX);
+		}
+	}
+	return 0;
+}
+
+void run_interrupt(Cpu* cpu, Memory* mem) {
+	u16 jump_to = interrupt_priority(cpu, mem, read8(mem, IF));
+	if (jump_to != 0) {
+		
+		cpu->IME = false;
+		push(cpu, mem, cpu->registers.pc);
+		jump(cpu, jump_to);
+	}
+}
+
+bool should_run_interrupt(Cpu* cpu, Memory* mem) {
+	u8 j_ret = joypad_return(mem->controller, mem->memory[0xFF00]);
+	if ((~j_ret & 0b00001111)) mem->memory[IF] = mem->memory[IF] | JOYPAD_INTERRUPT; // I think this is right
+	u8 interrupt_flag = mem->memory[IF];
+	u8 interrupt_enable = mem->memory[IE];
+	
+	if ((interrupt_flag & interrupt_enable)) {
+		cpu->halted = false;
+		if (cpu->IME) return true;
+		else return false;
+	}
+	else {
+		return false;
+	}
 }

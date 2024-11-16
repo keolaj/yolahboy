@@ -46,15 +46,14 @@ int step(Emulator* emu) {
 		c = step_cpu(emu->cpu, emu->memory, to_exec);
 	}
 	else {
-		--emu->cpu->registers.pc;
-		c = step_cpu(emu->cpu, emu->memory, operations[0]);
+		c = run_halted(emu->cpu, emu->memory);
 	}
 	if (c.t_cycles < 0) {
 		return -1; // push error to whatever is using emulator
 	}
 	emu->clock += c.t_cycles;
 	tick(emu, c.t_cycles);
-	step_gpu(emu->gpu, c.t_cycles);
+	step_gpu(emu->gpu, c.m_cycles * 4);
 	return 0;
 }
 

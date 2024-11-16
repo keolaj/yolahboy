@@ -17,7 +17,7 @@ Gpu* create_gpu(Memory* mem) {
 }
 
 int init_gpu(Gpu* gpu, Memory* mem) {
-	gpu->mode = OAM_ACCESS;
+	gpu->mode = 0;
 	gpu->line = 0;
 	gpu->mem = mem;
 	gpu->clock = 0;
@@ -164,18 +164,22 @@ void draw_line(Gpu* gpu) {
 
 	if (BGTileAddressMode && tile < 128) tile += 256;
 
-	for (int i = 0; i < SCREEN_WIDTH; ++i) {
-		uint32_t bg_pixel = createPixelFromPaletteId(read8(gpu->mem, BGP), gpu->tiles[tile][tileY][tileX]);
-		gpu->framebuffer[gpu->line * SCREEN_WIDTH + i] = bg_pixel;
+	if (control & 1) {
+		for (int i = 0; i < SCREEN_WIDTH; ++i) {
+			uint32_t bg_pixel = createPixelFromPaletteId(read8(gpu->mem, BGP), gpu->tiles[tile][tileY][tileX]);
+			gpu->framebuffer[gpu->line * SCREEN_WIDTH + i] = bg_pixel;
 
-		++tileX;
-		if (tileX == 8) {
-			tileX = 0;
-			lineOffset = (lineOffset + 1) & 31;
-			tile = read8(gpu->mem, mapAddress + lineOffset);
-			if (BGTileAddressMode && tile < 128) tile += 256;
+			++tileX;
+			if (tileX == 8) {
+				tileX = 0;
+				lineOffset = (lineOffset + 1) & 31;
+				tile = read8(gpu->mem, mapAddress + lineOffset);
+				if (BGTileAddressMode && tile < 128) tile += 256;
+			}
 		}
+
 	}
+
 
 	// draw window
 	int windowx = gpu->mem->memory[WX] - 7;
@@ -244,7 +248,7 @@ void draw_line(Gpu* gpu) {
 
 						}
 						else {
-							sprite_line = 7 - sprite_line;							
+							sprite_line = 7 - sprite_line;
 							tile_index++;
 
 						}
@@ -371,7 +375,9 @@ void handle_vblank(Gpu* gpu) {
 
 void step_gpu(Gpu* gpu, u8 cycles) {
 	gpu->should_draw = false;
-	if (!(gpu->mem->memory[LCD_CONTROL] & (1 << 7))) return; // if ppu off return
+	if (!(gpu->mem->memory[LCD_CONTROL] & (1 << 7))) {
+		return; // if ppu off return
+	}
 	gpu->clock += cycles;
 	switch (gpu->mode) {
 	case OAM_ACCESS:
