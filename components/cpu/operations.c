@@ -5,7 +5,7 @@
 
 Operation operations[0x100] = {
 	[0x00] = {"NOP", NOP, 0, 0, 0, 0, 0, 0, 1, 4, },
-	[0x10] = {"STOP", HALT, 0, 0, 0, 0, 0, 0, 1, 4, }, // TODO implement stop
+	[0x10] = {"STOP", NOP, 0, 0, 0, 0, 0, 0, 1, 4, }, // TODO implement stop
 	[0x76] = {"HALT", HALT, 0, 0, 0, 0, 0, 0, 1, 4, }, 
 	// 8 bit loads
 	// 
@@ -309,7 +309,7 @@ Operation operations[0x100] = {
 [0xD9] = { "RETI", RETI, ADDR_MODE_NONE, ADDR_MODE_NONE, OPERAND_NONE, OPERAND_NONE, CONDITION_NONE, SECONDARY_NONE, 1, 16},
 // MISC
 [0xCB] = { "PREFIX CB", CB, MEM_READ, ADDR_MODE_NONE, OPERAND_NONE, OPERAND_NONE, 0, 0, 0, 0},
-[0x27] = { "DAA", DAA, 0, 0, 0, 0, 0, 0, 1, 4},
+[0x27] = { "DAA", DAA, 0, 0, 0, 0, 0, 0, 1, 4 },
 [0x3F] = { "CCF", CCF, 0, 0, 0, 0, 0, 0, 1, 4, {_IGNORE, RESET, RESET, DEPENDENT} },
 [0x37] = { "SCF", SCF, 0, 0, 0, 0, 0, 0, 1, 4, {_IGNORE, RESET, RESET, SET} },
 [0x17] = { "RLA", RL, REGISTER, ADDR_MODE_NONE, A, OPERAND_NONE, 0, 0, 1, 4, {RESET, RESET, RESET, DEPENDENT} },
@@ -1109,7 +1109,8 @@ void run_secondary(Cpu* cpu, Operation* op) {
 		op->t_cycles += 4;
 		break;
 	case ADD_T_12:
-		op->t_cycles += 12;
+		op->t_cycles += 12;		
+		break;
 	default:
 		return;
 	}

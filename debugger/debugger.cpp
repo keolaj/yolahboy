@@ -142,6 +142,9 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 	char clock_buf[20];
 	char div_buf[20];
 	char ly_buf[20];
+	char tima_buf[20];
+	char tma_buf[20];
+	char ime_buf[20];
 
 	sprintf_s(af_buf, "AF: %04hX", emu->cpu->registers.af);
 	sprintf_s(bc_buf, "BC: %04hX", emu->cpu->registers.bc);
@@ -154,6 +157,10 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 	sprintf_s(clock_buf, "CLOCK: %04hX", emu->timer->clock);
 	sprintf_s(div_buf, "DIV: %02hX", emu->memory->memory[DIV]);
 	sprintf_s(ly_buf, "LY: %02hX", emu->gpu->line);
+	sprintf_s(tima_buf, "TIMA: %02hX", emu->memory->memory[TIMA]);
+	sprintf_s(tma_buf, "TMA: %02hX", emu->memory->memory[TMA]);
+	sprintf_s(ime_buf, "IME: %01hX", emu->cpu->IME);
+	
 
 	ImGui::Text(af_buf);
 	ImGui::Text(bc_buf);
@@ -166,6 +173,9 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 	ImGui::Text(clock_buf);
 	ImGui::Text(div_buf);
 	ImGui::Text(ly_buf);
+	ImGui::Text(tima_buf);
+	ImGui::Text(tma_buf);
+	ImGui::Text(ime_buf);
 	ImGui::Text("FPS: %.4f", ImGui::GetIO().Framerate);
 	ImGui::EndChild();
 	ImGui::End();

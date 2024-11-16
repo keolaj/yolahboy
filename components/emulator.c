@@ -13,12 +13,14 @@
 
 #include <SDL3/SDL.h>
 
+
 int init_emulator(Emulator* emu) {
 	emu->cpu = create_cpu();
 	emu->memory = create_memory();
 	emu->gpu = create_gpu(emu->memory);
 	emu->timer = create_timer();
 	emu->timer->clock = 0;
+	emu->timer->old_and = false;
 	emu->cpu->timer = emu->timer;
 	emu->memory->timer = emu->timer;
 	emu->should_run = false;

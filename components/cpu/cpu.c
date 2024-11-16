@@ -3,7 +3,6 @@
 #include "cpu.h"
 #include "../debugger/imgui_custom_widget_wrapper.h"
 
-
 void init_cpu(Cpu* cpu) {
 	cpu->registers.af = 0;
 	cpu->registers.bc = 0;
@@ -103,8 +102,8 @@ void CALL_impl(Cpu* cpu, Memory* mem, Operation* op) {
 	if (condition_passed(cpu, op)) {
 		push(cpu, mem, cpu->registers.pc);
 		jump(cpu, addr);
+		run_secondary(cpu, op);
 	}
-	run_secondary(cpu, op);
 }
 
 
@@ -459,6 +458,8 @@ Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op) {
 	if (should_run_interrupt(cpu, mem)) {
 		cpu->halted = false;
 		run_interrupt(cpu, mem);
+		op.m_cycles += 5;
+		op.t_cycles += 20;
 	}
 
 	return (Cycles) { op.m_cycles, op.t_cycles };
