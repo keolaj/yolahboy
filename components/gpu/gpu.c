@@ -323,13 +323,13 @@ void handle_hblank(Gpu* gpu) {
 		++gpu->line;
 		gpu->mem->memory[LY] = gpu->line;
 		if (gpu->mem->memory[LYC] == gpu->line) {
-			write8(gpu->mem, LCD_STATUS, read8(gpu->mem, LCD_STATUS) | (1 << 2));
+			gpu->mem->memory[LCD_STATUS] |= (1 << 2);
 			if (read8(gpu->mem, LCD_STATUS) & (1 << 6)) {
-				write8(gpu->mem, IF, read8(gpu->mem, IF) | LCDSTAT_INTERRUPT);
+				gpu->mem->memory[IF] |= LCDSTAT_INTERRUPT;
 			}
 		}
 		else {
-			write8(gpu->mem, LCD_STATUS, read8(gpu->mem, LCD_STATUS) & ~(1 << 2));
+			gpu->mem->memory[LCD_STATUS] &= ~(1 << 2);
 		}
 
 		if (gpu->line == 143) {
@@ -356,14 +356,34 @@ void handle_vblank(Gpu* gpu) {
 	if (gpu->clock >= 456) {
 		gpu->clock -= 456;
 		++gpu->line;
-		write8(gpu->mem, LY, gpu->line);
+		gpu->mem->memory[LY] = gpu->line;
+		if (gpu->mem->memory[LYC] == gpu->line) {
+			gpu->mem->memory[LCD_STATUS] |= (1 << 2);
+			if (read8(gpu->mem, LCD_STATUS) & (1 << 6)) {
+				gpu->mem->memory[IF] |= LCDSTAT_INTERRUPT;
+			}
+		}
+		else {
+			gpu->mem->memory[LCD_STATUS] &= ~(1 << 2);
+		}
 
-		if (gpu->line > 153) {
+
+		if (gpu->line > 153) {			
 			gpu->should_draw = true;
 			gpu->mode = OAM_ACCESS;
 			gpu->line = 0;
-			write8(gpu->mem, LY, 0);
-			if (read8(gpu->mem, LCD_STATUS) & (1 << 5)) {
+			gpu->mem->memory[LY] = 0;
+			if (gpu->mem->memory[LYC] == gpu->line) {
+				gpu->mem->memory[LCD_STATUS] |= (1 << 2);
+				if (read8(gpu->mem, LCD_STATUS) & (1 << 6)) {
+					gpu->mem->memory[IF] |= LCDSTAT_INTERRUPT;
+				}
+			}
+			else {
+				gpu->mem->memory[LCD_STATUS] &= ~(1 << 2);
+			}
+
+			if (read8(gpu->mem, LCD_STATUS) & (1 << 5)) { // mode 2 interrupt select
 				write8(gpu->mem, IF, read8(gpu->mem, IF) | LCDSTAT_INTERRUPT);
 			}
 		}
@@ -376,7 +396,7 @@ void step_gpu(Gpu* gpu, u8 cycles) {
 	bool lcd_enabled = stat & (1 << 7);
 	gpu->should_draw = false;
 	if (!lcd_enabled) {
-		return; 
+		return;
 	}
 	gpu->clock += cycles;
 	switch (gpu->mode) {
@@ -393,4 +413,5 @@ void step_gpu(Gpu* gpu, u8 cycles) {
 		handle_vblank(gpu);
 		break;
 	}
+	gpu->mem->memory[LCDSTAT_ADDRESS] |= (gpu->mode & 0b00000011);
 }

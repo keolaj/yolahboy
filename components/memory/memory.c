@@ -48,6 +48,9 @@ u8 read8(Memory* mem, u16 address) {
 	if (address >= 0xA000 && address < 0xC000) { // cartridge ram
 		return cart_read8(&mem->cartridge, address);
 	}
+	if (address >= 0xE000 && address <= 0xFDFF) {
+		return mem->memory[address - 0x2000];
+	}
 	if (address == 0xFF00) {
 		u8 j_ret = joypad_return(*mem->controller, mem->memory[address]);
 		return j_ret;
@@ -71,39 +74,93 @@ void write16(Memory* mem, u16 address, u16 value) {
 void update_tile(Gpu* gpu, int address, u8 value);
 
 void write8(Memory* mem, u16 address, u8 data) {
-	mem->memory[address] = data;
 
-	if (address < 0x8000) { // cartridge rom
+	if (address <= 0x7FFF) { // cartridge rom
 		return cart_write8(&mem->cartridge, address, data);
 	}
-	if (address >= 0x8000 && address <= 0x97FF) { // vram
-		if (address % 2 == 0) update_tile(mem->gpu, address, data);
-		if (address % 2 != 0) update_tile(mem->gpu, address - 1, data);
-	}
-	if (address >= 0xA000 && address < 0xC000) { // cartridge ram
-		return cart_write8(&mem->cartridge, address, data);
-	}
-
-	if (address == DMA && data <= 0xDF) {
-		for (int i = 0; i < 0x9F; ++i) {
-			mem->memory[0xFE00 + i] = mem->memory[(data << 8) + i];
+	else if (address >= 0x8000 && address <= 0x9FFF) { // vram
+		mem->memory[address] = data;
+		if (address < 0x97FF) {
+			if (address % 2 == 0) update_tile(mem->gpu, address, data);
+			if (address % 2 != 0) update_tile(mem->gpu, address - 1, data);
 		}
-	}
-	if (address == 0xFF02 && data == 0x81) {
-		AddLog("%c", read8(mem, 0xff01));
-	}
-	if (address == DIV) {
-		mem->memory[address] = 0;
-		mem->timer->clock = 0;
 		return;
 	}
-	if (address == LCD_CONTROL) {
-		if (data & (1 << 7) == 0) { 
-			mem->gpu->line = 0;
-			mem->gpu->mode = 0;
-			mem->gpu->clock = 0;
-		}
+	else if (address >= 0xA000 && address <= 0xBFFF) { // cartridge ram
+		return cart_write8(&mem->cartridge, address, data);
 	}
+	else if (address >= 0xC000 && address <= 0xCFFF) { // wram
+		mem->memory[address] = data;
+		return;
+	}
+	else if (address >= 0xD000 && address <= 0xDFFF) {
+		mem->memory[address] = data;
+		return;
+	}
+	else if (address >= 0xE000 && address <= 0xFDFF) { // ECHO
+		mem->memory[address] = data;
+		return;
+	}
+	else if (address >= 0xFE00 && address <= 0xFE9F) { // oam
+		mem->memory[address] = data; // TODO implement proper oam writes and reads
+		return;
+	}
+	else if (address >= 0xFEA0 && address < 0xFEFF) { // prohibited
+		mem->memory[address] = data;
+		return;
+	}
+	else if (address >= 0xFF00 && address <= 0xFF7F) { // IO Registers		
+		// mem->memory[address] = data;
+
+		if (address == DMA) {
+			data &= 0xDF;
+			u16 src_addr = data << 8;
+			for (int i = 0; i < 0x9F; ++i) {
+				mem->memory[0xFE00 + i] = mem->memory[src_addr + i];
+			}
+			return;
+		}
+
+		if (address == 0xFF02 && data == 0x81) {
+			AddLog("%c", read8(mem, 0xff01));
+		}
+
+		if (address == DIV) {
+			mem->memory[address] = 0;
+			mem->timer->clock = 0;
+			return;
+		}
+
+		if (address == LCD_CONTROL) { // if setting off bit reset lcd
+			if ((data & (1 << 7)) == 0) {
+				mem->gpu->line = 0;
+				mem->gpu->mode = 0;
+				mem->gpu->clock = 0;
+			}
+		}
+
+		if (address == LCD_STATUS) {
+			data &= 0b11111000;
+		}
+		if (address == LY) {
+			return;
+		}
+		mem->memory[address] = data;
+		return;
+	}
+	else if (address >= 0xFF80 && address <= 0xFFFE) { // hram
+		mem->memory[address] = data;
+		return;
+	}
+	else if (address == 0xffff) {
+		mem->memory[address] = data;
+		return;
+	}
+	else {
+		AddLog("wtf going on\tADDRESS: %04hX\tdata: %02hX\n");
+	}
+
+	mem->memory[address] = data;
 
 }
 
@@ -239,7 +296,7 @@ void destroy_memory(Memory* mem) {
 			}
 		}
 	}
-	
+
 	if (mem->cartridge.rom) free(mem->cartridge.rom);
 	if (mem->cartridge.ram) free(mem->cartridge.ram);
 	free(mem);

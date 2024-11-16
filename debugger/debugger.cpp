@@ -505,6 +505,13 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 			ImGui::TableNextColumn();
 			ImGui::Text("%d", emu->gpu->line);
 			ImGui::Separator();
+			
+			ImGui::TableNextRow();
+			ImGui::TableNextColumn();
+			ImGui::Text("LYC");
+			ImGui::TableNextColumn();
+			ImGui::Text("%d", emu->memory->memory[LYC]);
+			ImGui::Separator();
 
 			ImGui::TableNextRow();
 			ImGui::TableNextColumn();
