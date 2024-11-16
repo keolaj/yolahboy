@@ -269,6 +269,7 @@ void RL_impl(Cpu* cpu, Memory* mem, Operation* op) {
 void RET_impl(Cpu* cpu, Memory* mem, Operation* op) {
 	if (condition_passed(cpu, op)) {
 		pop(cpu, mem, get_reg16_from_type(cpu, PC), 0);
+		run_secondary(cpu, op);
 	}
 }
 
