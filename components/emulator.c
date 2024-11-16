@@ -42,8 +42,14 @@ void update_emu_controller(Emulator* emu, Controller controller) {
 int step(Emulator* emu) {
 	Operation to_exec = get_operation(emu->cpu, emu->memory);
 	Cycles c;
-	if (!emu->cpu->halted) c = step_cpu(emu->cpu, emu->memory, to_exec);
-	else c = step_cpu(emu->cpu, emu->memory, operations[0]);
+	if (!emu->cpu->halted) {
+		c = step_cpu(emu->cpu, emu->memory, to_exec);
+	}
+	else {
+		--emu->cpu->registers.pc;
+		c = step_cpu(emu->cpu, emu->memory, operations[0]);
+		AddLog("HALTED!");
+	}
 	if (c.t_cycles < 0) {
 		return -1; // push error to whatever is using emulator
 	}

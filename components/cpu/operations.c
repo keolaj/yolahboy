@@ -23,6 +23,9 @@ Operation operations[0x100] = {
 	[0x3A] = {"LD A, (HL-)", LD, REGISTER, ADDRESS_R16, A, HL, 0, DEC_R_2, 1, 8},
 	[0x1A] = {"LD A, (DE)", LD, REGISTER, ADDRESS_R16, A, DE, 0, 0, 1, 8},
 	[0xFA] = {"LD A, (u16)", LD, REGISTER, MEM_READ_ADDR, A, U16, 0, 0, 3, 16},
+	[0xF0] = {"LD A, (FF00 + u8)", LD, REGISTER, MEM_READ_ADDR_OFFSET, A, U8, 0, 0, 2, 12},
+	[0xF2] = {"LD A, (FF00 + C)", LD, REGISTER, ADDRESS_R8_OFFSET, A, C, 0, 0, 1, 8},
+
 
 	[0x47] = {"LD B, A", LD, REGISTER, REGISTER, B, A, 0, 0, 1, 4},
 	[0x40] = {"LD B, B", LD, REGISTER, REGISTER, B, B, 0, 0, 1, 4},
@@ -32,8 +35,6 @@ Operation operations[0x100] = {
 	[0x44] = {"LD B, H", LD, REGISTER, REGISTER, B, H, 0, 0, 1, 4},
 	[0x45] = {"LD B, L", LD, REGISTER, REGISTER, B, L, 0, 0, 1, 4},
 	[0x46] = {"LD B, (HL)", LD, REGISTER, ADDRESS_R16, B, HL, 0, 0, 1, 8},
-	[0xF0] = {"LD B, (FF00 + u8)", LD, REGISTER, MEM_READ_ADDR_OFFSET, A, U8, 0, 0, 2, 12},
-	[0xF2] = {"LD B, (FF00 + C)", LD, REGISTER, ADDRESS_R8_OFFSET, A, C, 0, 0, 1, 8},
 
 	[0x4F] = {"LD C, A", LD, REGISTER, REGISTER, C, A, 0, 0, 1, 4},
 	[0x48] = {"LD C, B", LD, REGISTER, REGISTER, C, B, 0, 0, 1, 4},
@@ -671,9 +672,10 @@ u16 interrupt_address_from_flag(u8 flag) {
 u16 interrupt_priority(Cpu* cpu, Memory* mem, u8 interrupt_flag) {
 	for (int i = 0; i < 5; ++i) {
 		u8 itX = interrupt_flag & (1 << i);
-		itX &= (read8(mem, IE) & itX);
+		itX = (read8(mem, IE) & itX);
 		if (itX) {
 			write8(mem, IF, interrupt_flag & ~itX);
+			cpu->halted = false;
 			return interrupt_address_from_flag(itX);
 		}
 	}
@@ -683,10 +685,10 @@ u16 interrupt_priority(Cpu* cpu, Memory* mem, u8 interrupt_flag) {
 void run_interrupt(Cpu* cpu, Memory* mem) {
 	u16 jump_to = interrupt_priority(cpu, mem, read8(mem, IF));
 	if (jump_to != 0) {
-
+		
+		cpu->IME = false;
 		push(cpu, mem, cpu->registers.pc);
 		jump(cpu, jump_to);
-		cpu->IME = false;
 	}
 }
 

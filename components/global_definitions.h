@@ -24,10 +24,10 @@
 
 // #define IF 0xFF0F // Interrupt flag
 
-#define BLACK 0x252b25FF
-#define DARK 0x555a56FF
-#define LIGHT 0x5e785dFF
-#define WHITE 0x84d07dFF
+#define BLACK 0x000000FF
+#define DARK 0x382843FF
+#define LIGHT 0x7c6d80FF
+#define WHITE 0xc7c6c6FF
 
 #define NUM_TILES 384
 #define TILES_Y 24

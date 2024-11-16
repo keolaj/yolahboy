@@ -163,7 +163,7 @@ void draw_line(Gpu* gpu) {
 
 	int tile = read8(gpu->mem, mapAddress + lineOffset);
 
-	// if (BGTileAddressMode && tile < 128) tile += 256;
+	if (BGTileAddressMode && tile < 128) tile += 256;
 
 	for (int i = 0; i < SCREEN_WIDTH; ++i) {
 		uint32_t pixel = createPixelFromPaletteId(read8(gpu->mem, BGP), gpu->tiles[tile][tileY][tileX]);
@@ -179,40 +179,54 @@ void draw_line(Gpu* gpu) {
 	}
 
 	// draw sprites
-	bool eight_by_16_mode = read8(gpu->mem, LCD_CONTROL) & (1 << 2);
-	u16 current_OAM_address = 0xFE00;
-	int sprite_count_for_line = 0;
 
-	while (current_OAM_address <= 0xFE9F && sprite_count_for_line < 10) {
-		u8 sprite_pos_y = read8(gpu->mem, current_OAM_address);
-		u8 sprite_pos_x = read8(gpu->mem, current_OAM_address + 1);
-		u8 tile_index = read8(gpu->mem, current_OAM_address + 2);
-		u8 attributes = read8(gpu->mem, current_OAM_address + 3);
+	if (control & (1 << 1)) {
+		bool eight_by_16_mode = control & (1 << 2);
+		u16 current_OAM_address = 0xFE00;
+		int sprite_count_for_line = 0;
 
-		int sprite_bottom = sprite_pos_y - 16 + (eight_by_16_mode ? 16 : 8);
-		int sprite_top = sprite_pos_y - 16;
-		// draw sprite
-		if (gpu->line < sprite_bottom && gpu->line >= sprite_top) { // if current line within sprite (i think this is right, no way to check until I implement OAM dma and HBLANK interrupt)
-			++sprite_count_for_line;
-			int sprite_line = gpu->line - sprite_top;
+		while (current_OAM_address <= 0xFE9F && sprite_count_for_line < 10) {
+			if (sprite_count_for_line > 10) break;
+			u8 sprite_pos_y = read8(gpu->mem, current_OAM_address);
+			u8 sprite_pos_x = read8(gpu->mem, current_OAM_address + 1);
+			u8 tile_index = read8(gpu->mem, current_OAM_address + 2);
+			u8 attributes = read8(gpu->mem, current_OAM_address + 3);
 
-			if (sprite_line >= 8) { // address next tile if we are in 16 bit mode
-				sprite_line -= 8;
-				tile_index += 1;
+			int sprite_bottom = sprite_pos_y - 16 + (eight_by_16_mode ? 16 : 8);
+			int sprite_top = sprite_pos_y - 16;
+			// draw sprite
+			if (gpu->line < sprite_bottom && gpu->line >= sprite_top) { // if current line within sprite (i think this is right, no way to check until I implement OAM dma and HBLANK interrupt)
+				++sprite_count_for_line;
+				int sprite_line = gpu->line - sprite_top;
+
+				if (sprite_line >= 8) { // address next tile if we are in 16 bit mode
+					sprite_line -= 8;
+					tile_index += 1;
+				}
+
+				bool palette_mode = attributes & (1 << 4);
+				bool x_flip = attributes & (1 << 5);
+				u8 palette = read8(gpu->mem, (palette_mode ? OBP1 : OBP0));
+
+				for (int i = 0; i < 8; ++i) {
+					if (sprite_pos_x - 8 + i < 0) continue;
+					u8 id = gpu->tiles[tile_index][sprite_line][i];
+					if (id == 0) continue;
+					u32 pixel = createPixelFromPaletteId(palette, id);
+					int x = i;
+					if (x_flip) {
+						x = 7 - i;
+					}
+					gpu->framebuffer[gpu->line * SCREEN_WIDTH + sprite_pos_x - 8 + x] = pixel;
+				}
 			}
+			current_OAM_address += 4;
 
-			bool palette_mode = attributes & (1 << 4);
-			u8 palette = read8(gpu->mem, (palette_mode ? OBP1 : OBP0));
-
-			for (int i = 0; i < 8; ++i) {
-				if (sprite_pos_x - 8 + i < 0) continue;
-				u32 pixel = createPixelFromPaletteId(palette, gpu->tiles[tile_index][sprite_line][i]);
-				gpu->framebuffer[gpu->line * SCREEN_WIDTH + sprite_pos_x - 8 + i] = pixel;
-			}
 		}
-		current_OAM_address += 4;
-	}
 
+
+
+	}
 }
 
 void destroy_gpu(Gpu* gpu) {
@@ -241,7 +255,7 @@ void handle_vram(Gpu* gpu) {
 		gpu->mode = HBLANK;
 		gpu->clock = 0;
 		draw_line(gpu);
-		if (read8(gpu->mem, LCD_STATUS) & (1 << 3)) {
+		if (gpu->mem->memory[LCD_STATUS] & (1 << 3)) {
 			write8(gpu->mem, IF, read8(gpu->mem, IF) | LCDSTAT_INTERRUPT);
 		}
 	}
@@ -251,8 +265,8 @@ void handle_hblank(Gpu* gpu) {
 	if (gpu->clock >= 204) {
 		gpu->clock = 0;
 		++gpu->line;
-		write8(gpu->mem, LY, gpu->line);
-		if (read8(gpu->mem, LYC) == gpu->line) {
+		gpu->mem->memory[LY] = gpu->line;
+		if (gpu->mem->memory[LYC] == gpu->line) {
 			write8(gpu->mem, LCD_STATUS, read8(gpu->mem, LCD_STATUS) | (1 << 2));
 			if (read8(gpu->mem, LCD_STATUS) & (1 << 6)) {
 				write8(gpu->mem, IF, read8(gpu->mem, IF) | LCDSTAT_INTERRUPT);
@@ -305,6 +319,7 @@ void handle_vblank(Gpu* gpu) {
 
 void step_gpu(Gpu* gpu, u8 cycles) {
 	gpu->should_draw = false;
+	if (!(gpu->mem->memory[LCD_CONTROL] & (1 << 7))) return; // if ppu off return
 	gpu->clock += cycles;
 	switch (gpu->mode) {
 	case OAM_ACCESS:

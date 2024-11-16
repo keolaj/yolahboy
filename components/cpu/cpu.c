@@ -278,6 +278,7 @@ bool should_run_interrupt(Cpu* cpu, Memory* mem) {
 	if ((~j_ret & 0b00001111)) mem->memory[IF] = mem->memory[IF] | JOYPAD_INTERRUPT; // I think this is right
 	u8 interrupt_flag = mem->memory[IF];
 	u8 interrupt_enable = mem->memory[IE];
+	
 	if (cpu->IME && (interrupt_flag & interrupt_enable)) {
 		return true;
 	}
@@ -285,7 +286,6 @@ bool should_run_interrupt(Cpu* cpu, Memory* mem) {
 		return false;
 	}
 }
-
 
 void RST_impl(Cpu* cpu, Memory* mem, Operation* op) {
 	push(cpu, mem, cpu->registers.pc);
