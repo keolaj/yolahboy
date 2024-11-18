@@ -3,6 +3,8 @@
 #include <SDL3/SDL.h>
 #include "../memory/memory.h"
 
+// TODO: stat interrupt mode changed are delayed by one m cycle, need to implement this.
+
 Gpu* create_gpu(Memory* mem) {
 	Gpu* ret = (Gpu*)malloc(sizeof(Gpu));
 	if (ret == NULL) {
@@ -303,6 +305,7 @@ void handle_oam(Gpu* gpu) {
 	if (gpu->clock >= 80) {
 		gpu->clock -= 80;
 		gpu->mode = VRAM_ACCESS;
+		write8(gpu->mem, IF, (read8(gpu->mem, IF) & ~(LCDSTAT_INTERRUPT)));
 	}
 }
 

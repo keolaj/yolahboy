@@ -5,7 +5,7 @@
 
 Operation operations[0x100] = {
 	[0x00] = {"NOP", NOP, 0, 0, 0, 0, 0, 0, 1, 4, },
-	[0x10] = {"STOP", HALT, 0, 0, 0, 0, 0, 0, 1, 4, }, // TODO implement stop
+	[0x10] = {"STOP", NOP, 0, 0, 0, 0, 0, 0, 1, 4, }, // TODO implement stop
 	[0x76] = {"HALT", HALT, 0, 0, 0, 0, 0, 0, 1, 4, }, 
 	// 8 bit loads
 	// 
