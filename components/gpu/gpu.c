@@ -182,8 +182,8 @@ void draw_line(Gpu* gpu) {
 
 
 	// draw window
-	int windowx = gpu->mem->memory[WX] - 7;
-	int windowy = gpu->mem->memory[WY];
+	u8 windowx = gpu->mem->memory[WX] - 7;
+	u8 windowy = gpu->mem->memory[WY];
 	if (control & (1 << 5) && gpu->line >= windowy) { // draw window
 		BGTileMapArea = (control & (1 << 6));
 		BGTileAddressMode = !(control & (1 << 4));
@@ -198,7 +198,7 @@ void draw_line(Gpu* gpu) {
 		int tileY = (gpu->line + windowy) & 7;
 		int tile = read8(gpu->mem, mapAddress + lineOffset);
 
-		for (int i = windowx; i < SCREEN_WIDTH; ++i) {
+		for (int i = 0; i < SCREEN_WIDTH; ++i) {
 			uint32_t window_pixel = createPixelFromPaletteId(read8(gpu->mem, BGP), gpu->tiles[tile][tileY][tileX]);
 			gpu->framebuffer[gpu->line * SCREEN_WIDTH + i] = window_pixel;
 
