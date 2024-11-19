@@ -29,6 +29,50 @@ static char bootrom_path_buf[200] = "";
 static char rom_path_buf[200] = "";
 
 
+void writePixel(SDL_Surface* surface, int x, int y, u32 pixel) {
+	uint32_t* const target = (u32*)((u8*)surface->pixels + y * surface->pitch + x * SDL_GetPixelFormatDetails(surface->format)->bytes_per_pixel); // for some reason I need to cast to uint8
+	*target = pixel;
+}
+
+
+void write_buffer_to_screen(Gpu* gpu, SDL_Surface* screen) {
+	if (SDL_LockSurface(screen) < 0) {
+		printf("could not lock screen surface");
+		return;
+	}
+
+	for (int x = 0; x < SCREEN_WIDTH; ++x) {
+		for (int y = 0; y < SCREEN_HEIGHT; ++y) {
+			writePixel(screen, x, y, gpu->framebuffer[x + (y * SCREEN_WIDTH)]);
+		}
+	}
+
+	SDL_UnlockSurface(screen);
+}
+void write_tile_buffer_to_screen(Gpu* gpu, SDL_Surface* screen, u8 palette) {
+	if (SDL_LockSurface(screen) < 0) {
+		printf("could not lock tile screen");
+		return;
+	}
+
+	for (int y = 0; y < TILES_Y; ++y) {
+		for (int x = 0; x < TILES_X; ++x) { // iterate through each tile
+			for (int tiley = 0; tiley < TILE_HEIGHT; ++tiley) {
+				for (int tilex = 0; tilex < TILE_WIDTH; ++tilex) {
+					int tile = y * TILES_X + x;
+					int pixelY = y * TILE_HEIGHT + tiley;
+					int pixelX = x * TILE_WIDTH + tilex;
+					writePixel(screen, pixelX, pixelY, createPixelFromPaletteId(palette, gpu->tiles[tile][tiley][tilex]));
+				}
+			}
+		}
+	}
+	SDL_UnlockSurface(screen);
+
+}
+
+
+
 void init_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_ctx, ImGuiIO* ioptr, char* rom_path, char* bootrom_path) {
 	if (ig_ctx == NULL) {
 		ig_ctx = ImGui::CreateContext(NULL);
@@ -358,7 +402,7 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 
 			ImGui::TableNextRow();
 			ImGui::TableNextColumn();
-			bool lcd_on = emu->memory->memory[LCD_CONTROL] & (1 << 7);
+			bool lcd_on = emu->memory->memory[LCDC] & (1 << 7);
 			ImGui::Checkbox("LCD", &lcd_on);
 			ImGui::TableNextColumn();
 			ImGui::Text("%s", (lcd_on ? "ON" : "OFF"));
@@ -366,7 +410,7 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 
 			ImGui::TableNextRow();
 			ImGui::TableNextColumn();
-			bool window_area = (emu->memory->memory[LCD_CONTROL] & (1 << 6));
+			bool window_area = (emu->memory->memory[LCDC] & (1 << 6));
 			ImGui::Checkbox("WINDOW MAP AREA", &window_area);
 			ImGui::TableNextColumn();
 			ImGui::Text("%s", window_area ? "9C00" : "9800");
@@ -374,7 +418,7 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 
 			ImGui::TableNextRow();
 			ImGui::TableNextColumn();
-			bool window_enable = emu->memory->memory[LCD_CONTROL] & (1 << 5);
+			bool window_enable = emu->memory->memory[LCDC] & (1 << 5);
 			ImGui::Checkbox("WINDOW ENABLE", &window_enable);
 			ImGui::TableNextColumn();
 			ImGui::Text("%s", (window_enable ? "ON" : "OFF"));
@@ -382,7 +426,7 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 
 			ImGui::TableNextRow();
 			ImGui::TableNextColumn();
-			bool tile_area = emu->memory->memory[LCD_CONTROL] & (1 << 4);
+			bool tile_area = emu->memory->memory[LCDC] & (1 << 4);
 			ImGui::Checkbox("TILE DATA AREA", &tile_area);
 			ImGui::TableNextColumn();
 			ImGui::Text("%s", (tile_area ? "8000" : "8800"));
@@ -390,7 +434,7 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 
 			ImGui::TableNextRow();
 			ImGui::TableNextColumn();
-			bool bg_area = emu->memory->memory[LCD_CONTROL] & (1 << 3);
+			bool bg_area = emu->memory->memory[LCDC] & (1 << 3);
 			ImGui::Checkbox("BG MAP AREA", &bg_area);
 			ImGui::TableNextColumn();
 			ImGui::Text("%s", (bg_area ? "9800" : "9C00"));
@@ -398,7 +442,7 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 
 			ImGui::TableNextRow();
 			ImGui::TableNextColumn();
-			bool obj_mode = emu->memory->memory[LCD_CONTROL] & (1 << 2);
+			bool obj_mode = emu->memory->memory[LCDC] & (1 << 2);
 			ImGui::Checkbox("OBJ SIZE", &obj_mode);
 			ImGui::TableNextColumn();
 			ImGui::Text("%s", (obj_mode ? "8x16" : "8x8"));
@@ -406,7 +450,7 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 
 			ImGui::TableNextRow();
 			ImGui::TableNextColumn();
-			bool obj_enable = emu->memory->memory[LCD_CONTROL] & (1 << 1);
+			bool obj_enable = emu->memory->memory[LCDC] & (1 << 1);
 			ImGui::Checkbox("OBJ ENABLE", &obj_enable);
 			ImGui::TableNextColumn();
 			ImGui::Text("%s", (obj_enable ? "ON" : "OFF"));
@@ -414,7 +458,7 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 			
 			ImGui::TableNextRow();
 			ImGui::TableNextColumn();
-			bool bg_enable = emu->memory->memory[LCD_CONTROL] & (1 << 0);
+			bool bg_enable = emu->memory->memory[LCDC] & (1 << 0);
 			ImGui::Checkbox("BG ENABLE", &bg_enable);
 			ImGui::TableNextColumn();
 			ImGui::Text("%s", (bg_enable ? "ON" : "OFF"));
@@ -433,7 +477,7 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 
 			ImGui::TableNextRow();
 			ImGui::TableNextColumn();
-			bool lyc_ly_intr = (emu->memory->memory[LCD_STATUS] & (1 << 6));
+			bool lyc_ly_intr = (emu->memory->memory[STAT] & (1 << 6));
 			ImGui::Checkbox("LYC == LY INTERRUPT", &lyc_ly_intr);
 			ImGui::TableNextColumn();
 			ImGui::Text("%s", lyc_ly_intr ? "ON" : "OFF");
@@ -441,7 +485,7 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 
 			ImGui::TableNextRow();
 			ImGui::TableNextColumn();
-			bool mode_2_intr = emu->memory->memory[LCD_STATUS] & (1 << 5);
+			bool mode_2_intr = emu->memory->memory[STAT] & (1 << 5);
 			ImGui::Checkbox("OAM INTERRUPT", &mode_2_intr);
 			ImGui::TableNextColumn();
 			ImGui::Text("%s", (mode_2_intr ? "ON" : "OFF"));
@@ -449,7 +493,7 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 
 			ImGui::TableNextRow();
 			ImGui::TableNextColumn();
-			bool mode_1_intr = emu->memory->memory[LCD_STATUS] & (1 << 4);
+			bool mode_1_intr = emu->memory->memory[STAT] & (1 << 4);
 			ImGui::Checkbox("VBLANK INTERRTUPT", &mode_1_intr);
 			ImGui::TableNextColumn();
 			ImGui::Text("%s", (mode_1_intr ? "ON" : "OFF"));
@@ -457,7 +501,7 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 
 			ImGui::TableNextRow();
 			ImGui::TableNextColumn();
-			bool mode_0_intr = emu->memory->memory[LCD_STATUS] & (1 << 3);
+			bool mode_0_intr = emu->memory->memory[STAT] & (1 << 3);
 			ImGui::Checkbox("HBLANK INTERRUPT", &mode_0_intr);
 			ImGui::TableNextColumn();
 			ImGui::Text("%s", (mode_0_intr ? "ON" : "OFF"));
@@ -465,7 +509,7 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 
 			ImGui::TableNextRow();
 			ImGui::TableNextColumn();
-			bool ly_lyc = emu->memory->memory[LCD_STATUS] & (1 << 2);
+			bool ly_lyc = emu->memory->memory[STAT] & (1 << 2);
 			ImGui::Checkbox("LYC == LY", &ly_lyc);
 			ImGui::TableNextColumn();
 			ImGui::Text("%s", (ly_lyc ? "TRUE" : "FALSE"));
@@ -473,7 +517,7 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 
 			ImGui::TableNextRow();
 			ImGui::TableNextColumn();
-			u8 ppu_mode = emu->memory->memory[LCD_STATUS] & 3;
+			u8 ppu_mode = emu->memory->memory[STAT] & 3;
 			ImGui::Text("GPU MODE", &ppu_mode);
 			ImGui::TableNextColumn();
 			ImGui::Text("%d", ppu_mode);
@@ -503,42 +547,42 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 			ImGui::TableNextColumn();
 			ImGui::Text("LY");
 			ImGui::TableNextColumn();
-			ImGui::Text("%d", emu->gpu->line);
+			ImGui::Text("%d", emu->gpu->ly);
 			ImGui::Separator();
 			
 			ImGui::TableNextRow();
 			ImGui::TableNextColumn();
 			ImGui::Text("LYC");
 			ImGui::TableNextColumn();
-			ImGui::Text("%d", emu->memory->memory[LYC]);
+			ImGui::Text("%hX", emu->gpu->lyc);
 			ImGui::Separator();
 
 			ImGui::TableNextRow();
 			ImGui::TableNextColumn();
 			ImGui::Text("SCX");
 			ImGui::TableNextColumn();
-			ImGui::Text("%d", emu->memory->memory[SCX]);
+			ImGui::Text("%hX", emu->gpu->scx);
 			ImGui::Separator();
 
 			ImGui::TableNextRow();
 			ImGui::TableNextColumn();
 			ImGui::Text("SCY");
 			ImGui::TableNextColumn();
-			ImGui::Text("%d", emu->memory->memory[SCY]);
+			ImGui::Text("%hX", emu->gpu->scy);
 			ImGui::Separator();
 
 			ImGui::TableNextRow();
 			ImGui::TableNextColumn();
 			ImGui::Text("WY");
 			ImGui::TableNextColumn();
-			ImGui::Text("%d", emu->memory->memory[WY]);
+			ImGui::Text("%hX", emu->gpu->wy);
 			ImGui::Separator();
 
 			ImGui::TableNextRow();
 			ImGui::TableNextColumn();
 			ImGui::Text("WX");
 			ImGui::TableNextColumn();
-			ImGui::Text("%d", emu->memory->memory[WX]);
+			ImGui::Text("%hX", emu->gpu->wx);
 			ImGui::Separator();
 
 			ImGui::EndTable();
@@ -645,6 +689,8 @@ int debugger_run(char* rom_path, char* bootrom_path) {
 	SDL_Window* window = SDL_CreateWindow("Yolahboy Debugger", WINDOW_WIDTH, 600, 0);
 
 	SDL_Renderer* renderer = SDL_CreateRenderer(window, NULL);
+	SDL_Surface* screen_surface = NULL;
+	SDL_Surface* tile_surface = NULL;
 	SDL_Texture* screen_tex = NULL;
 	SDL_Texture* tile_tex = NULL;
 	SDL_Gamepad* gamepad = get_first_gamepad();
@@ -700,9 +746,11 @@ int debugger_run(char* rom_path, char* bootrom_path) {
 			app_log.AddLog("Couldn't load rom!\n");
 		}
 	}
-
-	screen_tex = SDL_CreateTextureFromSurface(renderer, emu.gpu->screen);
-	tile_tex = SDL_CreateTextureFromSurface(renderer, emu.gpu->tile_screen);
+	
+	screen_surface = SDL_CreateSurface(SCREEN_WIDTH, SCREEN_HEIGHT, SDL_PIXELFORMAT_ARGB32);
+	tile_surface = SDL_CreateSurface(TILES_X * 8, TILES_Y * 8, SDL_PIXELFORMAT_ARGB32);
+	screen_tex = SDL_CreateTextureFromSurface(renderer, screen_surface);
+	tile_tex = SDL_CreateTextureFromSurface(renderer, tile_surface);
 
 	ImGuiContext* ig_ctx = NULL;
 	ImGuiIO* ioptr = NULL;
@@ -766,8 +814,8 @@ int debugger_run(char* rom_path, char* bootrom_path) {
 			emu.should_run = false;
 			if (!set_run_once) { // logic for only running a function once in draw debug ui
 				SDL_DestroyTexture(tile_tex);
-				write_tile_buffer_to_screen(emu.gpu);
-				tile_tex = SDL_CreateTextureFromSurface(renderer, emu.gpu->tile_screen);
+				write_tile_buffer_to_screen(emu.gpu, tile_surface, read8(emu.memory, BGP));
+				tile_tex = SDL_CreateTextureFromSurface(renderer, tile_surface);
 
 				run_once = true;
 				set_run_once = true;
@@ -794,10 +842,12 @@ int debugger_run(char* rom_path, char* bootrom_path) {
 				}
 				draw_debug_ui(window, renderer, ig_ctx, ioptr, &emu, &emulator_screen_rect, &tile_screen_rect, run_once);
 				SDL_DestroyTexture(screen_tex);
-				screen_tex = SDL_CreateTextureFromSurface(renderer, emu.gpu->screen);
+				write_buffer_to_screen(emu.gpu, screen_surface);
+				screen_tex = SDL_CreateTextureFromSurface(renderer, screen_surface);
 				SDL_SetTextureScaleMode(screen_tex, SDL_SCALEMODE_NEAREST);
 				SDL_DestroyTexture(tile_tex);
-				tile_tex = SDL_CreateTextureFromSurface(renderer, emu.gpu->tile_screen);
+				write_tile_buffer_to_screen(emu.gpu, tile_surface, read8(emu.memory, BGP));
+				tile_tex = SDL_CreateTextureFromSurface(renderer, tile_surface);
 				SDL_SetTextureScaleMode(tile_tex, SDL_SCALEMODE_NEAREST);
 				emu.should_draw = false;
 				SDL_SetRenderDrawColorFloat(renderer, clear_color.x, clear_color.y, clear_color.z, clear_color.w);
@@ -828,8 +878,8 @@ int debugger_run(char* rom_path, char* bootrom_path) {
 				SDL_SetRenderDrawColorFloat(renderer, clear_color.x, clear_color.y, clear_color.z, clear_color.w);
 				SDL_RenderClear(renderer);
 				ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), renderer);
-				SDL_RenderTexture(renderer, screen_tex, nullptr, &emulator_screen_rect);
-				SDL_RenderTexture(renderer, tile_tex, nullptr, &tile_screen_rect);
+				// SDL_RenderTexture(renderer, screen_tex, nullptr, &emulator_screen_rect);
+				// SDL_RenderTexture(renderer, tile_tex, nullptr, &tile_screen_rect);
 				SDL_RenderPresent(renderer);
 
 				timer = 0;

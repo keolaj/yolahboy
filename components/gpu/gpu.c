@@ -18,16 +18,10 @@ Gpu* create_gpu(Memory* mem) {
 	return ret;
 }
 
-int init_gpu(Gpu* gpu, Memory* mem) {
-	gpu->mode = 0;
-	gpu->line = 0;
-	gpu->mem = mem;
-	gpu->clock = 0;
-	memset(gpu->framebuffer, 0, sizeof(gpu->framebuffer));
-	gpu->screen = SDL_CreateSurface(SCREEN_WIDTH, SCREEN_HEIGHT, SDL_PIXELFORMAT_ARGB32);
-	gpu->tile_screen = SDL_CreateSurface(TILES_X * TILE_WIDTH, TILES_Y * TILE_HEIGHT, SDL_PIXELFORMAT_ARGB32);
-	gpu->drawline = false;
-	gpu->should_draw = false;
+int init_gpu(Gpu* gpu) {
+	memset(gpu, 0, sizeof(Gpu));
+	// gpu->screen = SDL_CreateSurface(SCREEN_WIDTH, SCREEN_HEIGHT, SDL_PIXELFORMAT_ARGB32);
+	// gpu->tile_screen = SDL_CreateSurface(TILES_X * TILE_WIDTH, TILES_Y * TILE_HEIGHT, SDL_PIXELFORMAT_ARGB32);
 
 	// setup Tiles array
 	gpu->tiles = (Tile*)malloc(NUM_TILES * sizeof(Tile));
@@ -92,90 +86,43 @@ u32 createPixelFromPaletteId(u8 palette, u8 id) {
 	}
 }
 
-void writePixel(SDL_Surface* surface, int x, int y, u32 pixel) {
-	uint32_t* const target = (u32*)((u8*)surface->pixels + y * surface->pitch + x * SDL_GetPixelFormatDetails(surface->format)->bytes_per_pixel); // for some reason I need to cast to uint8
-	*target = pixel;
-}
-
-void write_buffer_to_screen(Gpu* gpu) {
-	if (SDL_LockSurface(gpu->screen) < 0) {
-		printf("could not lock screen surface");
-		return;
-	}
-
-	for (int x = 0; x < SCREEN_WIDTH; ++x) {
-		for (int y = 0; y < SCREEN_HEIGHT; ++y) {
-			writePixel(gpu->screen, x, y, gpu->framebuffer[x + (y * SCREEN_WIDTH)]);
-		}
-	}
-
-	SDL_UnlockSurface(gpu->screen);
-}
-void write_tile_buffer_to_screen(Gpu* gpu) {
-	if (SDL_LockSurface(gpu->tile_screen) < 0) {
-		printf("could not lock tile screen");
-		return;
-	}
-
-	for (int y = 0; y < TILES_Y; ++y) {
-		for (int x = 0; x < TILES_X; ++x) { // iterate through each tile
-			for (int tiley = 0; tiley < TILE_HEIGHT; ++tiley) {
-				for (int tilex = 0; tilex < TILE_WIDTH; ++tilex) {
-					int tile = y * TILES_X + x;
-					int pixelY = y * TILE_HEIGHT + tiley;
-					int pixelX = x * TILE_WIDTH + tilex;
-					writePixel(gpu->tile_screen, pixelX, pixelY, createPixelFromPaletteId(read8(gpu->mem, BGP), gpu->tiles[tile][tiley][tilex]));
-				}
-			}
-		}
-	}
-	SDL_UnlockSurface(gpu->tile_screen);
-
-}
-
-
-void update_tile(Gpu* gpu, int address, u8 value) {
+void update_tile(Gpu* gpu, Memory* mem, int address, u8 value) {
 	int tileIndex = ((address & 0x1FFE) >> 4) & 0x01FF;
 	int y = ((address & 0x1FFE) >> 1) & 7;
 
 	uint8_t itX = 1;
 	for (int x = 0; x < 8; ++x) { // higher nibble is stored in next address. could use read16 but this works
 		itX = 1 << (7 - x);
-		// ((read8(gpu->mem, address) & itX) ? 1 : 0) + ((read8(gpu->mem, address + 1) & itX) ? 2 : 0);
-		u8 tile_id = ((gpu->mem->memory[address] & itX) ? 1 : 0) + ((gpu->mem->memory[address + 1] & itX) ? 2 : 0);
+		// ((read8(mem, address) & itX) ? 1 : 0) + ((read8(mem, address + 1) & itX) ? 2 : 0);
+		u8 tile_id = ((mem->memory[address] & itX) ? 1 : 0) + ((mem->memory[address + 1] & itX) ? 2 : 0);
 		gpu->tiles[tileIndex][y][x] = tile_id;
 	}
 }
 
 
 
-void draw_line(Gpu* gpu) {
-	int scx = read8(gpu->mem, SCX);
-	int scy = read8(gpu->mem, SCY);
-	u8 control = read8(gpu->mem, LCD_CONTROL);
+void draw_line(Gpu* gpu, Memory* mem) {
 
-	bool BGTileMapArea = (control & (1 << 3));
-	bool BGTileAddressMode = !(control & (1 << 4));
+	bool BGTileMapArea = (gpu->lcdc & (1 << 3));
+	bool BGTileAddressMode = !(gpu->lcdc & (1 << 4));
 	int mapAddress = (BGTileMapArea) ? 0x9C00 : 0x9800; // if bit 3 of the LCD Control registers is set we use the tilemap at 0x9C00, else use tile map at 0x9800
-	mapAddress += (((gpu->line + scy) & 0xFF) >> 3) << 5;
+	mapAddress += (((gpu->ly + gpu->scy) & 0xFF) >> 3) << 5;
 
-	int lineOffset = (scx >> 3);
-	int tileX = scx & 7;
-	int tileY = (gpu->line + scy) & 7;
-	int tile = read8(gpu->mem, mapAddress + lineOffset);
+	int lineOffset = (gpu->scx >> 3);
+	int tileX = gpu->scx & 7;
+	int tileY = (gpu->ly + gpu->scy) & 7;
+	int tile = read8(mem, mapAddress + lineOffset);
 
 	if (BGTileAddressMode && tile < 128) tile += 256;
 
-	if (control & 1) {
+	if (gpu->lcdc & 1) {
 		for (int i = 0; i < SCREEN_WIDTH; ++i) {
-			uint32_t bg_pixel = createPixelFromPaletteId(read8(gpu->mem, BGP), gpu->tiles[tile][tileY][tileX]);
-			gpu->framebuffer[gpu->line * SCREEN_WIDTH + i] = bg_pixel;
-
+			gpu->framebuffer[gpu->ly * SCREEN_WIDTH + i] = createPixelFromPaletteId(read8(mem, BGP), gpu->tiles[tile][tileY][tileX]);
 			++tileX;
 			if (tileX == 8) {
 				tileX = 0;
 				lineOffset = (lineOffset + 1) & 31;
-				tile = read8(gpu->mem, mapAddress + lineOffset);
+				tile = read8(mem, mapAddress + lineOffset);
 				if (BGTileAddressMode && tile < 128) tile += 256;
 			}
 		}
@@ -184,31 +131,32 @@ void draw_line(Gpu* gpu) {
 
 
 	// draw window
-	u8 windowx = gpu->mem->memory[WX] - 7;
-	u8 windowy = gpu->mem->memory[WY];
-	if (control & (1 << 5) && gpu->line >= windowy) { // draw window
-		BGTileMapArea = (control & (1 << 6));
-		BGTileAddressMode = !(control & (1 << 4));
+	u8 windowx = mem->memory[WX] - 7;
+	u8 windowy = mem->memory[WY];
+	if (gpu->lcdc & (1 << 5) && gpu->ly >= windowy) { // draw window
+		BGTileMapArea = (gpu->lcdc & (1 << 6));
+		BGTileAddressMode = !(gpu->lcdc & (1 << 4));
 		mapAddress = (BGTileMapArea) ? 0x9C00 : 0x9800; // if bit 3 of the LCD Control registers is set we use the tilemap at 0x9C00, else use tile map at 0x9800
-		mapAddress += (((gpu->line + windowy) & 0xFF) >> 3) << 5;
+		mapAddress += (((gpu->ly + windowy) & 0xFF) >> 3) << 5;
 
 		if (BGTileAddressMode && tile < 128) tile += 256;
 
 
 		int lineOffset = (windowx >> 3);
 		int tileX = windowx & 7;
-		int tileY = (gpu->line + windowy) & 7;
-		int tile = read8(gpu->mem, mapAddress + lineOffset);
+		int tileY = (gpu->ly + windowy) & 7;
+		int tile = read8(mem, mapAddress + lineOffset);
 
 		for (int i = 0; i < SCREEN_WIDTH; ++i) {
-			uint32_t window_pixel = createPixelFromPaletteId(read8(gpu->mem, BGP), gpu->tiles[tile][tileY][tileX]);
-			gpu->framebuffer[gpu->line * SCREEN_WIDTH + i] = window_pixel;
+			if (windowx < i) continue;
+			uint32_t window_pixel = createPixelFromPaletteId(read8(mem, BGP), gpu->tiles[tile][tileY][tileX]);
+			gpu->framebuffer[gpu->ly * SCREEN_WIDTH + i] = window_pixel;
 
 			++tileX;
 			if (tileX == 8) {
 				tileX = 0;
 				lineOffset = (lineOffset + 1) & 31;
-				tile = read8(gpu->mem, mapAddress + lineOffset);
+				tile = read8(mem, mapAddress + lineOffset);
 				if (BGTileAddressMode && tile < 128) tile += 256;
 			}
 		}
@@ -218,17 +166,17 @@ void draw_line(Gpu* gpu) {
 
 	// draw sprites
 
-	if (control & (1 << 1)) { // if sprites enabled in LDC Control
-		bool eight_by_16_mode = control & (1 << 2);
+	if (gpu->lcdc & (1 << 1)) { // if sprites enabled in LDC Control
+		bool eight_by_16_mode = gpu->lcdc & (1 << 2);
 		u16 current_OAM_address = 0xFE00;
 		int sprite_count_for_line = 0;
 
 		while (current_OAM_address <= 0xFE9F && sprite_count_for_line < 10) {
 			if (sprite_count_for_line > 10) break;
-			u8 sprite_pos_y = read8(gpu->mem, current_OAM_address);
-			u8 sprite_pos_x = read8(gpu->mem, current_OAM_address + 1);
-			u8 tile_index = read8(gpu->mem, current_OAM_address + 2);
-			u8 attributes = read8(gpu->mem, current_OAM_address + 3);
+			u8 sprite_pos_y = read8(mem, current_OAM_address);
+			u8 sprite_pos_x = read8(mem, current_OAM_address + 1);
+			u8 tile_index = read8(mem, current_OAM_address + 2);
+			u8 attributes = read8(mem, current_OAM_address + 3);
 			bool palette_mode = attributes & (1 << 4);
 			bool x_flip = attributes & (1 << 5);
 			bool y_flip = attributes & (1 << 6);
@@ -238,10 +186,10 @@ void draw_line(Gpu* gpu) {
 			int sprite_bottom = sprite_pos_y - 16 + (eight_by_16_mode ? 16 : 8);
 			int sprite_top = sprite_pos_y - 16;
 			// draw sprite
-			if (gpu->line < sprite_bottom && gpu->line >= sprite_top) { // if current line within sprite (i think this is right, no way to check until I implement OAM dma and HBLANK interrupt)
+			if (gpu->ly < sprite_bottom && gpu->ly >= sprite_top) { // if current line within sprite (i think this is right, no way to check until I implement OAM dma and HBLANK interrupt)
 				++sprite_count_for_line; // 10 sprites a line
 				if (eight_by_16_mode) tile_index &= 0xFE; // make sure we aren't indexing out of where we should be
-				u8 sprite_line = gpu->line - sprite_top; // get current line of sprite
+				u8 sprite_line = gpu->ly - sprite_top; // get current line of sprite
 				if (y_flip) {
 					if (eight_by_16_mode) {
 						if (sprite_line >= 8) { // address next tile if we are in 16 bit mode
@@ -266,7 +214,7 @@ void draw_line(Gpu* gpu) {
 					}
 				}
 
-				u8 palette = read8(gpu->mem, (palette_mode ? OBP1 : OBP0));
+				u8 palette = read8(mem, (palette_mode ? OBP1 : OBP0));
 
 				for (int i = 0; i < 8; ++i) {
 					if (sprite_pos_x - 8 + i < 0) continue;
@@ -275,15 +223,11 @@ void draw_line(Gpu* gpu) {
 					u32 pixel = createPixelFromPaletteId(palette, id);
 					int x = i;
 					if (x_flip) x = 7 - i;
-					gpu->framebuffer[gpu->line * SCREEN_WIDTH + sprite_pos_x - 8 + x] = pixel;
+					gpu->framebuffer[gpu->ly * SCREEN_WIDTH + sprite_pos_x - 8 + x] = pixel;
 				}
 			}
 			current_OAM_address += 4;
-
 		}
-
-
-
 	}
 }
 
@@ -297,106 +241,117 @@ void destroy_gpu(Gpu* gpu) {
 		}
 		free(gpu->tiles[i]);
 	}
-	SDL_DestroySurface(gpu->screen);
-	SDL_DestroySurface(gpu->tile_screen);
 }
 
-void handle_oam(Gpu* gpu) {
+void handle_oam(Gpu* gpu, Memory* mem) {
+	if (gpu->should_stat_interrupt && gpu->clock > 4) {
+		write8(mem, IF, read8(mem, IF) | STAT_INTERRUPT);
+		gpu->should_stat_interrupt = false;
+	}
 	if (gpu->clock >= 80) {
 		gpu->clock -= 80;
 		gpu->mode = VRAM_ACCESS;
-		write8(gpu->mem, IF, (read8(gpu->mem, IF) & ~(LCDSTAT_INTERRUPT)));
+		write8(mem, IF, (read8(mem, IF) & ~(STAT_INTERRUPT))); // reset STAT interrupt on mode 3 enter. There is no stat interrupt for mode 3
 	}
 }
 
-void handle_vram(Gpu* gpu) {
+void handle_vram(Gpu* gpu, Memory* mem) {
 	if (gpu->clock >= 172) {
 		gpu->clock -= 172;
 		gpu->mode = HBLANK;
-		draw_line(gpu);
-		if (gpu->mem->memory[LCD_STATUS] & (1 << 3)) {
-			write8(gpu->mem, IF, read8(gpu->mem, IF) | LCDSTAT_INTERRUPT);
+		draw_line(gpu, mem);
+		if (gpu->stat & (1 << 3)) {
+			gpu->should_stat_interrupt = true;
+			// write8(mem, IF, read8(mem, IF) | STAT_INTERRUPT);
 		}
 	}
 }
 
-void handle_hblank(Gpu* gpu) {
+void handle_hblank(Gpu* gpu, Memory* mem) {
+	if (gpu->should_stat_interrupt && gpu->clock > 4) {
+		write8(mem, IF, read8(mem, IF) | STAT_INTERRUPT);
+		gpu->should_stat_interrupt = false;
+	}
 	if (gpu->clock >= 204) {
 		gpu->clock -= 204;
-		++gpu->line;
-		gpu->mem->memory[LY] = gpu->line;
-		if (gpu->mem->memory[LYC] == gpu->line) {
-			gpu->mem->memory[LCD_STATUS] |= (1 << 2);
-			if (read8(gpu->mem, LCD_STATUS) & (1 << 6)) {
-				gpu->mem->memory[IF] |= LCDSTAT_INTERRUPT;
+		++gpu->ly;
+		if (gpu->lyc == gpu->ly) {
+			gpu->stat |= (1 << 2);
+			if (gpu->stat & (1 << 6)) {
+				// gpu->should_stat_interrupt = true;
+				// mem->memory[IF] |= STAT_INTERRUPT;
+				write8(mem, IF, read8(mem, IF) | STAT_INTERRUPT);
 			}
 		}
 		else {
-			gpu->mem->memory[LCD_STATUS] &= ~(1 << 2);
+			gpu->stat &= ~(1 << 2);
 		}
 
-		if (gpu->line == 143) {
-			u8 interrupt = read8(gpu->mem, IF);
-			write8(gpu->mem, IF, interrupt | VBLANK_INTERRUPT);
+		if (gpu->ly == 143) {
+			u8 interrupt = read8(mem, IF);
+			write8(mem, IF, interrupt | VBLANK_INTERRUPT);
 			gpu->mode = VBLANK;
-			write_buffer_to_screen(gpu);
-			write_tile_buffer_to_screen(gpu);
-			if (read8(gpu->mem, LCD_STATUS) & (1 << 4)) {
-				write8(gpu->mem, IF, read8(gpu->mem, IF) | LCDSTAT_INTERRUPT);
+			if (read8(mem, STAT) & (1 << 4)) {
+				gpu->should_stat_interrupt = true;
+				// write8(mem, IF, read8(mem, IF) | STAT_INTERRUPT);
 			}
 
 		}
 		else {
 			gpu->mode = OAM_ACCESS;
-			if (read8(gpu->mem, LCD_STATUS) & (1 << 5)) {
-				write8(gpu->mem, IF, read8(gpu->mem, IF) | LCDSTAT_INTERRUPT);
+			if (read8(mem, STAT) & (1 << 5)) {
+				write8(mem, IF, read8(mem, IF) | STAT_INTERRUPT);
 			}
 		}
 	}
 }
 
-void handle_vblank(Gpu* gpu) {
+void handle_vblank(Gpu* gpu, Memory* mem) {
+	if (gpu->should_stat_interrupt && gpu->clock > 4) {
+		write8(mem, IF, read8(mem, IF) | STAT_INTERRUPT);
+		gpu->should_stat_interrupt = false;
+	}
 	if (gpu->clock >= 456) {
 		gpu->clock -= 456;
-		++gpu->line;
-		gpu->mem->memory[LY] = gpu->line;
-		if (gpu->mem->memory[LYC] == gpu->line) {
-			gpu->mem->memory[LCD_STATUS] |= (1 << 2);
-			if (read8(gpu->mem, LCD_STATUS) & (1 << 6)) {
-				gpu->mem->memory[IF] |= LCDSTAT_INTERRUPT;
+		++gpu->ly;
+		mem->memory[LY] = gpu->ly;
+		if (mem->memory[LYC] == gpu->ly) {
+			gpu->stat |= (1 << 2);
+			if (read8(mem, STAT) & (1 << 6)) {
+				mem->memory[IF] |= STAT_INTERRUPT;
 			}
 		}
 		else {
-			gpu->mem->memory[LCD_STATUS] &= ~(1 << 2);
+			gpu->stat &= ~(1 << 2);
 		}
 
 
-		if (gpu->line > 153) {			
+		if (gpu->ly > 153) {			
 			gpu->should_draw = true;
 			gpu->mode = OAM_ACCESS;
-			gpu->line = 0;
-			gpu->mem->memory[LY] = 0;
-			if (gpu->mem->memory[LYC] == gpu->line) {
-				gpu->mem->memory[LCD_STATUS] |= (1 << 2);
-				if (read8(gpu->mem, LCD_STATUS) & (1 << 6)) {
-					gpu->mem->memory[IF] |= LCDSTAT_INTERRUPT;
+			gpu->ly = 0;
+			mem->memory[LY] = 0;
+			if (mem->memory[LYC] == gpu->ly) {
+				gpu->stat |= (1 << 2);
+				if (read8(mem, STAT) & (1 << 6)) {
+					gpu->should_stat_interrupt = true;
+					// mem->memory[IF] |= STAT_INTERRUPT;
 				}
 			}
 			else {
-				gpu->mem->memory[LCD_STATUS] &= ~(1 << 2);
+				gpu->stat &= ~(1 << 2);
 			}
 
-			if (read8(gpu->mem, LCD_STATUS) & (1 << 5)) { // mode 2 interrupt select
-				write8(gpu->mem, IF, read8(gpu->mem, IF) | LCDSTAT_INTERRUPT);
+			if (read8(mem, STAT) & (1 << 5)) { // mode 2 interrupt select
+				write8(mem, IF, read8(mem, IF) | STAT_INTERRUPT);
 			}
 		}
 	}
 
 }
 
-void step_gpu(Gpu* gpu, u8 cycles) {
-	u8 stat = gpu->mem->memory[LCD_CONTROL];
-	bool lcd_enabled = stat & (1 << 7);
+void step_gpu(Gpu* gpu, Memory* mem, u8 cycles) {
+	bool lcd_enabled = gpu->lcdc & (1 << 7);
 	gpu->should_draw = false;
 	if (!lcd_enabled) {
 		return;
@@ -404,17 +359,17 @@ void step_gpu(Gpu* gpu, u8 cycles) {
 	gpu->clock += cycles;
 	switch (gpu->mode) {
 	case OAM_ACCESS:
-		handle_oam(gpu);
+		handle_oam(gpu, mem);
 		break;
 	case VRAM_ACCESS:
-		handle_vram(gpu);
+		handle_vram(gpu, mem);
 		break;
 	case HBLANK:
-		handle_hblank(gpu);
+		handle_hblank(gpu, mem);
 		break;
 	case VBLANK:
-		handle_vblank(gpu);
+		handle_vblank(gpu, mem);
 		break;
 	}
-	gpu->mem->memory[LCDSTAT_ADDRESS] |= (gpu->mode & 0b00000011);
+	gpu->stat = (gpu->stat & 0b11111100) | (gpu->mode & 0b00000011);
 }

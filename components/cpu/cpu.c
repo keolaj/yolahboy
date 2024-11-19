@@ -314,6 +314,8 @@ void CCF_impl(Cpu* cpu, Memory* mem, Operation* op) {
 Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op) {
 	++cpu->registers.pc;
 
+
+
 	if (cpu->registers.pc + 1 == 0x100) {
 		mem->in_bios = false;
 	}
@@ -439,8 +441,8 @@ Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op) {
 	if (should_run_interrupt(cpu, mem)) {
 		run_interrupt(cpu, mem);
 
-		// op.m_cycles += 5;
-		// op.t_cycles += 20;
+		op.m_cycles += 5;
+		op.t_cycles += 20;
 	}
 
 	return (Cycles) { op.m_cycles, op.t_cycles };
@@ -477,7 +479,7 @@ u16 interrupt_address_from_flag(u8 flag) {
 	switch (flag) {
 	case VBLANK_INTERRUPT:
 		return VBLANK_ADDRESS;
-	case LCDSTAT_INTERRUPT:
+	case STAT_INTERRUPT:
 		return LCDSTAT_ADDRESS;
 	case TIMER_INTERRUPT:
 		return TIMER_ADDRESS;

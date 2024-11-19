@@ -53,7 +53,7 @@ int step(Emulator* emu) {
 	}
 	emu->clock += c.t_cycles;
 	tick(emu, c.t_cycles);
-	step_gpu(emu->gpu, c.m_cycles * 4);
+	step_gpu(emu->gpu, emu->memory, c.m_cycles * 4);
 	return 0;
 }
 

@@ -51,11 +51,24 @@ u8 read8(Memory* mem, u16 address) {
 	if (address >= 0xE000 && address <= 0xFDFF) {
 		return mem->memory[address - 0x2000];
 	}
-	if (address == 0xFF00) {
-		u8 j_ret = joypad_return(*mem->controller, mem->memory[address]);
-		return j_ret;
+	if (address >= 0xFF00 && address <= 0xFFFE) {
+		if (address == 0xFF00) {
+			u8 j_ret = joypad_return(*mem->controller, mem->memory[address]);
+			return j_ret;
+		}
+		if (address == 0xFF44 && mem->use_gbd_log) return 0x90;
+
+
+		if (address == STAT) return mem->gpu->stat;
+		if (address == LCDC) return mem->gpu->lcdc;
+		if (address == LY) return mem->gpu->ly;
+		if (address == LYC) return mem->gpu->lyc;
+		if (address == SCY) return mem->gpu->scy;
+		if (address == SCX) return mem->gpu->scx;
+		if (address == WY) return mem->gpu->wy;
+		if (address == WX) return mem->gpu->wx;
+
 	}
-	if (address == 0xFF44 && mem->use_gbd_log) return 0x90;
 	return mem->memory[address];
 }
 
@@ -71,7 +84,7 @@ void write16(Memory* mem, u16 address, u16 value) {
 	write8(mem, address + 1, value >> 8);
 }
 
-void update_tile(Gpu* gpu, int address, u8 value);
+void update_tile(Gpu* gpu, Memory* mem, int address, u8 value);
 
 void write8(Memory* mem, u16 address, u8 data) {
 
@@ -81,8 +94,8 @@ void write8(Memory* mem, u16 address, u8 data) {
 	else if (address >= 0x8000 && address <= 0x9FFF) { // vram
 		mem->memory[address] = data;
 		if (address < 0x97FF) {
-			if (address % 2 == 0) update_tile(mem->gpu, address, data);
-			if (address % 2 != 0) update_tile(mem->gpu, address - 1, data);
+			if (address % 2 == 0) update_tile(mem->gpu, mem, address, data);
+			if (address % 2 != 0) update_tile(mem->gpu, mem, address - 1, data);
 		}
 		return;
 	}
@@ -131,20 +144,27 @@ void write8(Memory* mem, u16 address, u8 data) {
 			return;
 		}
 
-		if (address == LCD_CONTROL) { // if setting off bit reset lcd
+		if (address == LCDC) { // if setting off bit reset lcd
 			if ((data & (1 << 7)) == 0) {
-				mem->gpu->line = 0;
+				mem->gpu->stat &= 0b11111100;
+				mem->gpu->ly = 0;
 				mem->gpu->mode = 0;
 				mem->gpu->clock = 0;
 			}
+			mem->gpu->lcdc = data;
 		}
-
-		if (address == LCD_STATUS) {
+		if (address == STAT) {
 			data &= 0b11111000;
+			mem->gpu->stat = data;
 		}
 		if (address == LY) {
 			return;
 		}
+		if (address == SCY) mem->gpu->scy = data;
+		if (address == SCX) mem->gpu->scx = data;
+		if (address == WY) mem->gpu->wy = data;
+		if (address == WX) mem->gpu->wx = data;
+
 		mem->memory[address] = data;
 		return;
 	}

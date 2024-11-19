@@ -12,8 +12,8 @@
 #define SCREEN_WIDTH 160
 #define SCREEN_HEIGHT 144
 
-#define LCD_CONTROL 0xFF40 // LCD control address
-#define LCD_STATUS 0xFF41 // LCD status address
+#define LCDC 0xFF40 // LCD control address
+#define STAT 0xFF41 // LCD status address
 #define LY 0xFF44 // Current horizontal line address
 #define LYC 0xFF45 // Current horizonal line compare address
 #define SCY 0xFF42 // Scroll Y address
@@ -55,7 +55,7 @@
 #define VBLANK_INTERRUPT 1
 #define VBLANK_ADDRESS 0x40
 
-#define LCDSTAT_INTERRUPT 1 << 1
+#define STAT_INTERRUPT 1 << 1
 #define LCDSTAT_ADDRESS 0x48
 
 #define TIMER_INTERRUPT 1 << 2
@@ -144,10 +144,10 @@ typedef struct {
 	u8 cgb_flag;
 } Cartridge;
 
-typedef struct mem_ctx Memory;
-typedef struct gpu_ctx Gpu;
+typedef struct _memory Memory;
+typedef struct _gpu Gpu;
 
-typedef struct mem_ctx {
+typedef struct _memory {
 	u8 bios[0x100];
 	u8 memory[0x10000];
 	Cartridge cartridge;
@@ -157,7 +157,7 @@ typedef struct mem_ctx {
 	Controller* controller;
 	Timer* timer;
 	bool wrote_dma;
-} Memory;
+};
 
 typedef struct {
 	union {
@@ -218,18 +218,26 @@ typedef enum {
 	VRAM_ACCESS
 } gpu_mode;
 
-struct gpu_ctx {
-	int line;
+struct _gpu {
+
+	u8 stat;
+	u8 lcdc;
+	u8 ly;
+	u8 lyc;
+	u8 scy;
+	u8 scx;
+	u8 wy;
+	u8 wx;
+
 	int clock;
 	u32 framebuffer[23040];
 
 	Memory* mem;
 
 	Tile* tiles;
-	SDL_Surface* screen;
-	SDL_Surface* tile_screen;
 
 	gpu_mode mode;
+	bool should_stat_interrupt;
 	bool drawline;
 	bool should_draw;
 	bool drawtile;
