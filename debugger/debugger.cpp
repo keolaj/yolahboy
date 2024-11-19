@@ -156,9 +156,7 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 	if (ImGui::IsItemClicked()) { // for some reason this is how I got it to work...
 		app_log.AddLog("PAUSE\n");
 		emu->should_run = false;
-		//for (int i = 0; i < 0x10000; ++i) {
-		//	emu->memory->memory[i] = read8(emu->memory, i);
-		//}
+		run_once = true;
 	}
 
 	ImGui::SameLine();
@@ -173,6 +171,7 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 
 	if (ImGui::Button("STEP", { 40, 15 })) {
 		step(emu);
+		run_once = true;
 	}
 
 	ImGui::BeginChild("REGISTERS");
@@ -353,11 +352,11 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 	ImGui::Begin("OTHER", 0, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoResize);
 	ImGui::BeginTabBar("##SETTINGSTABS");
 	if (ImGui::BeginTabItem("RAM")) {
-		//if (run_once) {
-		//	for (int i = 0; i < 0x10000; ++i) {
-		//		emu->memory->memory[i] = read8(emu->memory, i);
-		//	}
-		//}
+		if (run_once) {
+			for (int i = 0; i < 0x10000; ++i) {
+				emu->memory->memory[i] = read8(emu->memory, i);
+			}
+		}
 		ram_viewer.DrawContents(emu->memory->memory, 0x10000);
 		ImGui::EndTabItem();
 	}
@@ -402,7 +401,7 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 
 			ImGui::TableNextRow();
 			ImGui::TableNextColumn();
-			bool lcd_on = emu->memory->memory[LCDC] & (1 << 7);
+			bool lcd_on = emu->gpu->lcdc & (1 << 7);
 			ImGui::Checkbox("LCD", &lcd_on);
 			ImGui::TableNextColumn();
 			ImGui::Text("%s", (lcd_on ? "ON" : "OFF"));
@@ -410,7 +409,7 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 
 			ImGui::TableNextRow();
 			ImGui::TableNextColumn();
-			bool window_area = (emu->memory->memory[LCDC] & (1 << 6));
+			bool window_area = (emu->gpu->lcdc & (1 << 6));
 			ImGui::Checkbox("WINDOW MAP AREA", &window_area);
 			ImGui::TableNextColumn();
 			ImGui::Text("%s", window_area ? "9C00" : "9800");
@@ -418,7 +417,7 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 
 			ImGui::TableNextRow();
 			ImGui::TableNextColumn();
-			bool window_enable = emu->memory->memory[LCDC] & (1 << 5);
+			bool window_enable = emu->gpu->lcdc & (1 << 5);
 			ImGui::Checkbox("WINDOW ENABLE", &window_enable);
 			ImGui::TableNextColumn();
 			ImGui::Text("%s", (window_enable ? "ON" : "OFF"));
@@ -426,7 +425,7 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 
 			ImGui::TableNextRow();
 			ImGui::TableNextColumn();
-			bool tile_area = emu->memory->memory[LCDC] & (1 << 4);
+			bool tile_area = emu->gpu->lcdc & (1 << 4);
 			ImGui::Checkbox("TILE DATA AREA", &tile_area);
 			ImGui::TableNextColumn();
 			ImGui::Text("%s", (tile_area ? "8000" : "8800"));
@@ -434,7 +433,7 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 
 			ImGui::TableNextRow();
 			ImGui::TableNextColumn();
-			bool bg_area = emu->memory->memory[LCDC] & (1 << 3);
+			bool bg_area = emu->gpu->lcdc & (1 << 3);
 			ImGui::Checkbox("BG MAP AREA", &bg_area);
 			ImGui::TableNextColumn();
 			ImGui::Text("%s", (bg_area ? "9800" : "9C00"));
@@ -442,7 +441,7 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 
 			ImGui::TableNextRow();
 			ImGui::TableNextColumn();
-			bool obj_mode = emu->memory->memory[LCDC] & (1 << 2);
+			bool obj_mode = emu->gpu->lcdc & (1 << 2);
 			ImGui::Checkbox("OBJ SIZE", &obj_mode);
 			ImGui::TableNextColumn();
 			ImGui::Text("%s", (obj_mode ? "8x16" : "8x8"));
@@ -450,7 +449,7 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 
 			ImGui::TableNextRow();
 			ImGui::TableNextColumn();
-			bool obj_enable = emu->memory->memory[LCDC] & (1 << 1);
+			bool obj_enable = emu->gpu->lcdc & (1 << 1);
 			ImGui::Checkbox("OBJ ENABLE", &obj_enable);
 			ImGui::TableNextColumn();
 			ImGui::Text("%s", (obj_enable ? "ON" : "OFF"));
@@ -458,7 +457,7 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 			
 			ImGui::TableNextRow();
 			ImGui::TableNextColumn();
-			bool bg_enable = emu->memory->memory[LCDC] & (1 << 0);
+			bool bg_enable = emu->gpu->lcdc & (1 << 0);
 			ImGui::Checkbox("BG ENABLE", &bg_enable);
 			ImGui::TableNextColumn();
 			ImGui::Text("%s", (bg_enable ? "ON" : "OFF"));
@@ -477,7 +476,7 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 
 			ImGui::TableNextRow();
 			ImGui::TableNextColumn();
-			bool lyc_ly_intr = (emu->memory->memory[STAT] & (1 << 6));
+			bool lyc_ly_intr = (emu->gpu->stat & (1 << 6));
 			ImGui::Checkbox("LYC == LY INTERRUPT", &lyc_ly_intr);
 			ImGui::TableNextColumn();
 			ImGui::Text("%s", lyc_ly_intr ? "ON" : "OFF");
@@ -485,7 +484,7 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 
 			ImGui::TableNextRow();
 			ImGui::TableNextColumn();
-			bool mode_2_intr = emu->memory->memory[STAT] & (1 << 5);
+			bool mode_2_intr = emu->gpu->stat & (1 << 5);
 			ImGui::Checkbox("OAM INTERRUPT", &mode_2_intr);
 			ImGui::TableNextColumn();
 			ImGui::Text("%s", (mode_2_intr ? "ON" : "OFF"));
@@ -493,7 +492,7 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 
 			ImGui::TableNextRow();
 			ImGui::TableNextColumn();
-			bool mode_1_intr = emu->memory->memory[STAT] & (1 << 4);
+			bool mode_1_intr = emu->gpu->stat & (1 << 4);
 			ImGui::Checkbox("VBLANK INTERRTUPT", &mode_1_intr);
 			ImGui::TableNextColumn();
 			ImGui::Text("%s", (mode_1_intr ? "ON" : "OFF"));
@@ -501,7 +500,7 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 
 			ImGui::TableNextRow();
 			ImGui::TableNextColumn();
-			bool mode_0_intr = emu->memory->memory[STAT] & (1 << 3);
+			bool mode_0_intr = emu->gpu->stat & (1 << 3);
 			ImGui::Checkbox("HBLANK INTERRUPT", &mode_0_intr);
 			ImGui::TableNextColumn();
 			ImGui::Text("%s", (mode_0_intr ? "ON" : "OFF"));
@@ -509,7 +508,7 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 
 			ImGui::TableNextRow();
 			ImGui::TableNextColumn();
-			bool ly_lyc = emu->memory->memory[STAT] & (1 << 2);
+			bool ly_lyc = emu->gpu->stat & (1 << 2);
 			ImGui::Checkbox("LYC == LY", &ly_lyc);
 			ImGui::TableNextColumn();
 			ImGui::Text("%s", (ly_lyc ? "TRUE" : "FALSE"));
@@ -517,7 +516,7 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 
 			ImGui::TableNextRow();
 			ImGui::TableNextColumn();
-			u8 ppu_mode = emu->memory->memory[STAT] & 3;
+			u8 ppu_mode = emu->gpu->stat & 3;
 			ImGui::Text("GPU MODE", &ppu_mode);
 			ImGui::TableNextColumn();
 			ImGui::Text("%d", ppu_mode);
@@ -547,7 +546,7 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 			ImGui::TableNextColumn();
 			ImGui::Text("LY");
 			ImGui::TableNextColumn();
-			ImGui::Text("%d", emu->gpu->ly);
+			ImGui::Text("%hX", emu->gpu->ly);
 			ImGui::Separator();
 			
 			ImGui::TableNextRow();
@@ -648,8 +647,6 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 
 	ImGui::EndTabBar();
 	ImGui::End();
-	if (run_once) {
-	}
 
 	ImGui::Render();
 }
@@ -771,15 +768,6 @@ int debugger_run(char* rom_path, char* bootrom_path) {
 	double timer = 0;
 
 	while (!quit) {
-		LAST = NOW;
-		NOW = SDL_GetPerformanceCounter();
-		deltaTime = ((NOW - LAST) * 1000 / (double)SDL_GetPerformanceFrequency());
-		timer += deltaTime;
-
-
-		//if (use_gamepad && gamepad == NULL) {
-		//	gamepad = get_first_gamepad();
-		//}
 
 		if (emu.should_run) {
 			set_use_gbd_log(emu.memory, create_gbd_log);
@@ -825,6 +813,15 @@ int debugger_run(char* rom_path, char* bootrom_path) {
 
 		if (emu.should_run) { // emulator controls rendering
 			if (emu.gpu->should_draw) {
+
+				while (timer < 16.3) {
+					SDL_DelayNS(10000);
+					LAST = NOW;
+					NOW = SDL_GetPerformanceCounter();
+					deltaTime = ((NOW - LAST) * 1000 / (double)SDL_GetPerformanceFrequency());
+					timer += deltaTime;
+				}
+
 				while (SDL_PollEvent(&e)) {
 					ImGui_ImplSDL3_ProcessEvent(&e);
 					switch (e.type) {
@@ -856,11 +853,17 @@ int debugger_run(char* rom_path, char* bootrom_path) {
 				SDL_RenderTexture(renderer, screen_tex, nullptr, &emulator_screen_rect);
 				SDL_RenderTexture(renderer, tile_tex, nullptr, &tile_screen_rect);
 				SDL_RenderPresent(renderer);
+				timer = 0;
 			}
 			set_run_once = false;
 		
 		}
 		else { // emulator isn't running and we go to 60fps
+			LAST = NOW;
+			NOW = SDL_GetPerformanceCounter();
+			deltaTime = ((NOW - LAST) * 1000 / (double)SDL_GetPerformanceFrequency());
+			timer += deltaTime;
+
 			if (timer > 16.6) {
 				while (SDL_PollEvent(&e)) {
 					ImGui_ImplSDL3_ProcessEvent(&e);

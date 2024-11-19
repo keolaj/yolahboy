@@ -3,8 +3,6 @@
 #include <SDL3/SDL.h>
 #include "../memory/memory.h"
 
-// TODO: stat interrupt mode changed are delayed by one m cycle, need to implement this.
-
 Gpu* create_gpu(Memory* mem) {
 	Gpu* ret = (Gpu*)malloc(sizeof(Gpu));
 	if (ret == NULL) {
@@ -20,10 +18,7 @@ Gpu* create_gpu(Memory* mem) {
 
 int init_gpu(Gpu* gpu) {
 	memset(gpu, 0, sizeof(Gpu));
-	// gpu->screen = SDL_CreateSurface(SCREEN_WIDTH, SCREEN_HEIGHT, SDL_PIXELFORMAT_ARGB32);
-	// gpu->tile_screen = SDL_CreateSurface(TILES_X * TILE_WIDTH, TILES_Y * TILE_HEIGHT, SDL_PIXELFORMAT_ARGB32);
 
-	// setup Tiles array
 	gpu->tiles = (Tile*)malloc(NUM_TILES * sizeof(Tile));
 	if (gpu->tiles == NULL) {
 		printf("could not allocate Tile");
@@ -91,10 +86,9 @@ void update_tile(Gpu* gpu, Memory* mem, int address, u8 value) {
 	int y = ((address & 0x1FFE) >> 1) & 7;
 
 	uint8_t itX = 1;
-	for (int x = 0; x < 8; ++x) { // higher nibble is stored in next address. could use read16 but this works
+	for (int x = 0; x < 8; ++x) { // higher nibble is stored in next address.
 		itX = 1 << (7 - x);
-		// ((read8(mem, address) & itX) ? 1 : 0) + ((read8(mem, address + 1) & itX) ? 2 : 0);
-		u8 tile_id = ((mem->memory[address] & itX) ? 1 : 0) + ((mem->memory[address + 1] & itX) ? 2 : 0);
+		u8 tile_id = ((mem->memory[address] & itX) ? 1 : 0) + ((mem->memory[address + 1] & itX) ? 2 : 0); // address like this to bypass read8 blocking vram reads in mode 3k
 		gpu->tiles[tileIndex][y][x] = tile_id;
 	}
 }
@@ -131,8 +125,8 @@ void draw_line(Gpu* gpu, Memory* mem) {
 
 
 	// draw window
-	u8 windowx = mem->memory[WX] - 7;
-	u8 windowy = mem->memory[WY];
+	u8 windowx = gpu->wx - 7;
+	u8 windowy = gpu->wy;
 	if (gpu->lcdc & (1 << 5) && gpu->ly >= windowy) { // draw window
 		BGTileMapArea = (gpu->lcdc & (1 << 6));
 		BGTileAddressMode = !(gpu->lcdc & (1 << 4));
@@ -165,7 +159,6 @@ void draw_line(Gpu* gpu, Memory* mem) {
 	}
 
 	// draw sprites
-
 	if (gpu->lcdc & (1 << 1)) { // if sprites enabled in LDC Control
 		bool eight_by_16_mode = gpu->lcdc & (1 << 2);
 		u16 current_OAM_address = 0xFE00;
@@ -185,7 +178,6 @@ void draw_line(Gpu* gpu, Memory* mem) {
 
 			int sprite_bottom = sprite_pos_y - 16 + (eight_by_16_mode ? 16 : 8);
 			int sprite_top = sprite_pos_y - 16;
-			// draw sprite
 			if (gpu->ly < sprite_bottom && gpu->ly >= sprite_top) { // if current line within sprite (i think this is right, no way to check until I implement OAM dma and HBLANK interrupt)
 				++sprite_count_for_line; // 10 sprites a line
 				if (eight_by_16_mode) tile_index &= 0xFE; // make sure we aren't indexing out of where we should be
@@ -194,13 +186,10 @@ void draw_line(Gpu* gpu, Memory* mem) {
 					if (eight_by_16_mode) {
 						if (sprite_line >= 8) { // address next tile if we are in 16 bit mode
 							sprite_line = 15 - sprite_line;
-							// sprite_line = 7 - sprite_line;
-
 						}
 						else {
 							sprite_line = 7 - sprite_line;
 							tile_index++;
-
 						}
 					}
 					else {
@@ -262,7 +251,6 @@ void handle_vram(Gpu* gpu, Memory* mem) {
 		draw_line(gpu, mem);
 		if (gpu->stat & (1 << 3)) {
 			gpu->should_stat_interrupt = true;
-			// write8(mem, IF, read8(mem, IF) | STAT_INTERRUPT);
 		}
 	}
 }
@@ -278,9 +266,7 @@ void handle_hblank(Gpu* gpu, Memory* mem) {
 		if (gpu->lyc == gpu->ly) {
 			gpu->stat |= (1 << 2);
 			if (gpu->stat & (1 << 6)) {
-				// gpu->should_stat_interrupt = true;
-				// mem->memory[IF] |= STAT_INTERRUPT;
-				write8(mem, IF, read8(mem, IF) | STAT_INTERRUPT);
+				gpu->should_stat_interrupt = true;
 			}
 		}
 		else {
@@ -291,16 +277,15 @@ void handle_hblank(Gpu* gpu, Memory* mem) {
 			u8 interrupt = read8(mem, IF);
 			write8(mem, IF, interrupt | VBLANK_INTERRUPT);
 			gpu->mode = VBLANK;
-			if (read8(mem, STAT) & (1 << 4)) {
+			if (gpu->stat & (1 << 4)) {
 				gpu->should_stat_interrupt = true;
-				// write8(mem, IF, read8(mem, IF) | STAT_INTERRUPT);
 			}
 
 		}
 		else {
 			gpu->mode = OAM_ACCESS;
 			if (read8(mem, STAT) & (1 << 5)) {
-				write8(mem, IF, read8(mem, IF) | STAT_INTERRUPT);
+				gpu->should_stat_interrupt = true;
 			}
 		}
 	}
@@ -330,8 +315,7 @@ void handle_vblank(Gpu* gpu, Memory* mem) {
 			gpu->should_draw = true;
 			gpu->mode = OAM_ACCESS;
 			gpu->ly = 0;
-			mem->memory[LY] = 0;
-			if (mem->memory[LYC] == gpu->ly) {
+			if (gpu->lyc == gpu->ly) {
 				gpu->stat |= (1 << 2);
 				if (read8(mem, STAT) & (1 << 6)) {
 					gpu->should_stat_interrupt = true;
