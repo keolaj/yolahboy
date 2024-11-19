@@ -146,17 +146,19 @@ void write8(Memory* mem, u16 address, u8 data) {
 
 		if (address == LCDC) { // if setting off bit reset lcd
 			if ((data & (1 << 7)) == 0) {
-				mem->gpu->stat &= 0b11111100;
+				mem->gpu->stat &= 0b11111000;
 				mem->gpu->ly = 0;
 				mem->gpu->mode = 0;
 				mem->gpu->clock = 0;
 			}
 			mem->gpu->lcdc = data;
+			return;
 		}
 		if (address == STAT) {
-			data &= 0b11111000;
-			mem->gpu->stat = data;
+			mem->gpu->stat = data & 0b11111100;
+			return;
 		}
+		if (address == LYC) mem->gpu->lyc = data;
 		if (address == LY) {
 			return;
 		}

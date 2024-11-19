@@ -232,8 +232,6 @@ struct _gpu {
 	int clock;
 	u32 framebuffer[23040];
 
-	Memory* mem;
-
 	Tile* tiles;
 
 	gpu_mode mode;
