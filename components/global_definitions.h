@@ -208,9 +208,6 @@ typedef struct {
 	int t_cycles;
 } Cycles;
 
-
-typedef u8** Tile;
-
 typedef enum {
 	HBLANK,
 	VBLANK,
@@ -231,8 +228,6 @@ struct _gpu {
 
 	int clock;
 	u32 framebuffer[23040];
-
-	Tile* tiles;
 
 	gpu_mode mode;
 	bool should_stat_interrupt;

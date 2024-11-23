@@ -18,40 +18,23 @@ Gpu* create_gpu(Memory* mem) {
 
 int init_gpu(Gpu* gpu) {
 	memset(gpu, 0, sizeof(Gpu));
-
-	gpu->tiles = (Tile*)malloc(NUM_TILES * sizeof(Tile));
-	if (gpu->tiles == NULL) {
-		printf("could not allocate Tile");
-		return -1;
-	}
-	for (int i = 0; i < NUM_TILES; ++i) {
-		gpu->tiles[i] = (Tile)malloc(sizeof(u8*) * 8);
-		if (gpu->tiles[i] == NULL) {
-			printf("unable to allocate tile array");
-			free(gpu->tiles);
-			return -1;
-		}
-		for (int y = 0; y < 8; ++y) {
-			gpu->tiles[i][y] = (u8*)malloc(sizeof(u8) * 8);
-			if (gpu->tiles[i][y] == NULL) {
-				printf("unable to allocate tile");
-				free(gpu->tiles[i]);
-				free(gpu->tiles);
-				return -1;
-			}
-			for (int x = 0; x < 8; ++x) {
-				gpu->tiles[i][y][x] = 0;
-			}
-		}
-	}
 	return 0;
 }
 
-u8 createIdFromAddress(Gpu* gpu, Memory* mem, u16 address) {
-	
+u8 read_tile(Memory* mem, int tile_index, u8 x, u8 y) { // TODO: this function returns a pixel from a position in a tile
+	u16 address = 0x8000;
+	address += (tile_index * 16);
+	address += (y * 2);
+
+	x = (7 - x);
+
+	u8 id = (mem->memory[address] & (1 << x)) ? 1 : 0;
+	id += (mem->memory[address + 1] & (1 << x)) ? 2 : 0;
+
+	return id;
 }
 
-u32 createPixelFromPaletteId(u8 palette, u8 id) {
+u32 pixel_from_palette(u8 palette, u8 id) {
 	uint8_t value = 0;
 	switch (id) { // read palette and assign value for id
 	case 0:
@@ -68,7 +51,6 @@ u32 createPixelFromPaletteId(u8 palette, u8 id) {
 		break;
 	default:
 		value = 0;
-		printf("createPixelFromPalette bad value");
 	}
 	switch (value) {
 	case 0:
@@ -80,24 +62,9 @@ u32 createPixelFromPaletteId(u8 palette, u8 id) {
 	case 3:
 		return BLACK;
 	default:
-		printf("invalid color");
 		return 0;
 	}
 }
-
-void update_tile(Gpu* gpu, Memory* mem, int address, u8 value) {
-	int tileIndex = ((address & 0x1FFF) >> 4) & 0x01FF;
-	int y = ((address & 0x1FFF) >> 1) & 7;
-
-	uint8_t itX = 1;
-	for (int x = 0; x < 8; ++x) { // higher nibble is stored in next address.
-		itX = 1 << (7 - x);
-		u8 tile_id = ((mem->memory[address] & itX) ? 1 : 0) + ((mem->memory[address + 1] & itX) ? 2 : 0);
-		gpu->tiles[tileIndex][y][x] = tile_id;
-	}
-}
-
-
 
 void draw_line(Gpu* gpu, Memory* mem) {
 
@@ -115,7 +82,7 @@ void draw_line(Gpu* gpu, Memory* mem) {
 
 	if (gpu->lcdc & 1) {
 		for (int i = 0; i < SCREEN_WIDTH; ++i) {
-			gpu->framebuffer[gpu->ly * SCREEN_WIDTH + i] = createPixelFromPaletteId(read8(mem, BGP), gpu->tiles[tile][tileY][tileX]);
+			gpu->framebuffer[gpu->ly * SCREEN_WIDTH + i] = pixel_from_palette(read8(mem, BGP), read_tile(mem, tile, tileX, tileY));// pixel_from_palette(read8(mem, BGP), gpu->tiles[tile][tileY][tileX]);
 			++tileX;
 			if (tileX == 8) {
 				tileX = 0;
@@ -145,7 +112,7 @@ void draw_line(Gpu* gpu, Memory* mem) {
 
 		for (int i = 0; i < SCREEN_WIDTH; ++i) {
 			if (windowx < i) continue;
-			uint32_t window_pixel = createPixelFromPaletteId(read8(mem, BGP), gpu->tiles[tile][tileY][tileX]);
+			uint32_t window_pixel = pixel_from_palette(read8(mem, BGP), read_tile(mem, tile, tileX, tileY));
 			gpu->framebuffer[gpu->ly * SCREEN_WIDTH + i] = window_pixel;
 
 			++tileX;
@@ -182,7 +149,7 @@ void draw_line(Gpu* gpu, Memory* mem) {
 			int sprite_top = sprite_pos_y - 16;
 			if (gpu->ly < sprite_bottom && gpu->ly >= sprite_top) { // if current line within sprite 
 				++sprite_count_for_line; // 10 sprites a line
-				if (eight_by_16_mode) tile_index &= 0xFE; // make sure we aren't indexing out of where we should be
+				if (eight_by_16_mode) tile &= 0xFE; // make sure we aren't indexing out of where we should be
 				u8 sprite_line = gpu->ly - sprite_top; // get current line of sprite
 				if (y_flip) {
 					if (eight_by_16_mode) {
@@ -207,9 +174,9 @@ void draw_line(Gpu* gpu, Memory* mem) {
 				u8 palette = read8(mem, (palette_mode ? OBP1 : OBP0));
 				for (int i = 0; i < 8; ++i) {
 					if (sprite_pos_x - 8 + i < 0) continue;
-					u8 id = gpu->tiles[tile_index][sprite_line][i];
+					u8 id = read_tile(mem, tile_index, i, sprite_line);
 					if (id == 0) continue;
-					u32 pixel = createPixelFromPaletteId(palette, id);
+					u32 pixel = pixel_from_palette(palette, id);
 					int x = i;
 					if (x_flip) x = 7 - i;
 					gpu->framebuffer[gpu->ly * SCREEN_WIDTH + sprite_pos_x - 8 + x] = pixel;
@@ -223,12 +190,6 @@ void draw_line(Gpu* gpu, Memory* mem) {
 void destroy_gpu(Gpu* gpu) {
 	if (gpu == NULL) {
 		return;
-	}
-	for (int i = 0; i < NUM_TILES; ++i) {
-		for (int y = 0; y < 8; ++y) {
-			free(gpu->tiles[i][y]);
-		}
-		free(gpu->tiles[i]);
 	}
 }
 
