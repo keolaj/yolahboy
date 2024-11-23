@@ -53,6 +53,10 @@
 #define NR12 0xFF12
 #define NR13 0xFF13
 #define NR14 0xFF14
+#define NR21 0xFF16
+#define NR22 0xFF17
+#define NR23 0xFF18
+#define NR24 0xFF19
 #define NR30 0xFF1A
 #define NR31 0xFF1B
 #define NR32 0xFF1C
@@ -105,8 +109,30 @@ typedef struct {
 
 
 typedef struct _apu {
-	u8 master_control; // FF26 NR52
-	
+	u16 clock;
+	u8 nr52; // FF26 Master control
+	u8 nr51; // FF25 Sound panning
+	u8 nr50; // Master volume and VIN panning
+	u8 nr10; // Channel 1 sweep
+	u8 nr11; // Channel 1 length timer and duty cycle
+	u8 nr12; // Channel 1 volume and envelope
+	u8 nr13; // Channel 1 period low
+	u8 nr14; // Channel 1 period high and control
+	u8 nr21; // Channel 2 length timer and duty cycle
+	u8 nr22; // Channel 2 volume and envelope
+	u8 nr23; // Channel 3 period low
+	u8 nr24; // Channel 2 period high and control
+	u8 nr30; // Channel 3 DAC enable
+	u8 nr31; // Channel 3 length timer
+	u8 nr32; // Channel 3 output level (write only)
+	u8 nr33; // Channel 3 period low (write only)
+	u8 nr34; // Channel 3 period high and control
+	u8 wave_pattern_ram[0xf]; // FF30-FF3F
+	u8 nr41; // Channel 4 length timer (write only)
+	u8 nr42; // Channel 4 volume and envelope
+	u8 nr43; // Channel 4 frequency and randomness
+	u8 nr44; // Channel 4 control
+
 } Apu;
 
 //typedef enum {
@@ -260,20 +286,10 @@ typedef struct {
 	Memory* memory;
 	Gpu* gpu;
 	Timer* timer;
+	Apu* apu;
 	Controller controller;
-
+	
 	int clock;	
 	bool should_run;
 	bool should_draw;
 } Emulator;
-
-typedef struct {
-	SDL_Scancode a;
-	SDL_Scancode b;
-	SDL_Scancode start;
-	SDL_Scancode select;
-	SDL_Scancode up;
-	SDL_Scancode down;
-	SDL_Scancode left;
-	SDL_Scancode right;
-} KeyboardConfig;

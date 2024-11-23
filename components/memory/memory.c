@@ -169,7 +169,7 @@ void write8(Memory* mem, u16 address, u8 data) {
 		}
 		if (mem->apu->master_control & 0b10000000) { // audio is on and we can write to audio registers
 		
-				
+			
 
 		}
 
