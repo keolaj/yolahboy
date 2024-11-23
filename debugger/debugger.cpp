@@ -35,7 +35,7 @@ void writePixel(SDL_Surface* surface, int x, int y, u32 pixel) {
 }
 
 
-void write_buffer_to_screen(Gpu* gpu, SDL_Surface* screen) {
+void write_buffer_to_screen(Emulator* emu, SDL_Surface* screen) {
 	if (SDL_LockSurface(screen) < 0) {
 		printf("could not lock screen surface");
 		return;
@@ -43,13 +43,13 @@ void write_buffer_to_screen(Gpu* gpu, SDL_Surface* screen) {
 
 	for (int x = 0; x < SCREEN_WIDTH; ++x) {
 		for (int y = 0; y < SCREEN_HEIGHT; ++y) {
-			writePixel(screen, x, y, gpu->framebuffer[x + (y * SCREEN_WIDTH)]);
+			writePixel(screen, x, y, emu->gpu->framebuffer[x + (y * SCREEN_WIDTH)]);
 		}
 	}
 
 	SDL_UnlockSurface(screen);
 }
-void write_tile_buffer_to_screen(Gpu* gpu, SDL_Surface* screen, u8 palette) {
+void write_tiles_to_screen(Emulator* emu, SDL_Surface* screen, u8 palette) {
 	if (SDL_LockSurface(screen) < 0) {
 		printf("could not lock tile screen");
 		return;
@@ -62,7 +62,7 @@ void write_tile_buffer_to_screen(Gpu* gpu, SDL_Surface* screen, u8 palette) {
 					int tile = y * TILES_X + x;
 					int pixelY = y * TILE_HEIGHT + tiley;
 					int pixelX = x * TILE_WIDTH + tilex;
-					writePixel(screen, pixelX, pixelY, createPixelFromPaletteId(palette, gpu->tiles[tile][tiley][tilex]));
+					writePixel(screen, pixelX, pixelY, pixel_from_palette(palette, read_tile(emu->memory, tile, tilex, tiley)));
 				}
 			}
 		}
@@ -802,7 +802,7 @@ int debugger_run(char* rom_path, char* bootrom_path) {
 			emu.should_run = false;
 			if (!set_run_once) { // logic for only running a function once in draw debug ui
 				SDL_DestroyTexture(tile_tex);
-				write_tile_buffer_to_screen(emu.gpu, tile_surface, read8(emu.memory, BGP));
+				write_tiles_to_screen(&emu, tile_surface, read8(emu.memory, BGP));
 				tile_tex = SDL_CreateTextureFromSurface(renderer, tile_surface);
 
 				run_once = true;
@@ -839,11 +839,11 @@ int debugger_run(char* rom_path, char* bootrom_path) {
 				}
 				draw_debug_ui(window, renderer, ig_ctx, ioptr, &emu, &emulator_screen_rect, &tile_screen_rect, run_once);
 				SDL_DestroyTexture(screen_tex);
-				write_buffer_to_screen(emu.gpu, screen_surface);
+				write_buffer_to_screen(&emu, screen_surface);
 				screen_tex = SDL_CreateTextureFromSurface(renderer, screen_surface);
 				SDL_SetTextureScaleMode(screen_tex, SDL_SCALEMODE_NEAREST);
 				SDL_DestroyTexture(tile_tex);
-				write_tile_buffer_to_screen(emu.gpu, tile_surface, read8(emu.memory, BGP));
+				write_tiles_to_screen(&emu, tile_surface, read8(emu.memory, BGP));
 				tile_tex = SDL_CreateTextureFromSurface(renderer, tile_surface);
 				SDL_SetTextureScaleMode(tile_tex, SDL_SCALEMODE_NEAREST);
 				emu.should_draw = false;

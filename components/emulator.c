@@ -29,8 +29,8 @@ int init_emulator(Emulator* emu) {
 		destroy_emulator(emu);
 		return -1;
 	}
-	set_gpu(emu->memory, emu->gpu);
-	set_mem_controller(emu->memory, &emu->controller);
+	emu->memory->gpu = emu->gpu;
+	emu->memory->controller =  &emu->controller;
 	return 0;
 }
 
@@ -49,7 +49,7 @@ int step(Emulator* emu) {
 		c = run_halted(emu->cpu, emu->memory);
 	}
 	if (c.t_cycles < 0) {
-		return -1; // push error to whatever is using emulator
+		return -1;
 	}
 	emu->clock += c.t_cycles;
 	tick(emu, c.t_cycles);
@@ -59,15 +59,14 @@ int step(Emulator* emu) {
 
 
 void destroy_emulator(Emulator* emu) {
-	if (emu->gpu) destroy_gpu(emu->gpu);
-	if (emu->memory) destroy_memory(emu->memory);
 	if (emu->cpu) destroy_cpu(emu->cpu);
+	if (emu->memory) destroy_memory(emu->memory);
+	if (emu->gpu) destroy_gpu(emu->gpu);
 	if (emu->timer) free(emu->timer);
 	emu->cpu = NULL;
-}
-
-void reset_emulator(Emulator* emu) {
-	
+	emu->memory = NULL;
+	emu->gpu = NULL;
+	emu->timer = NULL;
 }
 
 bool cartridge_loaded(Emulator* emu) {

@@ -29,13 +29,6 @@ Memory* create_memory() {
 	return ret;
 }
 
-void set_gpu(Memory* mem, Gpu* gpu) {
-	mem->gpu = gpu;
-}
-void set_mem_controller(Memory* mem, Controller* controller) {
-	mem->controller = controller;
-}
-
 u8 read8(Memory* mem, u16 address) {
 	if (mem->in_bios) {
 		if (address < 0x100) {
@@ -83,9 +76,6 @@ void write16(Memory* mem, u16 address, u16 value) {
 	write8(mem, address, value & 0xFF);
 	write8(mem, address + 1, value >> 8);
 }
-
-void update_tile(Gpu* gpu, Memory* mem, u16 address, u8 value);
-
 void write8(Memory* mem, u16 address, u8 data) {
 
 	if (address <= 0x7FFF) { // cartridge rom
@@ -96,10 +86,6 @@ void write8(Memory* mem, u16 address, u8 data) {
 			return;
 		}
 		mem->memory[address] = data;
-		if (address <= 0x97FF) {
-			if (address % 2 == 0) update_tile(mem->gpu, mem, address, data);
-			if (address % 2 != 0) update_tile(mem->gpu, mem, address - 1, data);
-		}
 		return;
 	}
 	else if (address >= 0xA000 && address <= 0xBFFF) { // cartridge ram
