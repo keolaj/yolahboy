@@ -11,6 +11,4 @@ u16 read16(Memory* mem, u16 address);
 void write16(Memory* mem, u16 address, u16 data);
 void set_use_gbd_log(Memory* mem, bool use_gbd_log);
 
-void write_mem_layout_to_buffer(u8* buffer);
-
 void destroy_memory(Memory* mem);

@@ -51,7 +51,7 @@ u8 read8(Memory* mem, u16 address) {
 		}
 		if (address == 0xFF44 && mem->use_gbd_log) return 0x90;
 
-
+		// GPU registers
 		if (address == STAT) return mem->gpu->stat;
 		if (address == LCDC) return mem->gpu->lcdc;
 		if (address == LY) return mem->gpu->ly;
@@ -60,6 +60,9 @@ u8 read8(Memory* mem, u16 address) {
 		if (address == SCX) return mem->gpu->scx;
 		if (address == WY) return mem->gpu->wy;
 		if (address == WX) return mem->gpu->wx;
+
+		// APU registers
+		if (address == NR52) return mem->apu->master_control;
 
 	}
 	return mem->memory[address];
@@ -132,7 +135,8 @@ void write8(Memory* mem, u16 address, u8 data) {
 			mem->timer->clock = 0;
 			return;
 		}
-
+		
+		// GPU registers
 		if (address == LCDC) { // if setting off bit reset lcd
 			if ((data & (1 << 7)) == 0) {
 				mem->gpu->stat &= 0b11111000;
@@ -157,6 +161,16 @@ void write8(Memory* mem, u16 address, u8 data) {
 		if (address == WX) mem->gpu->wx = data;
 		if (address == BGP) {
 			AddLog("writing palette");
+		}
+
+		// APU regsiters
+		if (address == NR52) { 
+			mem->apu->master_control = data & 0b10000000;
+		}
+		if (mem->apu->master_control & 0b10000000) { // audio is on and we can write to audio registers
+		
+				
+
 		}
 
 		mem->memory[address] = data;
@@ -274,18 +288,29 @@ int load_rom(Memory* mem, const char* path) { // I believe this is working
 	fclose(fp);
 
 	if (mem->cartridge.type == MBC1_RAM_BATTERY) {
-
-		fp = fopen("game.sav", "rb");
-		if (fp == NULL) {
-			AddLog("no save for game\n");
-		}
-		else {
-			fread(mem->cartridge.ram, sizeof(u8), actual_ram_size, fp);
-			AddLog("loaded save!");
-		}
+		load_save(mem, path);
 	}
 
 	return 0;
+}
+
+int load_save(Memory* mem, const char* path) {
+	FILE* fp; 
+	fp = fopen(path, "rb");
+
+	if (fp == NULL) {
+		AddLog("Unable to open save file\n");
+		return -1;
+	}
+	else {
+		if (fread(mem->cartridge.ram, sizeof(u8), mem->cartridge.ram_size, fp) >= 0) {
+			return 1;
+		}
+		else {
+			AddLog("Unable to load ram\n");
+			return -1;
+		}
+	}
 }
 
 void destroy_memory(Memory* mem) {
@@ -310,7 +335,6 @@ void destroy_memory(Memory* mem) {
 			}
 		}
 	}
-
 	if (mem->cartridge.rom) free(mem->cartridge.rom);
 	if (mem->cartridge.ram) free(mem->cartridge.ram);
 	free(mem);

@@ -1,8 +1,7 @@
 #pragma once
-
 #include <stdbool.h>
-#include <stdlib.h>
-#include <SDL3/SDL.h>
+
+#define MAX_BREAKPOINTS 0x100
 
 #define BANKSIZE 0x4000
 #define TITLE 0x134
@@ -21,6 +20,13 @@
 #define WY 0xFF4A // Window Y address
 #define WX 0xFF4B // Window X address
 #define BGP 0xFF47 // Background Palette address
+#define NUM_TILES 384
+#define TILES_Y 24
+#define TILES_X 16
+#define TILE_WIDTH 8
+#define TILE_HEIGHT 8
+#define OBP0 0xFF48
+#define OBP1 0xFF49
 
 // #define IF 0xFF0F // Interrupt flag
 
@@ -28,15 +34,6 @@
 #define DARK 0x382843FF
 #define LIGHT 0x7c6d80FF
 #define WHITE 0xc7c6c6FF
-
-#define NUM_TILES 384
-#define TILES_Y 24
-#define TILES_X 16
-#define TILE_WIDTH 8
-#define TILE_HEIGHT 8
-
-
-#define MAX_BREAKPOINTS 0x100
 
 #define DIV 0xFF04
 #define TIMA 0xFF05
@@ -48,8 +45,23 @@
 
 #define DMA 0xFF46
 
-#define OBP0 0xFF48
-#define OBP1 0xFF49
+#define NR52 0xFF26
+#define NR51 0xFF25
+#define NR50 0xFF24
+#define NR10 0xFF10
+#define NR11 0xFF11
+#define NR12 0xFF12
+#define NR13 0xFF13
+#define NR14 0xFF14
+#define NR30 0xFF1A
+#define NR31 0xFF1B
+#define NR32 0xFF1C
+#define NR33 0xFF1D
+#define NR34 0xFF1E
+#define NR41 0xFF20
+#define NR42 0xFF21
+#define NR43 0xFF22
+#define NR44 0xFF23
 
 
 #define VBLANK_INTERRUPT 1
@@ -90,6 +102,12 @@ typedef struct {
 	bool a;
 	bool b;
 } Controller;
+
+
+typedef struct _apu {
+	u8 master_control; // FF26 NR52
+	
+} Apu;
 
 //typedef enum {
 //	ROM_ONLY,
@@ -156,6 +174,7 @@ typedef struct _memory {
 	Gpu* gpu;
 	Controller* controller;
 	Timer* timer;
+	Apu* apu;
 	bool wrote_dma;
 } Memory;
 
@@ -235,8 +254,6 @@ struct _gpu {
 	bool should_draw;
 	bool drawtile;
 };
-
-
 
 typedef struct {
 	Cpu* cpu;
