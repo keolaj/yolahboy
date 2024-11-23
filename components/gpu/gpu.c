@@ -9,7 +9,7 @@ Gpu* create_gpu(Memory* mem) {
 		printf("could not allocate Gpu");
 		return NULL;
 	}
-	if (init_gpu(ret, mem) == -1) {
+	if (init_gpu(ret) == -1) {
 		printf("could not initialize Gpu");
 		return NULL;
 	}
@@ -47,6 +47,10 @@ int init_gpu(Gpu* gpu) {
 	return 0;
 }
 
+u8 createIdFromAddress(Gpu* gpu, Memory* mem, u16 address) {
+	
+}
+
 u32 createPixelFromPaletteId(u8 palette, u8 id) {
 	uint8_t value = 0;
 	switch (id) { // read palette and assign value for id
@@ -82,13 +86,13 @@ u32 createPixelFromPaletteId(u8 palette, u8 id) {
 }
 
 void update_tile(Gpu* gpu, Memory* mem, int address, u8 value) {
-	int tileIndex = ((address & 0x1FFE) >> 4) & 0x01FF;
-	int y = ((address & 0x1FFE) >> 1) & 7;
+	int tileIndex = ((address & 0x1FFF) >> 4) & 0x01FF;
+	int y = ((address & 0x1FFF) >> 1) & 7;
 
 	uint8_t itX = 1;
 	for (int x = 0; x < 8; ++x) { // higher nibble is stored in next address.
 		itX = 1 << (7 - x);
-		u8 tile_id = ((mem->memory[address] & itX) ? 1 : 0) + ((mem->memory[address + 1] & itX) ? 2 : 0); // address like this to bypass read8 blocking vram reads in mode 3k
+		u8 tile_id = ((mem->memory[address] & itX) ? 1 : 0) + ((mem->memory[address + 1] & itX) ? 2 : 0);
 		gpu->tiles[tileIndex][y][x] = tile_id;
 	}
 }
@@ -123,7 +127,6 @@ void draw_line(Gpu* gpu, Memory* mem) {
 
 	}
 
-
 	// draw window
 	u8 windowx = gpu->wx - 7;
 	u8 windowy = gpu->wy;
@@ -134,7 +137,6 @@ void draw_line(Gpu* gpu, Memory* mem) {
 		mapAddress += (((gpu->ly + windowy) & 0xFF) >> 3) << 5;
 
 		if (BGTileAddressMode && tile < 128) tile += 256;
-
 
 		int lineOffset = (windowx >> 3);
 		int tileX = windowx & 7;
@@ -178,7 +180,7 @@ void draw_line(Gpu* gpu, Memory* mem) {
 
 			int sprite_bottom = sprite_pos_y - 16 + (eight_by_16_mode ? 16 : 8);
 			int sprite_top = sprite_pos_y - 16;
-			if (gpu->ly < sprite_bottom && gpu->ly >= sprite_top) { // if current line within sprite (i think this is right, no way to check until I implement OAM dma and HBLANK interrupt)
+			if (gpu->ly < sprite_bottom && gpu->ly >= sprite_top) { // if current line within sprite 
 				++sprite_count_for_line; // 10 sprites a line
 				if (eight_by_16_mode) tile_index &= 0xFE; // make sure we aren't indexing out of where we should be
 				u8 sprite_line = gpu->ly - sprite_top; // get current line of sprite
@@ -202,9 +204,7 @@ void draw_line(Gpu* gpu, Memory* mem) {
 						tile_index++;
 					}
 				}
-
 				u8 palette = read8(mem, (palette_mode ? OBP1 : OBP0));
-
 				for (int i = 0; i < 8; ++i) {
 					if (sprite_pos_x - 8 + i < 0) continue;
 					u8 id = gpu->tiles[tile_index][sprite_line][i];

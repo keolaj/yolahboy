@@ -40,6 +40,596 @@ void update_IME(Cpu* cpu, bool value) {
 	cpu->update_IME_counter = 1;
 }
 
+void push(Cpu* cpu, Memory* mem, u16 value) {
+	write16(mem, cpu->registers.sp - 2, value);
+	cpu->registers.sp -= 2;
+}
+void pop(Cpu* cpu, Memory* mem, u16* reg, operand_type operand) {
+	*reg = read16(mem, cpu->registers.sp);
+	if (operand == AF) {
+		cpu->registers.f &= 0xF0;
+	}
+	cpu->registers.sp += 2;
+}
+void jump(Cpu* cpu, u16 jump_to) {
+	cpu->registers.pc = jump_to;
+}
+
+
+
+
+u8 generate_set_mask(instruction_flags flag_actions) {
+	u8 ret = 0;
+	if (flag_actions.zero == SET) {
+		ret |= FLAG_ZERO;
+	}
+	if (flag_actions.sub == SET) {
+		ret |= FLAG_SUB;
+	}
+	if (flag_actions.halfcarry == SET) {
+		ret |= FLAG_HALFCARRY;
+	}
+	if (flag_actions.carry == SET) {
+		ret |= FLAG_CARRY;
+	}
+	return ret;
+}
+
+u8 generate_reset_mask(instruction_flags flag_actions) {
+	u8 ret = 0xFF;
+	if (flag_actions.zero == RESET) {
+		ret &= ~FLAG_ZERO;
+	}
+	if (flag_actions.sub == RESET) {
+		ret &= ~FLAG_SUB;
+	}
+	if (flag_actions.halfcarry == RESET) {
+		ret &= ~FLAG_HALFCARRY;
+	}
+	if (flag_actions.carry == RESET) {
+		ret &= ~FLAG_CARRY;
+	}
+	return ret;
+}
+u8 generate_ignore_mask(instruction_flags flag_actions) {
+	u8 ret = 0;
+	if (flag_actions.zero == _IGNORE) {
+		ret |= FLAG_ZERO;
+	}
+	if (flag_actions.sub == _IGNORE) {
+		ret |= FLAG_SUB;
+	}
+	if (flag_actions.halfcarry == _IGNORE) {
+		ret |= FLAG_HALFCARRY;
+	}
+	if (flag_actions.carry == _IGNORE) {
+		ret |= FLAG_CARRY;
+	}
+	return ret;
+}
+
+bool condition_passed(Cpu* cpu, Operation* op) {
+	switch (op->condition) {
+	case CONDITION_Z:
+		if ((cpu->registers.f & FLAG_ZERO) == FLAG_ZERO) {
+			return true;
+		}
+		break;
+	case CONDITION_NZ:
+		if ((cpu->registers.f & FLAG_ZERO) != FLAG_ZERO) {
+			return true;
+		}
+		break;
+	case CONDITION_C:
+		if ((cpu->registers.f & FLAG_CARRY) == FLAG_CARRY) {
+			return true;
+		}
+		break;
+	case CONDITION_NC:
+		if ((cpu->registers.f & FLAG_CARRY) != FLAG_CARRY) {
+			return true;
+		}
+		break;
+	default:
+		// why get here
+		return true;
+	}
+	return false;
+}
+
+alu_return run_alu(Cpu* cpu, u8 x, u8 y, instruction_type type, instruction_flags flag_actions) {
+	u8 new_flags = 0;
+
+	new_flags |= generate_set_mask(flag_actions);
+
+	u8 result = 0;
+	switch (type) {
+	case AND:
+		result = x & y;
+		break;
+	case OR:
+		result = x | y;
+		break;
+	case XOR:
+		result = x ^ y;
+		break;
+	case BIT:
+		result = x & y;
+		break;
+	case CPL:
+		result = ~x;
+		break;
+	case INC:
+	case ADD:
+		result = x + y;
+		if (((x & 0x0f) + (y & 0x0f)) > 0x0f) { //  half carry	
+			new_flags |= FLAG_HALFCARRY;
+		}
+		if ((int)x + (int)y > 255) {
+			new_flags |= FLAG_CARRY;
+		}
+
+		break;
+	case ADC: {
+		u8 carry = ((cpu->registers.f & FLAG_CARRY) ? 1 : 0);
+		if ((x & 0x0f) + (y & 0x0f) + carry > 0x0f) { //  half carry			
+			new_flags |= FLAG_HALFCARRY;
+		}
+		if ((int)x + (int)y + carry > 255) {
+
+			new_flags |= FLAG_CARRY;
+
+		}
+
+		result = x + y + carry;
+		break;
+	}
+
+	case SUB:
+	case CP:
+	case DEC:
+		result = x - y;
+		// new_flags |= FLAG_HALFCARRY | FLAG_CARRY;
+		if ((y & 0x0f) > (x & 0x0f)) { //  half carry (there is a lot of different documentation on this so idk, this matches bgb) 
+			new_flags |= FLAG_HALFCARRY;
+		}
+		if ((int)x - (int)y < 0) { //  carry
+			new_flags |= FLAG_CARRY;
+		}
+		break;
+
+	case SBC: {
+		u8 carry = ((cpu->registers.f & FLAG_CARRY) ? 1 : 0);
+		result = x - y - carry;
+		if (((y & 0x0f)) > ((x & 0x0f) - carry)) { //  half carry (there is a lot of different documentation on this so idk, this matches bgb) 
+			new_flags |= FLAG_HALFCARRY;
+		}
+		else {
+			new_flags &= ~FLAG_HALFCARRY;	
+		}
+		if ((int)x - (int)y - carry < 0) { //  carry
+			new_flags |= FLAG_CARRY;
+		}
+		else {
+			new_flags &= ~FLAG_CARRY;
+		}
+		break;
+	}
+
+	case SWAP:
+		result = (x << 4) | (x >> 4);
+		break;
+
+	case SET_OP:
+		result = x | (1 << y);
+		break;
+	case RL:
+	{
+		u8 new_carry = x & 0b10000000;
+		result = x << 1;
+		result |= ((cpu->registers.f & FLAG_CARRY) >> 4);
+		new_flags |= (new_carry >> 3);
+		break;
+	}
+	case RR:
+	{
+		u8 new_carry = x & 0b00000001;
+		result = x >> 1;
+		result |= ((cpu->registers.f & FLAG_CARRY) << 3);
+		new_flags |= (new_carry << 4);
+		break;
+	}
+
+	case RES:
+		result = x & ~(1 << y);
+		break;
+
+	case SLA: {
+		if (x & 0b10000000) new_flags |= FLAG_CARRY;
+		result = x << 1;
+		break;
+	}
+	case SRA: {
+		result = (x >> 1);
+		if (x & 0b10000000) result |= 0b10000000;
+		if (x & 0b00000001) new_flags |= FLAG_CARRY;
+
+		break;
+	}
+	case SRL: {
+		if (x & 0b00000001) new_flags |= FLAG_CARRY;
+		result = x >> 1;
+		break;
+	}
+	case RLC: {
+		result = x << 1;
+		if (x & 0b10000000) {
+			result |= 0b00000001;
+			new_flags |= FLAG_CARRY;
+		}
+		break;
+	}
+	case RRC: {
+		result = x >> 1;
+		if (x & 0b00000001) {
+			result |= 0b10000000;
+			new_flags |= FLAG_CARRY;
+		}
+		break;
+	}
+	case SCF: 
+		break;
+	case CCF:
+		if (cpu->registers.f & FLAG_CARRY) {
+
+		}
+		else {
+			new_flags |= FLAG_CARRY;
+		}
+		break;
+
+
+	}
+
+
+
+	if (result == 0) {
+		new_flags |= FLAG_ZERO;
+	}
+
+	u8 ignore_mask = generate_ignore_mask(flag_actions);
+	new_flags &= ~ignore_mask;
+	new_flags |= ignore_mask & cpu->registers.f;
+
+	new_flags &= generate_reset_mask(flag_actions);
+
+
+	return (alu_return) { result, new_flags };
+}
+
+alu16_return run_alu16(Cpu* cpu, u16 x, u16 y, instruction_type type, address_mode source_addr_mode, instruction_flags flag_actions) {
+	u8 new_flags = 0;
+	new_flags |= generate_set_mask(flag_actions);
+	u16 result;
+	switch (type) {
+	case ADD:
+		result = x + y;
+		if (source_addr_mode == REGISTER16) {
+			if (((x & 0x0FFF) + (y & 0x0FFF)) > 0x0FFF) {
+				new_flags |= FLAG_HALFCARRY;
+			}
+			if ((int)x + (int)y > 0xFFFF) {
+				new_flags |= FLAG_CARRY;
+			}
+		}
+		else {
+			if (((x & 0x0F) + (y & 0x0F)) > 0x0F) {
+				new_flags |= FLAG_HALFCARRY;
+			}
+			if (((x & 0xFF) + (y & 0xFF)) > 0xFF) {
+				new_flags |= FLAG_CARRY;
+			}
+		}
+		break;
+
+	default:
+		AddLog("TODO: Unimplemented run_alu16 type");
+		result = 0;
+		assert(false);
+		break;
+	}
+	if (result == 0) {
+		new_flags |= FLAG_ZERO;
+	}
+	u8 ignore_mask = generate_ignore_mask(flag_actions);
+	new_flags &= ~ignore_mask;
+	new_flags |= ignore_mask & cpu->registers.f;
+	new_flags &= generate_reset_mask(flag_actions);
+
+	return (alu16_return) { result, new_flags };
+}
+
+
+
+
+u8* get_reg_from_type(Cpu* cpu, operand_type type) {
+
+	switch (type) {
+	case A:
+		return &cpu->registers.a;
+	case B:
+		return &cpu->registers.b;
+	case C:
+		return &cpu->registers.c;
+	case D:
+		return &cpu->registers.d;
+	case E:
+		return &cpu->registers.e;
+	case H:
+		return &cpu->registers.h;
+	case L:
+		return &cpu->registers.l;
+	default:
+		assert(false && "Not a register");
+		return NULL;
+	}
+
+}
+
+u16* get_reg16_from_type(Cpu* cpu, operand_type type) {
+	switch (type) {
+	case AF:
+		return &cpu->registers.af;
+	case BC:
+		return &cpu->registers.bc;
+	case DE:
+		return &cpu->registers.de;
+	case HL:
+		return &cpu->registers.hl;
+	case SP:
+	case SP_ADD_I8:
+		return &cpu->registers.sp;
+	case PC:
+		return &cpu->registers.pc;
+	default:
+		assert(false && "Not a register");
+		return NULL;
+	}
+}
+
+void write_dest(Cpu* cpu, Memory* mem, Operation* op, u8 value) {
+	switch (op->dest_addr_mode) {
+	case REGISTER:
+		*get_reg_from_type(cpu, op->dest) = value;
+		break;
+	case ADDRESS_R16:
+		write8(mem, *get_reg16_from_type(cpu, op->dest), value);
+		break;
+		//case MEM_READ16:
+		//	write8(mem, read8(mem, cpu->registers.pc), value);
+		//	cpu->registers.pc += 2;
+		//	break;
+	case ADDRESS_R8_OFFSET:
+		write8(mem, (0xFF00 + get_dest(cpu, mem, op)), value);
+		break;
+	case MEM_READ_ADDR:
+		write8(mem, read16(mem, cpu->registers.pc), value);
+		cpu->registers.pc += 2;
+		break;
+	case MEM_READ_ADDR_OFFSET: {
+		u8 offset = read8(mem, cpu->registers.pc);
+		++cpu->registers.pc;
+		write8(mem, (0xFF00 + offset), value);
+		break;
+	}
+	case OPERAND_NONE:
+		break;
+	default:
+		AddLog("unimplemented write dest addr mode");
+		assert(false);
+	}
+}
+
+void write_dest16(Cpu* cpu, Memory* mem, address_mode mode, operand_type dest, u16 value) {
+	switch (mode) {
+	case REGISTER16:
+		*get_reg16_from_type(cpu, dest) = value;
+		break;
+	default:
+		AddLog("unimplemented write dest16 type");
+		assert(false);
+		break;
+	}
+}
+
+bool bit_mode_16(Operation* op) {
+	if (op->dest_addr_mode == REGISTER16 || op->dest_addr_mode == MEM_READ16 || op->source_addr_mode == MEM_READ16 || op->source_addr_mode == REGISTER16) {
+		return true;
+	}
+	else {
+		return false;
+	}
+}
+
+void run_secondary(Cpu* cpu, Operation* op) {
+	u16* reg;
+	switch (op->secondary) {
+	case INC_R_1:
+		reg = get_reg16_from_type(cpu, op->dest);
+		*reg = *reg + 1;
+		break;
+	case DEC_R_1:
+		reg = get_reg16_from_type(cpu, op->dest);
+		*reg -= 1;
+		break;
+	case INC_R_2:
+		reg = get_reg16_from_type(cpu, op->source);
+		*reg += 1;
+		break;
+	case DEC_R_2:
+		reg = get_reg16_from_type(cpu, op->source);
+		*reg -= 1;
+		break;
+	case ADD_T_4:
+		op->t_cycles += 4;
+		break;
+	case ADD_T_12:
+		op->t_cycles += 12;
+		break;
+	default:
+		return;
+	}
+}
+
+u16 get_source_16(Cpu* cpu, Memory* mem, Operation* op) {
+	u16 sourceVal;
+	switch (op->source_addr_mode) {
+	case REGISTER16:
+		if (op->source == SP_ADD_I8) {
+			u8 val = read8(mem, cpu->registers.pc++);
+			i8 relative;
+
+			if (val > 127) {
+				val = ~val + 1;
+				relative = -*(i8*)&val;
+			}
+			else {
+				relative = *(i8*)&val;
+			}
+
+
+			alu16_return alu_ret = run_alu16(cpu, *get_reg16_from_type(cpu, op->source), (i16)relative, ADD, MEM_READ, op->flag_actions);
+			sourceVal = alu_ret.result;
+			cpu->registers.f = alu_ret.flags;
+			break;
+		}
+		sourceVal = *get_reg16_from_type(cpu, op->source);
+		break;
+	case MEM_READ16:
+		sourceVal = read16(mem, cpu->registers.pc);
+		cpu->registers.pc += 2;
+		break;
+	case MEM_READ: {
+		switch (op->source) {
+		case I8: {
+			u8 value = read8(mem, cpu->registers.pc++);
+			i8 relative;
+			if (value > 127) {
+				relative = -(~value + 1);
+			}
+			else {
+				relative = value;
+			}
+			sourceVal = (u16)relative;
+			break;
+		}
+		default:
+			AddLog("What are we doing here");
+			assert(false);
+		}
+		break;
+	}
+	default:
+		sourceVal = 0;
+		AddLog("unimplemented 16 bit source read\n");
+		print_operation(*op);
+		assert(false);
+	}
+	return sourceVal;
+}
+
+i16 unsigned_to_relative16(u8 x) {
+	i8 relative;
+	if (x > 127) {
+		relative = -(~x + 1);
+	}
+	else relative = x;
+
+	return (i16)relative;
+}
+
+u8 get_source(Cpu* cpu, Memory* mem, Operation* op) { // maybe I'll change this to be able to read dest too at some point. Might make life easier
+	u8 sourceVal;
+	switch (op->source_addr_mode) {
+	case REGISTER:
+		sourceVal = *get_reg_from_type(cpu, op->source);
+		break;
+	case MEM_READ:
+		sourceVal = read8(mem, cpu->registers.pc);
+		++cpu->registers.pc;
+		break;
+	case ADDRESS_R16:
+		sourceVal = read8(mem, *get_reg16_from_type(cpu, op->source));
+		break;
+	case ADDRESS_R8_OFFSET:
+		sourceVal = read8(mem, 0xff00 + *get_reg_from_type(cpu, op->source));
+		break;
+	case MEM_READ_ADDR:
+		sourceVal = read8(mem, read16(mem, cpu->registers.pc));
+		cpu->registers.pc += 2;
+		break;
+	case MEM_READ_ADDR_OFFSET:
+		sourceVal = read8(mem, 0xFF00 + read8(mem, cpu->registers.pc++));
+		break;
+	case ADDR_MODE_NONE:
+		sourceVal = op->source; // this should be fine
+		break;
+	default:
+		sourceVal = 0;
+		AddLog("unimplemented 8 bit source read\n");
+		print_operation(*op);
+		assert(false);
+	}
+	return sourceVal;
+}
+
+u8 get_dest(Cpu* cpu, Memory* mem, Operation* op) {
+
+	u8 destVal;
+	switch (op->dest_addr_mode) {
+	case ADDRESS_R8_OFFSET:
+	case REGISTER:
+		destVal = *get_reg_from_type(cpu, op->dest);
+		break;
+	case ADDRESS_R16:
+		destVal = read8(mem, *get_reg16_from_type(cpu, op->dest));
+		break;
+	case MEM_READ_ADDR_OFFSET:
+	case MEM_READ:
+		destVal = read8(mem, cpu->registers.pc);
+		++cpu->registers.pc;
+		break;
+	case OPERAND_NONE:
+		destVal = 0;
+		break;
+	default:
+		destVal = 0;
+		AddLog("unimplemented 8 bit dest read\n");
+		print_operation(*op);
+		assert(false);
+	}
+	return destVal;
+}
+u16 get_dest16(Cpu* cpu, Memory* mem, Operation* op) {
+	u16 dest_val;
+	switch (op->dest_addr_mode) {
+	case REGISTER16:
+		dest_val = *get_reg16_from_type(cpu, op->dest);
+		break;
+	case ADDRESS_R16:
+		dest_val = read16(mem, *get_reg16_from_type(cpu, op->dest));
+		break;
+	default:
+		AddLog("unimplemented get_dest16");
+		assert(false);
+		break;
+	}
+	return dest_val;
+}
+
+
+
+
 Operation get_operation(Cpu* cpu, Memory* mem) {
 	u8 opcode = read8(mem, cpu->registers.pc);
 	Operation ret = operations[opcode];
@@ -314,9 +904,7 @@ void CCF_impl(Cpu* cpu, Memory* mem, Operation* op) {
 Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op) {
 	++cpu->registers.pc;
 
-
-
-	if (cpu->registers.pc + 1 == 0x100) {
+	if (cpu->registers.pc == 0x101) {
 		mem->in_bios = false;
 	}
 
