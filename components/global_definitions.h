@@ -157,7 +157,7 @@ typedef struct _memory {
 	Controller* controller;
 	Timer* timer;
 	bool wrote_dma;
-};
+} Memory;
 
 typedef struct {
 	union {

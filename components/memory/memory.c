@@ -84,7 +84,7 @@ void write16(Memory* mem, u16 address, u16 value) {
 	write8(mem, address + 1, value >> 8);
 }
 
-void update_tile(Gpu* gpu, Memory* mem, int address, u8 value);
+void update_tile(Gpu* gpu, Memory* mem, u16 address, u8 value);
 
 void write8(Memory* mem, u16 address, u8 data) {
 
@@ -92,8 +92,11 @@ void write8(Memory* mem, u16 address, u8 data) {
 		return cart_write8(&mem->cartridge, address, data);
 	}
 	else if (address >= 0x8000 && address <= 0x9FFF) { // vram
+		if (mem->gpu->mode == 3) {
+			return;
+		}
 		mem->memory[address] = data;
-		if (address < 0x97FF) {
+		if (address <= 0x97FF) {
 			if (address % 2 == 0) update_tile(mem->gpu, mem, address, data);
 			if (address % 2 != 0) update_tile(mem->gpu, mem, address - 1, data);
 		}
@@ -166,6 +169,9 @@ void write8(Memory* mem, u16 address, u8 data) {
 		if (address == SCX) mem->gpu->scx = data;
 		if (address == WY) mem->gpu->wy = data;
 		if (address == WX) mem->gpu->wx = data;
+		if (address == BGP) {
+			AddLog("writing palette");
+		}
 
 		mem->memory[address] = data;
 		return;
