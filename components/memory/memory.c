@@ -49,7 +49,6 @@ u8 read8(Memory* mem, u16 address) {
 			u8 j_ret = joypad_return(*mem->controller, mem->memory[address]);
 			return j_ret;
 		}
-		if (address == 0xFF44 && mem->use_gbd_log) return 0x90;
 
 		// GPU registers
 		if (address == STAT) return mem->gpu->stat;
@@ -62,7 +61,7 @@ u8 read8(Memory* mem, u16 address) {
 		if (address == WX) return mem->gpu->wx;
 
 		// APU registers
-		if (address == NR52) return mem->apu->master_control;
+		if (address == NR52) return mem->apu->nr52;
 
 	}
 	return mem->memory[address];
@@ -165,12 +164,24 @@ void write8(Memory* mem, u16 address, u8 data) {
 
 		// APU regsiters
 		if (address == NR52) { 
-			mem->apu->master_control = data & 0b10000000;
+			mem->apu->nr52 = data & 0b10000000;
+			return;
 		}
-		if (mem->apu->master_control & 0b10000000) { // audio is on and we can write to audio registers
-		
-			
-
+		if (mem->apu->nr52 & 0b10000000) { // audio is on and we can write to audio registers
+			if (address == NR13) {
+				mem->apu->nr13 = data;
+				mem->apu->channel[0].frequency_timer = (mem->apu->channel[0].frequency_timer & 0b0000011100000000) | data;
+				// mem->apu->channel[0].divider = (2048 - mem->apu->channel[0].frequency_timer) * 4;
+				return;
+			}
+			if (address == NR14) {
+				mem->apu->nr14 = data;
+				mem->apu->channel[0].frequency_timer = (mem->apu->channel[0].frequency_timer & 0b0000000011111111) | (data & 0b00000111);
+				// mem->apu->channel[0].divider = (2048 - mem->apu->channel[0].frequency_timer) * 4;
+				if (data & 0b10000000) {
+					mem->apu->channel[0].enabled = true;
+				}
+			}
 		}
 
 		mem->memory[address] = data;

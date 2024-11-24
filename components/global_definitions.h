@@ -1,5 +1,6 @@
 #pragma once
 #include <stdbool.h>
+#include <SDL3/SDL.h>
 
 #define MAX_BREAKPOINTS 0x100
 
@@ -108,9 +109,13 @@ typedef struct {
 } Controller;
 
 typedef struct _channel {
-	u16 divider;
+	bool enabled;
+	int divider;
+	int sample_counter;
+	u16 frequency_timer;
 	u8 wave_index;
-	float* buffer;
+	float* left_buffer;
+	float* right_buffer;
 } Channel;
 
 typedef struct _apu {
@@ -138,18 +143,21 @@ typedef struct _apu {
 	u8 nr43; // Channel 4 frequency and randomness
 	u8 nr44; // Channel 4 control
 
+	int sample_rate;
+
 	int buffer_size;
 	int buffer_position;
 
 	Channel channel[4];
+	int sweep_timer;
+	bool sweep_enabled;
+	u16 sweep_freq_shadow;
 
-	float* left_buffer_1;
-	float* right_buffer_1;
+	float* buffer1;
+	float* buffer2;
 
-	float* left_buffer_2;
-	float* right_buffer_2;
-
-	bool use_first_buffer;
+	bool use_buffer1;
+	bool buffer_full;
 
 } Apu;
 
@@ -311,3 +319,14 @@ typedef struct {
 	bool should_run;
 	bool should_draw;
 } Emulator;
+
+typedef struct {
+	SDL_Scancode a;
+	SDL_Scancode b;
+	SDL_Scancode start;
+	SDL_Scancode select;
+	SDL_Scancode up;
+	SDL_Scancode down;
+	SDL_Scancode left;
+	SDL_Scancode right;
+} KeyboardConfig;

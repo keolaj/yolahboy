@@ -272,7 +272,7 @@ void handle_vblank(Gpu* gpu, Memory* mem) {
 		}
 
 
-		if (gpu->ly > 153) {			
+		if (gpu->ly > 153) {	
 			gpu->should_draw = true;
 			gpu->mode = OAM_ACCESS;
 			gpu->ly = 0;

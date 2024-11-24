@@ -9,6 +9,7 @@
 #include "./cpu/operations.h"
 #include "./controller/controller.h"
 #include "./gpu/gpu.h"
+#include "./apu/apu.h"
 #include "../debugger/imgui_custom_widget_wrapper.h"
 
 #include <SDL3/SDL.h>
@@ -18,6 +19,7 @@ int init_emulator(Emulator* emu) {
 	emu->memory = create_memory();
 	emu->gpu = create_gpu(emu->memory);
 	emu->timer = create_timer();
+	emu->apu = create_apu(48000, 1024);
 	emu->timer->clock = 0;
 	emu->cpu->timer = emu->timer;
 	emu->memory->timer = emu->timer;
@@ -31,6 +33,7 @@ int init_emulator(Emulator* emu) {
 	}
 	emu->memory->gpu = emu->gpu;
 	emu->memory->controller =  &emu->controller;
+	emu->memory->apu = emu->apu;
 	return 0;
 }
 
@@ -54,6 +57,7 @@ int step(Emulator* emu) {
 	emu->clock += c.t_cycles;
 	tick(emu, c.t_cycles);
 	step_gpu(emu->gpu, emu->memory, c.m_cycles * 4);
+	step_apu(emu->apu, c.t_cycles);
 	return 0;
 }
 
@@ -63,10 +67,12 @@ void destroy_emulator(Emulator* emu) {
 	if (emu->memory) destroy_memory(emu->memory);
 	if (emu->gpu) destroy_gpu(emu->gpu);
 	if (emu->timer) free(emu->timer);
+	if (emu->apu) destroy_apu(emu->apu);
 	emu->cpu = NULL;
 	emu->memory = NULL;
 	emu->gpu = NULL;
 	emu->timer = NULL;
+	emu->apu = NULL;
 }
 
 bool cartridge_loaded(Emulator* emu) {

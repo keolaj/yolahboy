@@ -14,6 +14,8 @@ extern "C" {
 #include "../components/cpu/operations.h"
 #include "../components/cpu/operation_defitions.h"
 #include "../components/gpu/gpu.h"
+#include "../components/apu/apu.h"
+
 	extern Operation operations[];
 	extern Operation cb_operations[];
 }
@@ -593,7 +595,6 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 	}
 	if (ImGui::BeginTabItem("SETTINGS")) {
 		// TODO
-		ImGui::Checkbox("Create GameboyDoctor Log", &create_gbd_log);
 		ImGui::Checkbox("Use Gamepad", &use_gamepad);
 
 		ImGui::InputText("Bootrom Path", bootrom_path_buf, 200);
@@ -694,6 +695,14 @@ int debugger_run(char* rom_path, char* bootrom_path) {
 	SDL_FRect emulator_screen_rect{ 0, 0, 160, 144 };
 	SDL_FRect tile_screen_rect{ 0, 0, 128, 192 };
 
+	SDL_AudioDeviceID audio_device_id =  SDL_OpenAudioDevice(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, NULL);
+	const SDL_AudioSpec src_spec = { SDL_AUDIO_F32, 2, 48000 };
+	SDL_AudioSpec dest_spec;
+	SDL_GetAudioDeviceFormat(audio_device_id, &dest_spec, NULL);
+
+	SDL_AudioStream* stream = SDL_CreateAudioStream(&src_spec, &dest_spec);
+	SDL_BindAudioStream(audio_device_id, stream);
+
 	KeyboardConfig k_config{};
 	k_config.a = SDL_SCANCODE_J;
 	k_config.b = SDL_SCANCODE_K;
@@ -770,32 +779,11 @@ int debugger_run(char* rom_path, char* bootrom_path) {
 	while (!quit) {
 
 		if (emu.should_run) {
-			set_use_gbd_log(emu.memory, create_gbd_log);
-			if (create_gbd_log && emu.memory->in_bios == false) {
-				if (!gbd_log.is_open()) {
-					app_log.AddLog("opening gbd log\n");
-					gbd_log.open("./gbd_log.txt");
-				}
-				char str_buf[200];
-				sprintf(str_buf, "A:%02hX F:%02hX B:%02hX C:%02hX D:%02hX E:%02hX H:%02hX L:%02hX SP:%04hX PC:%04hX PCMEM:%02hX,%02hX,%02hX,%02hX\n",
-					emu.cpu->registers.a,
-					emu.cpu->registers.f,
-					emu.cpu->registers.b,
-					emu.cpu->registers.c,
-					emu.cpu->registers.d,
-					emu.cpu->registers.e,
-					emu.cpu->registers.h,
-					emu.cpu->registers.l,
-					emu.cpu->registers.sp,
-					emu.cpu->registers.pc,
-					read8(emu.memory, emu.cpu->registers.pc),
-					read8(emu.memory, emu.cpu->registers.pc + 1),
-					read8(emu.memory, emu.cpu->registers.pc + 2),
-					read8(emu.memory, emu.cpu->registers.pc + 3)
-				);
-				gbd_log << str_buf;
-			}
 			if (step(&emu) < 0) emu.should_run = false; // if step returns negative the operation failed to execute
+			if (emu.apu->buffer_full) {
+				SDL_PutAudioStreamData(stream, get_buffer(emu.apu), emu.apu->buffer_size * 2);
+				emu.apu->buffer_full = false;
+			}
 		}
 
 		if (breakpoints[emu.cpu->registers.pc]) {
@@ -813,15 +801,6 @@ int debugger_run(char* rom_path, char* bootrom_path) {
 
 		if (emu.should_run) { // emulator controls rendering
 			if (emu.gpu->should_draw) {
-
-				while (timer < 16.3) {
-					SDL_DelayNS(10000);
-					LAST = NOW;
-					NOW = SDL_GetPerformanceCounter();
-					deltaTime = ((NOW - LAST) * 1000 / (double)SDL_GetPerformanceFrequency());
-					timer += deltaTime;
-				}
-
 				while (SDL_PollEvent(&e)) {
 					ImGui_ImplSDL3_ProcessEvent(&e);
 					switch (e.type) {
@@ -854,6 +833,15 @@ int debugger_run(char* rom_path, char* bootrom_path) {
 				SDL_RenderTexture(renderer, tile_tex, nullptr, &tile_screen_rect);
 				SDL_RenderPresent(renderer);
 				timer = 0;
+
+				while (timer < 16.67) {
+					// SDL_DelayNS(100);
+					LAST = NOW;
+					NOW = SDL_GetPerformanceCounter();
+					deltaTime = ((NOW - LAST) * 1000 / (double)SDL_GetPerformanceFrequency());
+					timer += deltaTime;
+				}
+
 			}
 			set_run_once = false;
 		
