@@ -295,7 +295,7 @@ void handle_vblank(Gpu* gpu, Memory* mem) {
 
 }
 
-void step_gpu(Gpu* gpu, Memory* mem, u8 cycles) {
+void gpu_step(Gpu* gpu, Memory* mem, u8 cycles) {
 	bool lcd_enabled = gpu->lcdc & (1 << 7);
 	gpu->should_draw = false;
 	if (!lcd_enabled) {

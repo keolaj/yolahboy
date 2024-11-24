@@ -901,7 +901,7 @@ void CCF_impl(Cpu* cpu, Memory* mem, Operation* op) {
 	cpu->registers.f &= (FLAG_CARRY & FLAG_ZERO);
 }
 
-Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op) {
+Cycles cpu_step(Cpu* cpu, Memory* mem, Operation op) {
 	++cpu->registers.pc;
 
 	if (cpu->registers.pc == 0x101) {
@@ -989,7 +989,7 @@ Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op) {
 		break;
 
 	case CB: {
-		Cycles cb_ret = step_cpu(cpu, mem, get_cb_operation(cpu, mem));
+		Cycles cb_ret = cpu_step(cpu, mem, get_cb_operation(cpu, mem));
 		if (cb_ret.t_cycles == -1) {
 			AddLog("Unimplemented CB op\n");
 			return (Cycles) { -1, -1 };

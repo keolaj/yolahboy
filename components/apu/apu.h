@@ -1,7 +1,8 @@
 #pragma once
 #include "../global_definitions.h"
 
-void step_apu(Apu* apu, u8 cycles);
+void apu_step(Apu* apu, u8 cycles);
 Apu* create_apu(int sample_rate, int buffer_size);
 void destroy_apu(Apu* apu);
 float* get_buffer(Apu* apu);
+float* swap_buffer(Apu* apu);

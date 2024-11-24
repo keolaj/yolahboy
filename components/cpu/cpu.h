@@ -7,7 +7,7 @@
 
 
 Cpu* create_cpu();
-Cycles step_cpu(Cpu* cpu, Memory* mem, Operation op);
+Cycles cpu_step(Cpu* cpu, Memory* mem, Operation op);
 Operation get_operation(Cpu* cpu, Memory* mem);
 void jump(Cpu* cpu, u16 address);
 void print_registers(Cpu* cpu);

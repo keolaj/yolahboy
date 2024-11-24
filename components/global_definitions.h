@@ -111,7 +111,6 @@ typedef struct {
 typedef struct _channel {
 	bool enabled;
 	int divider;
-	int sample_counter;
 	u16 frequency_timer;
 	u8 wave_index;
 	float* left_buffer;
@@ -144,6 +143,8 @@ typedef struct _apu {
 	u8 nr44; // Channel 4 control
 
 	int sample_rate;
+	int sample_counter;
+
 
 	int buffer_size;
 	int buffer_position;

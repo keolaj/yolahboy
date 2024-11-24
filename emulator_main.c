@@ -41,13 +41,13 @@
 //
 //		Operation to_execute = get_operation(emu.cpu, emu.memory);
 //		// print_operation(to_execute);
-//		Cycles clock = step_cpu(emu.cpu, emu.memory, to_execute);
+//		Cycles clock = cpu_step(emu.cpu, emu.memory, to_execute);
 //		if (clock.m_cycles == -1 && clock.t_cycles == -1) {
 //			emu.should_quit = true;
 //		}
 //		// print_registers(emu.cpu);
 //		c += clock.t_cycles;
-//		step_gpu(emu.gpu, clock.t_cycles);
+//		gpu_step(emu.gpu, clock.t_cycles);
 //		if (c > 29780) {
 //
 //			LeaveCriticalSection(&emu_crit);

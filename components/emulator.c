@@ -46,7 +46,7 @@ int step(Emulator* emu) {
 	Operation to_exec = get_operation(emu->cpu, emu->memory);
 	Cycles c;
 	if (!emu->cpu->halted) {
-		c = step_cpu(emu->cpu, emu->memory, to_exec);
+		c = cpu_step(emu->cpu, emu->memory, to_exec);
 	}
 	else {
 		c = run_halted(emu->cpu, emu->memory);
@@ -56,8 +56,8 @@ int step(Emulator* emu) {
 	}
 	emu->clock += c.t_cycles;
 	tick(emu, c.t_cycles);
-	step_gpu(emu->gpu, emu->memory, c.m_cycles * 4);
-	step_apu(emu->apu, c.t_cycles);
+	gpu_step(emu->gpu, emu->memory, c.m_cycles * 4);
+	apu_step(emu->apu, c.t_cycles);
 	return 0;
 }
 

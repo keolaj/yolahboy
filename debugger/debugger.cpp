@@ -695,8 +695,8 @@ int debugger_run(char* rom_path, char* bootrom_path) {
 	SDL_FRect emulator_screen_rect{ 0, 0, 160, 144 };
 	SDL_FRect tile_screen_rect{ 0, 0, 128, 192 };
 
-	SDL_AudioDeviceID audio_device_id =  SDL_OpenAudioDevice(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, NULL);
 	const SDL_AudioSpec src_spec = { SDL_AUDIO_F32, 2, 48000 };
+	SDL_AudioDeviceID audio_device_id =  SDL_OpenAudioDevice(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, NULL);
 	SDL_AudioSpec dest_spec;
 	SDL_GetAudioDeviceFormat(audio_device_id, &dest_spec, NULL);
 
@@ -730,8 +730,6 @@ int debugger_run(char* rom_path, char* bootrom_path) {
 		SDL_DestroyWindow(window);
 		return -1;
 	}
-
-	// app_log.AddLog("Render driver: %s\nVsync number: %d", SDL_GetStringProperty(props, SDL_PROP_RENDERER_NAME_STRING, NULL), SDL_GetNumberProperty(props, SDL_PROP_RENDERER_VSYNC_NUMBER, 0));
 
 	Emulator emu;
 	if (init_emulator(&emu) < 0) {
@@ -781,7 +779,7 @@ int debugger_run(char* rom_path, char* bootrom_path) {
 		if (emu.should_run) {
 			if (step(&emu) < 0) emu.should_run = false; // if step returns negative the operation failed to execute
 			if (emu.apu->buffer_full) {
-				SDL_PutAudioStreamData(stream, get_buffer(emu.apu), emu.apu->buffer_size * 2);
+				SDL_PutAudioStreamData(stream, get_buffer(emu.apu), emu.apu->buffer_size * 2 * sizeof(float));
 				emu.apu->buffer_full = false;
 			}
 		}
@@ -834,13 +832,13 @@ int debugger_run(char* rom_path, char* bootrom_path) {
 				SDL_RenderPresent(renderer);
 				timer = 0;
 
-				while (timer < 16.67) {
-					// SDL_DelayNS(100);
-					LAST = NOW;
-					NOW = SDL_GetPerformanceCounter();
-					deltaTime = ((NOW - LAST) * 1000 / (double)SDL_GetPerformanceFrequency());
-					timer += deltaTime;
-				}
+				//while (timer < 16.5) {
+				//	// SDL_DelayNS(100);
+				//	LAST = NOW;
+				//	NOW = SDL_GetPerformanceCounter();
+				//	deltaTime = ((NOW - LAST) * 1000 / (double)SDL_GetPerformanceFrequency());
+				//	timer += deltaTime;
+				//}
 
 			}
 			set_run_once = false;
