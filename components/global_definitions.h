@@ -107,6 +107,11 @@ typedef struct {
 	bool b;
 } Controller;
 
+typedef struct _channel {
+	u16 divider;
+	u8 wave_index;
+	float* buffer;
+} Channel;
 
 typedef struct _apu {
 	u16 clock;
@@ -120,18 +125,31 @@ typedef struct _apu {
 	u8 nr14; // Channel 1 period high and control
 	u8 nr21; // Channel 2 length timer and duty cycle
 	u8 nr22; // Channel 2 volume and envelope
-	u8 nr23; // Channel 3 period low
+	u8 nr23; // Channel 2 period low
 	u8 nr24; // Channel 2 period high and control
 	u8 nr30; // Channel 3 DAC enable
 	u8 nr31; // Channel 3 length timer
 	u8 nr32; // Channel 3 output level (write only)
 	u8 nr33; // Channel 3 period low (write only)
 	u8 nr34; // Channel 3 period high and control
-	u8 wave_pattern_ram[0xf]; // FF30-FF3F
+	u8 wave_pattern_ram[0x10]; // FF30-FF3F
 	u8 nr41; // Channel 4 length timer (write only)
 	u8 nr42; // Channel 4 volume and envelope
 	u8 nr43; // Channel 4 frequency and randomness
 	u8 nr44; // Channel 4 control
+
+	int buffer_size;
+	int buffer_position;
+
+	Channel channel[4];
+
+	float* left_buffer_1;
+	float* right_buffer_1;
+
+	float* left_buffer_2;
+	float* right_buffer_2;
+
+	bool use_first_buffer;
 
 } Apu;
 
