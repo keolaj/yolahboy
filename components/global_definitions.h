@@ -110,9 +110,9 @@ typedef struct {
 
 typedef struct _channel {
 	bool enabled;
-	int divider;
-	u16 frequency_timer;
 	u8 wave_index;
+	u16 frequency_timer;
+	int divider;
 	float* left_buffer;
 	float* right_buffer;
 } Channel;
@@ -136,29 +136,29 @@ typedef struct _apu {
 	u8 nr32; // Channel 3 output level (write only)
 	u8 nr33; // Channel 3 period low (write only)
 	u8 nr34; // Channel 3 period high and control
-	u8 wave_pattern_ram[0x10]; // FF30-FF3F
 	u8 nr41; // Channel 4 length timer (write only)
 	u8 nr42; // Channel 4 volume and envelope
 	u8 nr43; // Channel 4 frequency and randomness
 	u8 nr44; // Channel 4 control
+	u8 wave_pattern_ram[0x10]; // FF30-FF3F
+
+	bool use_buffer1;
+	bool buffer_full;
+
+	bool sweep_enabled;
+	u16 sweep_freq_shadow;
+	int sweep_timer;
 
 	int sample_rate;
 	int sample_counter;
-
 
 	int buffer_size;
 	int buffer_position;
 
 	Channel channel[4];
-	int sweep_timer;
-	bool sweep_enabled;
-	u16 sweep_freq_shadow;
 
 	float* buffer1;
 	float* buffer2;
-
-	bool use_buffer1;
-	bool buffer_full;
 
 } Apu;
 

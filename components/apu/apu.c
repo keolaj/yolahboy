@@ -17,9 +17,11 @@ Apu* create_apu(int sample_rate, int buffer_size) {
 		AddLog("Couldn't allocate Apu!\n");
 		return NULL;
 	}
+
 	apu->buffer_size = buffer_size;
 	apu->sample_rate = sample_rate;
-	for (int i = 0; i < 4; ++i) {
+
+	for (int i = 0; i < 4; ++i) { // Allocate buffers for each channel
 		apu->channel[i].left_buffer = (float*)malloc(sizeof(float) * buffer_size);
 		apu->channel[i].right_buffer = (float*)malloc(sizeof(float) * buffer_size);
 		if (apu->channel[i].left_buffer == NULL || apu->channel[i].right_buffer == NULL) {
@@ -28,7 +30,7 @@ Apu* create_apu(int sample_rate, int buffer_size) {
 			return NULL;
 		}
 	}
-	apu->buffer1 = (float*)malloc(sizeof(float) * buffer_size * 2);
+	apu->buffer1 = (float*)malloc(sizeof(float) * buffer_size * 2); // Allocate main buffers
 	apu->buffer2 = (float*)malloc(sizeof(float) * buffer_size * 2);
 
 	if (apu->buffer1 == NULL || apu->buffer2 == NULL) {
@@ -36,18 +38,27 @@ Apu* create_apu(int sample_rate, int buffer_size) {
 		destroy_apu(apu);
 		return NULL;
 	}
+
 	init_apu(apu);
+
 	return apu;
 }
 
 void init_apu(Apu* apu) {
-	memset(apu, 0, sizeof(Apu));
+	int buffer_size = apu->buffer_size;
+	int sample_rate = apu->sample_rate;
+
+	memset(apu, 0, 0x40); // This resets all registers while leaving channel and buffers intact
 	for (int i = 0; i < 4; ++i) {
-		memset(apu->channel[i].left_buffer, 0, apu->buffer_size * sizeof(float));
-		memset(apu->channel[i].right_buffer, 0, apu->buffer_size * sizeof(float));
+		memset(&apu->channel[i], 0, 0x8); // This resets channel and leaves buffers intact
+		memset(apu->channel[i].left_buffer, 0.0f, buffer_size * sizeof(float));
+		memset(apu->channel[i].right_buffer, 0.0f, buffer_size * sizeof(float));
 	}
-	memset(apu->buffer1, 0, apu->buffer_size * 2 * sizeof(float));
-	memset(apu->buffer2, 0, apu->buffer_size * 2 * sizeof(float));
+	memset(apu->buffer1, 0, buffer_size * 2 * sizeof(float));
+	memset(apu->buffer2, 0, buffer_size * 2 * sizeof(float));
+	
+	apu->buffer_size = buffer_size;
+	apu->sample_rate = sample_rate;
 }
 
 void destroy_apu(Apu* apu) {
