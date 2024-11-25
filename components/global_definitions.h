@@ -2,6 +2,12 @@
 #include <stdbool.h>
 #include <SDL3/SDL.h>
 
+typedef unsigned char u8;
+typedef char i8;
+typedef short i16;
+typedef unsigned short u16;
+typedef unsigned int u32;
+
 #define MAX_BREAKPOINTS 0x100
 
 #define BANKSIZE 0x4000
@@ -84,12 +90,6 @@
 #define JOYPAD_INTERRUPT 1 << 4
 #define JOYPAD_ADDRESS 0x60
 
-typedef unsigned char u8;
-typedef char i8;
-typedef short i16;
-typedef unsigned short u16;
-typedef unsigned int u32;
-
 #define FLAG_ZERO 0b10000000
 #define FLAG_SUB 0b01000000
 #define FLAG_HALFCARRY 0b00100000
@@ -161,14 +161,6 @@ typedef struct _apu {
 	float* buffer2;
 
 } Apu;
-
-//typedef enum {
-//	ROM_ONLY,
-//	MBC1,
-//	MBC1_RAM,
-//	MBC1_RAM_BATTERY,
-//	MBC2
-//} CART_TYPE;
 
 #define ROM_ONLY 0
 #define MBC1 1

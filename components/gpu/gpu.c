@@ -68,50 +68,52 @@ u32 pixel_from_palette(u8 palette, u8 id) {
 
 void draw_line(Gpu* gpu, Memory* mem) {
 
-	bool BGTileMapArea = (gpu->lcdc & (1 << 3));
-	bool BGTileAddressMode = !(gpu->lcdc & (1 << 4));
-	int mapAddress = (BGTileMapArea) ? 0x9C00 : 0x9800; // if bit 3 of the LCD Control registers is set we use the tilemap at 0x9C00, else use tile map at 0x9800
-	mapAddress += (((gpu->ly + gpu->scy) & 0xFF) >> 3) << 5;
+	if (gpu->lcdc & 1) { // if BG enabled
+		bool BGTileMapArea = (gpu->lcdc & (1 << 3));
+		bool BGTileAddressMode = !(gpu->lcdc & (1 << 4));
+		int mapAddress = (BGTileMapArea) ? 0x9C00 : 0x9800; // if bit 3 of the LCD Control registers is set we use the tilemap at 0x9C00, else use tile map at 0x9800
+		mapAddress += (((gpu->ly + gpu->scy) & 0xFF) >> 3) << 5;
 
-	int lineOffset = (gpu->scx >> 3);
-	int tileX = gpu->scx & 7;
-	int tileY = (gpu->ly + gpu->scy) & 7;
-	int tile = read8(mem, mapAddress + lineOffset);
+		int lineOffset = (gpu->scx >> 3);
+		int tileX = gpu->scx & 7;
+		int tileY = (gpu->ly + gpu->scy) & 7;
+		int tile = read8(mem, mapAddress + lineOffset);
 
-	if (BGTileAddressMode && tile < 128) tile += 256;
+		if (BGTileAddressMode && tile < 128) tile += 256;
 
-	if (gpu->lcdc & 1) {
-		for (int i = 0; i < SCREEN_WIDTH; ++i) {
-			gpu->framebuffer[gpu->ly * SCREEN_WIDTH + i] = pixel_from_palette(read8(mem, BGP), read_tile(mem, tile, tileX, tileY));// pixel_from_palette(read8(mem, BGP), gpu->tiles[tile][tileY][tileX]);
-			++tileX;
-			if (tileX == 8) {
-				tileX = 0;
-				lineOffset = (lineOffset + 1) & 31;
-				tile = read8(mem, mapAddress + lineOffset);
-				if (BGTileAddressMode && tile < 128) tile += 256;
+		if (gpu->lcdc & 1) {
+			for (int i = 0; i < SCREEN_WIDTH; ++i) {
+				gpu->framebuffer[gpu->ly * SCREEN_WIDTH + i] = pixel_from_palette(read8(mem, BGP), read_tile(mem, tile, tileX, tileY));// pixel_from_palette(read8(mem, BGP), gpu->tiles[tile][tileY][tileX]);
+				++tileX;
+				if (tileX == 8) {
+					tileX = 0;
+					lineOffset = (lineOffset + 1) & 31;
+					tile = read8(mem, mapAddress + lineOffset);
+					if (BGTileAddressMode && tile < 128) tile += 256;
+				}
 			}
-		}
 
+		}
 	}
 
 	// draw window
 	u8 windowx = gpu->wx - 7;
 	u8 windowy = gpu->wy;
 	if (gpu->lcdc & (1 << 5) && gpu->ly >= windowy) { // draw window
-		BGTileMapArea = (gpu->lcdc & (1 << 6));
-		BGTileAddressMode = !(gpu->lcdc & (1 << 4));
-		mapAddress = (BGTileMapArea) ? 0x9C00 : 0x9800; // if bit 3 of the LCD Control registers is set we use the tilemap at 0x9C00, else use tile map at 0x9800
+		bool BGTileMapArea = (gpu->lcdc & (1 << 6));
+		bool BGTileAddressMode = !(gpu->lcdc & (1 << 4));
+		int mapAddress = (BGTileMapArea) ? 0x9C00 : 0x9800; // if bit 3 of the LCD Control registers is set we use the tilemap at 0x9C00, else use tile map at 0x9800
 		mapAddress += (((gpu->ly + windowy) & 0xFF) >> 3) << 5;
-
-		if (BGTileAddressMode && tile < 128) tile += 256;
 
 		int lineOffset = (windowx >> 3);
 		int tileX = windowx & 7;
 		int tileY = (gpu->ly + windowy) & 7;
 		int tile = read8(mem, mapAddress + lineOffset);
 
+		if (BGTileAddressMode && tile < 128) tile += 256;
+
 		for (int i = 0; i < SCREEN_WIDTH; ++i) {
-			if (windowx < i) continue;
+			if (i < windowx) continue;
 			uint32_t window_pixel = pixel_from_palette(read8(mem, BGP), read_tile(mem, tile, tileX, tileY));
 			gpu->framebuffer[gpu->ly * SCREEN_WIDTH + i] = window_pixel;
 
@@ -149,7 +151,7 @@ void draw_line(Gpu* gpu, Memory* mem) {
 			int sprite_top = sprite_pos_y - 16;
 			if (gpu->ly < sprite_bottom && gpu->ly >= sprite_top) { // if current line within sprite 
 				++sprite_count_for_line; // 10 sprites a line
-				if (eight_by_16_mode) tile &= 0xFE; // make sure we aren't indexing out of where we should be
+				if (eight_by_16_mode) tile_index &= 0xFE; // make sure we aren't indexing out of where we should be
 				u8 sprite_line = gpu->ly - sprite_top; // get current line of sprite
 				if (y_flip) {
 					if (eight_by_16_mode) {
@@ -173,7 +175,7 @@ void draw_line(Gpu* gpu, Memory* mem) {
 				}
 				u8 palette = read8(mem, (palette_mode ? OBP1 : OBP0));
 				for (int i = 0; i < 8; ++i) {
-					if (sprite_pos_x - 8 + i < 0) continue;
+					if (sprite_pos_x - 7 + i < 0) continue;
 					u8 id = read_tile(mem, tile_index, i, sprite_line);
 					if (id == 0) continue;
 					u32 pixel = pixel_from_palette(palette, id);

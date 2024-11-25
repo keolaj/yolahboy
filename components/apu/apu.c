@@ -96,6 +96,10 @@ void channel_2_sample(Apu* apu) {
 
 }
 
+void handle_sample(Apu* apu, u8 cycles) {
+
+}
+
 // BUFFER FUNCTIONS
 void write_channels_to_buffer(Apu* apu) {
 	float* buf = apu->use_buffer1 ? apu->buffer2 : apu->buffer1;
