@@ -113,8 +113,7 @@ typedef struct _channel {
 	u8 wave_index;
 	u16 frequency_timer;
 	int divider;
-	float* left_buffer;
-	float* right_buffer;
+	float volume;
 } Channel;
 
 typedef struct _apu {
@@ -142,7 +141,6 @@ typedef struct _apu {
 	u8 nr44; // Channel 4 control
 	u8 wave_pattern_ram[0x10]; // FF30-FF3F
 
-	bool use_buffer1;
 	bool buffer_full;
 
 	bool sweep_enabled;
@@ -157,8 +155,7 @@ typedef struct _apu {
 
 	Channel channel[4];
 
-	float* buffer1;
-	float* buffer2;
+	float* buffer;
 
 } Apu;
 
