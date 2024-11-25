@@ -110,6 +110,7 @@ typedef struct {
 
 typedef struct _channel {
 	bool enabled;
+	u8 wave_select;
 	u8 wave_index;
 	u16 frequency;
 	int frequency_timer;
@@ -117,6 +118,7 @@ typedef struct _channel {
 	u8 volume;
 
 	bool length_enabled;
+	u8 length;
 	u8 length_timer;
 
 	// frequency sweep control

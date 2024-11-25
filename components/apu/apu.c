@@ -84,11 +84,15 @@ void trigger_channel(Channel* channel) {
 	channel->enabled = true;
 	channel->frequency_timer = (2048 - channel->frequency) * 4;
 	channel->volume = channel->env_initial_volume / (float)0xF;
+	channel->length_timer = channel->length;
 }
 
 void channel_1_step(Apu* apu, u8 cycles) {
 	if (apu->channel[0].enabled) {
 		apu->channel[0].frequency_timer -= cycles;
+		if (apu->channel[0].length_enabled && apu->channel[0].length_timer == 0) {
+			apu->channel[0].enabled = false;
+		}
 		if (apu->channel[0].frequency_timer < 0) {
 			apu->channel[0].frequency_timer += ((2048 - apu->channel[0].frequency) * 4);
 			++apu->channel[0].wave_index;
@@ -101,15 +105,32 @@ void channel_1_step(Apu* apu, u8 cycles) {
 
 float channel_1_sample(Apu* apu) {
 	if (apu->channel[0].enabled) {
-		return (duty_cycles[(apu->nr21 & 0b11000000) >> 6][apu->channel[0].wave_index] ? 1.0 : 0.0);
+		return (duty_cycles[(apu->channel[0].wave_select & 0b11000000) >> 6][apu->channel[0].wave_index] ? 1.0 : 0.0);
 	}
 	else return 0.0f;
 }
 
 void channel_2_step(Apu* apu, u8 cycles) {
-	
+	if (apu->channel[1].enabled) {
+		apu->channel[1].frequency_timer -= cycles;
+		if (apu->channel[1].length_enabled && apu->channel[1].length_timer < 0) {
+			apu->channel[1].enabled = false;
+		}
+		if (apu->channel[1].frequency_timer < 0) {
+			apu->channel[1].frequency_timer += ((2048 - apu->channel[1].frequency) * 4);
+			++apu->channel[1].wave_index;
+			if (apu->channel[1].wave_index > 15) {
+				apu->channel[1].wave_index = 0;
+			}
+		}
+	}
+
 }
-void channel_2_sample(Apu* apu) {
+float channel_2_sample(Apu* apu) {
+	if (apu->channel[1].enabled) {
+		return (duty_cycles[(apu->channel[1].wave_select & 0b11000000) >> 6][apu->channel[1].wave_index] ? 1.0 : 0.0);
+	}
+	else return 0.0f;
 
 }
 
@@ -120,9 +141,11 @@ void handle_sample(Apu* apu, u8 cycles) {
 // BUFFER FUNCTIONS
 void write_channels_to_buffer(Apu* apu) {
 	// TODO 
-	float sample = channel_1_sample(apu);
-	apu->buffer[apu->buffer_position * 2] = sample;
-	apu->buffer[(apu->buffer_position * 2) + 1] = sample;
+	float ch1_sample = channel_1_sample(apu) / 2;
+	float ch2_sample = channel_2_sample(apu) / 2;
+
+	apu->buffer[apu->buffer_position * 2] = ch1_sample + ch2_sample;
+	apu->buffer[(apu->buffer_position * 2) + 1] = ch1_sample + ch2_sample;
 	++apu->buffer_position;
 }
 

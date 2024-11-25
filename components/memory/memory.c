@@ -169,6 +169,10 @@ void write8(Memory* mem, u16 address, u8 data) {
 			return;
 		}
 		if (mem->apu->nr52 & 0b10000000) { // audio is on and we can write to audio registers
+			if (address == NR11) {
+				mem->apu->channel[0].wave_select = (data & 0b11000000) >> 6;
+				mem->apu->channel[0].length = data & 0b0011111;
+			}
 			if (address == NR12) {
 				mem->apu->nr12 = data;
 				mem->apu->channel[0].env_initial_volume = (data & 0b11110000) >> 4;
@@ -191,6 +195,34 @@ void write8(Memory* mem, u16 address, u8 data) {
 					trigger_channel(&mem->apu->channel[0]);
 				}
 			}
+			if (address == NR21) {
+				mem->apu->nr21 = data;
+				mem->apu->channel[1].wave_select = (data & 0b11000000) >> 6;
+				mem->apu->channel[1].length = data & 0b0011111;
+			}
+			if (address == NR22) {
+				mem->apu->nr22 = data;
+				mem->apu->channel[1].env_initial_volume = (data & 0b11110000) >> 4;
+				mem->apu->channel[1].env_dir = data & 0b00001000;
+				mem->apu->channel[1].env_sweep_pace = data & 0b00000111;
+			}
+			if (address == NR23) {
+				mem->apu->nr23 = data;
+				u16 frequency = (mem->apu->nr23) | ((mem->apu->nr24 & 0b00000111) << 8);
+				mem->apu->channel[1].frequency = frequency;
+				return;
+			}
+			if (address == NR24) {
+				mem->apu->nr24 = data;
+				u16 frequency = (mem->apu->nr23) | ((mem->apu->nr24 & 0b00000111) << 8);
+				mem->apu->channel[1].frequency = frequency;
+
+				mem->apu->channel[1].length_enabled = data & 0b01000000;
+				if (data & 0b10000000) {
+					trigger_channel(&mem->apu->channel[1]);
+				}
+			}
+
 		}
 
 		mem->memory[address] = data;
