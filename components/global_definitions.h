@@ -114,7 +114,19 @@ typedef struct _channel {
 	u16 frequency;
 	int frequency_timer;
 	int divider;
-	float volume;
+	u8 volume;
+
+	bool length_enabled;
+	u8 length_timer;
+
+	// frequency sweep control
+	u8 freq_sweep_timer;
+
+	// envelope
+	u8 env_initial_volume;
+	bool env_dir;
+	u8 env_sweep_pace;
+	u8 env_timer;
 } Channel;
 
 typedef struct _apu {
@@ -143,6 +155,11 @@ typedef struct _apu {
 	u8 wave_pattern_ram[0x10]; // FF30-FF3F
 
 	bool buffer_full;
+
+	// DIV APU
+
+	int div_apu_internal;
+	int div_apu_counter;
 
 	bool sweep_enabled;
 	u16 sweep_freq_shadow;

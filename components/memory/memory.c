@@ -5,6 +5,7 @@
 #include "memory.h"
 #include "../timer/timer.h"
 #include "../gpu/gpu.h"
+#include "../apu/apu.h"
 #include "../controller/controller.h"
 #include "../debugger/imgui_custom_widget_wrapper.h"
 #include "./cartridge.h"
@@ -168,18 +169,26 @@ void write8(Memory* mem, u16 address, u8 data) {
 			return;
 		}
 		if (mem->apu->nr52 & 0b10000000) { // audio is on and we can write to audio registers
+			if (address == NR12) {
+				mem->apu->nr12 = data;
+				mem->apu->channel[0].env_initial_volume = (data & 0b11110000) >> 4;
+				mem->apu->channel[0].env_dir = data & 0b00001000;
+				mem->apu->channel[0].env_sweep_pace = data & 0b00000111;
+			}
 			if (address == NR13) {
 				mem->apu->nr13 = data;
-				mem->apu->channel[0].frequency = (mem->apu->channel[0].frequency_timer & 0b0000011100000000) | data;
-				mem->apu->channel[0].frequency_timer = (2048 - mem->apu->channel[0].frequency_timer) * 4;
+				u16 frequency = (mem->apu->nr13) | ((mem->apu->nr14 & 0b00000111) << 8);
+				mem->apu->channel[0].frequency = frequency;
 				return;
 			}
 			if (address == NR14) {
 				mem->apu->nr14 = data;
-				mem->apu->channel[0].frequency = (mem->apu->channel[0].frequency_timer & 0b0000000011111111) | (data & 0b00000111);
-				mem->apu->channel[0].frequency_timer = (2048 - mem->apu->channel[0].frequency_timer) * 4;
+				u16 frequency = (mem->apu->nr13) | ((mem->apu->nr14 & 0b00000111) << 8);
+				mem->apu->channel[0].frequency = frequency;
+
+				mem->apu->channel[0].length_enabled = data & 0b01000000;
 				if (data & 0b10000000) {
-					mem->apu->channel[0].enabled = true;
+					trigger_channel(&mem->apu->channel[0]);
 				}
 			}
 		}

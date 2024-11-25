@@ -13,6 +13,7 @@ static bool duty_cycles[4][16] = {
 // APU SETUP FUNCTIONS
 Apu* create_apu(int sample_rate, int buffer_size) {
 	Apu* apu = (Apu*)malloc(sizeof(Apu));
+	memset(apu, 0, sizeof(Apu));
 	if (apu == NULL) {
 		AddLog("Couldn't allocate Apu!\n");
 		return NULL;
@@ -29,8 +30,6 @@ Apu* create_apu(int sample_rate, int buffer_size) {
 		return NULL;
 	}
 
-	init_apu(apu);
-
 	return apu;
 }
 
@@ -38,7 +37,8 @@ void init_apu(Apu* apu) {
 	int buffer_size = apu->buffer_size;
 	int sample_rate = apu->sample_rate;
 
-	memset(apu, 0, 0x40); // This resets all Apu registers 
+	memset(apu, 0, 0x30); // This resets all Apu registers and controls
+	
 	memset(&apu->channel, 0, sizeof(Channel) * 4);
 	memset(apu->buffer, 0, buffer_size * 2 * sizeof(float));
 	
@@ -51,10 +51,41 @@ void destroy_apu(Apu* apu) {
 }
 
 void div_apu_step(Apu* apu, u8 cycles) {
+	apu->div_apu_internal += cycles;
+	if (apu->div_apu_internal >= 8192) {
+		apu->div_apu_internal -= 8192;
+		++apu->div_apu_counter;
 
+		// Timer Controls
+		if (apu->div_apu_counter % 2 == 0) { // decrement each channels length timer every other counter
+			for (int i = 0; i < 4; ++i) {
+				if (apu->channel[i].length_enabled) {
+					--apu->channel[i].length_timer;
+				}
+			}
+		}
+		if (apu->div_apu_counter == 7) {
+			for (int i = 0; i < 4; ++i) {
+				--apu->channel[i].env_timer;
+			}
+		}
+		if (apu->div_apu_counter == 2 || apu->div_apu_counter == 6) {
+			for (int i = 0; i < 4; ++i) {
+				--apu->channel[i].freq_sweep_timer;
+			}
+		}
+
+		if (apu->div_apu_counter == 8) apu->div_apu_counter = 0;
+	}
 }
 
 // CHANNEL FUNCTIONS
+void trigger_channel(Channel* channel) {
+	channel->enabled = true;
+	channel->frequency_timer = (2048 - channel->frequency) * 4;
+	channel->volume = channel->env_initial_volume / (float)0xF;
+}
+
 void channel_1_step(Apu* apu, u8 cycles) {
 	if (apu->channel[0].enabled) {
 		apu->channel[0].frequency_timer -= cycles;
@@ -67,6 +98,7 @@ void channel_1_step(Apu* apu, u8 cycles) {
 		}
 	}
 }
+
 float channel_1_sample(Apu* apu) {
 	if (apu->channel[0].enabled) {
 		return (duty_cycles[(apu->nr21 & 0b11000000) >> 6][apu->channel[0].wave_index] ? 1.0 : 0.0);
@@ -119,8 +151,8 @@ void apu_step(Apu* apu, u8 cycles) {
 		channel_2_step(apu, cycles);
 
 		handle_buffers(apu, cycles);
-
 		apu->clock += cycles;
+
 	}
 }
 
