@@ -111,7 +111,8 @@ typedef struct {
 typedef struct _channel {
 	bool enabled;
 	u8 wave_index;
-	u16 frequency_timer;
+	u16 frequency;
+	int frequency_timer;
 	int divider;
 	float volume;
 } Channel;

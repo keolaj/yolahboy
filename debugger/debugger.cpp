@@ -695,13 +695,20 @@ int debugger_run(char* rom_path, char* bootrom_path) {
 	SDL_FRect emulator_screen_rect{ 0, 0, 160, 144 };
 	SDL_FRect tile_screen_rect{ 0, 0, 128, 192 };
 
-	const SDL_AudioSpec src_spec = { SDL_AUDIO_F32, 2, 48000 };
-	SDL_AudioDeviceID audio_device_id =  SDL_OpenAudioDevice(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, NULL);
-	SDL_AudioSpec dest_spec;
-	SDL_GetAudioDeviceFormat(audio_device_id, &dest_spec, NULL);
+	// const SDL_AudioSpec src_spec = { SDL_AUDIO_F32, 2, 48000 };
+	//SDL_AudioDeviceID audio_device_id =  SDL_OpenAudioDevice(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &src_spec);
+	//SDL_AudioSpec dest_spec;
+	//SDL_GetAudioDeviceFormat(audio_device_id, &dest_spec, NULL);
 
-	SDL_AudioStream* stream = SDL_CreateAudioStream(&src_spec, &dest_spec);
-	SDL_BindAudioStream(audio_device_id, stream);
+	SDL_AudioStream* stream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, NULL, NULL, NULL);
+	SDL_ResumeAudioStreamDevice(stream);
+	
+	SDL_AudioSpec src_spec;
+	SDL_AudioSpec dest_spec;
+
+	SDL_GetAudioStreamFormat(stream, &src_spec, &dest_spec);
+
+	// SDL_BindAudioStream(audio_device_id, stream);
 
 	KeyboardConfig k_config{};
 	k_config.a = SDL_SCANCODE_J;
@@ -832,13 +839,13 @@ int debugger_run(char* rom_path, char* bootrom_path) {
 				SDL_RenderPresent(renderer);
 				timer = 0;
 
-				//while (timer < 16.5) {
-				//	// SDL_DelayNS(100);
-				//	LAST = NOW;
-				//	NOW = SDL_GetPerformanceCounter();
-				//	deltaTime = ((NOW - LAST) * 1000 / (double)SDL_GetPerformanceFrequency());
-				//	timer += deltaTime;
-				//}
+				while (timer < 16.6) {
+					SDL_DelayNS(100);
+					LAST = NOW;
+					NOW = SDL_GetPerformanceCounter();
+					deltaTime = ((NOW - LAST) * 1000 / (double)SDL_GetPerformanceFrequency());
+					timer += deltaTime;
+				}
 
 			}
 			set_run_once = false;

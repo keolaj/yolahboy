@@ -170,14 +170,14 @@ void write8(Memory* mem, u16 address, u8 data) {
 		if (mem->apu->nr52 & 0b10000000) { // audio is on and we can write to audio registers
 			if (address == NR13) {
 				mem->apu->nr13 = data;
-				mem->apu->channel[0].frequency_timer = (mem->apu->channel[0].frequency_timer & 0b0000011100000000) | data;
-				// mem->apu->channel[0].divider = (2048 - mem->apu->channel[0].frequency_timer) * 4;
+				mem->apu->channel[0].frequency = (mem->apu->channel[0].frequency_timer & 0b0000011100000000) | data;
+				mem->apu->channel[0].frequency_timer = (2048 - mem->apu->channel[0].frequency_timer) * 4;
 				return;
 			}
 			if (address == NR14) {
 				mem->apu->nr14 = data;
-				mem->apu->channel[0].frequency_timer = (mem->apu->channel[0].frequency_timer & 0b0000000011111111) | (data & 0b00000111);
-				// mem->apu->channel[0].divider = (2048 - mem->apu->channel[0].frequency_timer) * 4;
+				mem->apu->channel[0].frequency = (mem->apu->channel[0].frequency_timer & 0b0000000011111111) | (data & 0b00000111);
+				mem->apu->channel[0].frequency_timer = (2048 - mem->apu->channel[0].frequency_timer) * 4;
 				if (data & 0b10000000) {
 					mem->apu->channel[0].enabled = true;
 				}
