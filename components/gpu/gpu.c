@@ -68,7 +68,7 @@ u32 pixel_from_palette(u8 palette, u8 id) {
 
 void draw_line(Gpu* gpu, Memory* mem) {
 
-	if (gpu->lcdc & 1) { // if BG enabled
+	if (gpu->lcdc & 1) { // if BG enabled draw BG
 		bool BGTileMapArea = (gpu->lcdc & (1 << 3));
 		bool BGTileAddressMode = !(gpu->lcdc & (1 << 4));
 		int mapAddress = (BGTileMapArea) ? 0x9C00 : 0x9800; // if bit 3 of the LCD Control registers is set we use the tilemap at 0x9C00, else use tile map at 0x9800
@@ -97,9 +97,9 @@ void draw_line(Gpu* gpu, Memory* mem) {
 	}
 
 	// draw window
-	u8 windowx = gpu->wx - 7;
+    int windowx = gpu->wx - 7;
 	u8 windowy = gpu->wy;
-	if (gpu->lcdc & (1 << 5) && gpu->ly >= windowy) { // draw window
+	if (gpu->lcdc & (1 << 5) && gpu->ly >= windowy) { // if window enabled draw window
 		bool BGTileMapArea = (gpu->lcdc & (1 << 6));
 		bool BGTileAddressMode = !(gpu->lcdc & (1 << 4));
 		int mapAddress = (BGTileMapArea) ? 0x9C00 : 0x9800; // if bit 3 of the LCD Control registers is set we use the tilemap at 0x9C00, else use tile map at 0x9800
@@ -112,11 +112,11 @@ void draw_line(Gpu* gpu, Memory* mem) {
 
 		if (BGTileAddressMode && tile < 128) tile += 256;
 
-		for (int i = 0; i < SCREEN_WIDTH; ++i) {
-			if (i < windowx) continue;
-			uint32_t window_pixel = pixel_from_palette(read8(mem, BGP), read_tile(mem, tile, tileX, tileY));
-			gpu->framebuffer[gpu->ly * SCREEN_WIDTH + i] = window_pixel;
-
+		for (int i = windowx; i < SCREEN_WIDTH; ++i) {
+			if (i >= 0) {
+				uint32_t window_pixel = pixel_from_palette(read8(mem, BGP), read_tile(mem, tile, tileX, tileY));
+				gpu->framebuffer[gpu->ly * SCREEN_WIDTH + i] = window_pixel;
+			}
 			++tileX;
 			if (tileX == 8) {
 				tileX = 0;
@@ -125,8 +125,6 @@ void draw_line(Gpu* gpu, Memory* mem) {
 				if (BGTileAddressMode && tile < 128) tile += 256;
 			}
 		}
-
-
 	}
 
 	// draw sprites
