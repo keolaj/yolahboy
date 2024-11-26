@@ -183,13 +183,15 @@ void write8(Memory* mem, u16 address, u8 data) {
 			}
 			if (address == NR13) {
 				mem->apu->nr13 = data;
-				u16 frequency = (mem->apu->nr13) | ((mem->apu->nr14 & 0b00000111) << 8);
+				int frequency = (mem->apu->nr13) | ((mem->apu->nr14 & 0b00000111) << 8);
+				frequency = (2048 - frequency) * 4;
 				mem->apu->channel[0].frequency = frequency;
 				return;
 			}
 			if (address == NR14) {
 				mem->apu->nr14 = data;
-				u16 frequency = (mem->apu->nr13) | ((mem->apu->nr14 & 0b00000111) << 8);
+				int frequency = (mem->apu->nr13) | ((mem->apu->nr14 & 0b00000111) << 8);
+				frequency = (2048 - frequency) * 4;
 				mem->apu->channel[0].frequency = frequency;
 
 				mem->apu->channel[0].length_enabled = data & 0b01000000;
@@ -213,13 +215,15 @@ void write8(Memory* mem, u16 address, u8 data) {
 			}
 			if (address == NR23) {
 				mem->apu->nr23 = data;
-				u16 frequency = (mem->apu->nr23) | ((mem->apu->nr24 & 0b00000111) << 8);
+				int frequency = (mem->apu->nr23) | ((mem->apu->nr24 & 0b00000111) << 8);
+				frequency = (2048 - frequency) * 4;
 				mem->apu->channel[1].frequency = frequency;
 				return;
 			}
 			if (address == NR24) {
 				mem->apu->nr24 = data;
-				u16 frequency = (mem->apu->nr23) | ((mem->apu->nr24 & 0b00000111) << 8);
+				int frequency = (mem->apu->nr23) | ((mem->apu->nr24 & 0b00000111) << 8);
+				frequency = (2048 - frequency) * 4;
 				mem->apu->channel[1].frequency = frequency;
 
 				mem->apu->channel[1].length_enabled = data & 0b01000000;
@@ -227,6 +231,52 @@ void write8(Memory* mem, u16 address, u8 data) {
 					trigger_channel(&mem->apu->channel[1]);
 				}
 				return;
+			}
+
+
+			if (address == NR41) {
+				mem->apu->nr41 = data;
+				mem->apu->channel[3].length = data & 0b0011111;
+			}
+			if (address == NR42) {
+				mem->apu->nr42 = data;
+				mem->apu->channel[3].env_initial_volume = (data & 0b11110000) >> 4;
+				mem->apu->channel[3].env_dir = data & 0b00001000;
+				mem->apu->channel[3].env_sweep_pace = data & 0b00000111;
+				return;
+			}
+			if (address == NR43) {
+				mem->apu->nr43 = data;
+				mem->apu->lfsr_clock_shift = ((data & 0b11110000) >> 4);
+				mem->apu->lfsr_width = data & 0b00001000;
+				mem->apu->lfsr_clock_divider = data & 0b00000111;
+				float frequency;
+				if (mem->apu->lfsr_clock_divider != 0) {
+					frequency = (262144.0 / mem->apu->lfsr_clock_divider / pow(2, mem->apu->lfsr_clock_shift));
+				}
+				else {
+					frequency = (262144.0 / 0.5 / pow(2, mem->apu->lfsr_clock_shift));
+				}
+				mem->apu->channel[3].frequency = (u16)frequency;
+				return;
+			}
+			if (address == NR44) {
+				mem->apu->nr44 = data;
+
+				mem->apu->channel[3].length_enabled = data & 0b01000000;
+				if (data & 0b10000000) {
+					float frequency;
+					if (mem->apu->lfsr_clock_divider != 0) {
+						frequency = (262144.0 / mem->apu->lfsr_clock_divider / pow(2, mem->apu->lfsr_clock_shift));
+					}
+					else {
+						frequency = (262144.0 / 0.5 / pow(2, mem->apu->lfsr_clock_shift));
+					}
+					mem->apu->channel[3].frequency = (u16)frequency;
+					trigger_channel(&mem->apu->channel[3]);
+				}
+				return;
+
 			}
 
 			if (address >= 0xFF30 && address == 0xFF3F) {

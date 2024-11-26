@@ -112,7 +112,7 @@ typedef struct _channel {
 	bool enabled;
 	u8 wave_select;
 	u8 wave_index;
-	u16 frequency;
+	int frequency;
 	int frequency_timer;
 	int divider;
 	u8 volume;
@@ -172,6 +172,11 @@ typedef struct _apu {
 
 	int buffer_size;
 	int buffer_position;
+
+	u16 lfsr;
+	u8 lfsr_clock_shift;
+	bool lfsr_width;
+	u8 lfsr_clock_divider;
 
 	Channel channel[4];
 
