@@ -57,16 +57,25 @@ void div_apu_step(Apu* apu, u8 cycles) {
 		++apu->div_apu_counter;
 
 		// Timer Controls
-		if ((apu->div_apu_counter + 1) % 2 == 0) { // decrement each channels length timer every other counter
+		if ((apu->div_apu_counter + 1) % 2 == 0) { // length timer
 			for (int i = 0; i < 4; ++i) {
 				if (apu->channel[i].length_enabled) {
 					++apu->channel[i].length_timer;
 				}
 			}
 		}
-		if (apu->div_apu_counter == 7) {
+		if (apu->div_apu_counter == 7) { // envelope timer
 			for (int i = 0; i < 4; ++i) {
 				--apu->channel[i].env_timer;
+				if (apu->channel[i].env_timer == 0) {
+					if (!apu->channel[i].env_dir) { // decreasing volume envelope
+						apu->channel[i].volume -= 1;
+						apu->channel[i].env_timer = apu->channel[i].env_sweep_pace;
+						if (apu->channel[i].volume == 0) {
+							apu->channel[i].enabled = false;
+						}
+					}
+				}
 			}
 		}
 		if (apu->div_apu_counter == 2 || apu->div_apu_counter == 6) {
@@ -83,8 +92,9 @@ void div_apu_step(Apu* apu, u8 cycles) {
 void trigger_channel(Channel* channel) {
 	channel->enabled = true;
 	channel->frequency_timer = (2048 - channel->frequency) * 4;
-	channel->volume = channel->env_initial_volume / (float)0xF;
+	channel->volume = channel->env_initial_volume;
 	channel->length_timer = channel->length;
+	channel->env_timer = channel->env_sweep_pace;
 }
 
 void channel_1_step(Apu* apu, u8 cycles) {
@@ -107,7 +117,7 @@ void channel_1_step(Apu* apu, u8 cycles) {
 
 float channel_1_sample(Apu* apu) {
 	if (apu->channel[0].enabled) {
-		return (duty_cycles[(apu->channel[0].wave_select & 0b11000000) >> 6][apu->channel[0].wave_index] ? 1.0 : 0.0);
+		return (duty_cycles[(apu->channel[0].wave_select & 0b11000000) >> 6][apu->channel[0].wave_index] ? 1.0 : 0.0) * (apu->channel[0].volume / (float)0xf);
 	}
 	else return 0.0f;
 }
@@ -132,7 +142,7 @@ void channel_2_step(Apu* apu, u8 cycles) {
 }
 float channel_2_sample(Apu* apu) {
 	if (apu->channel[1].enabled) {
-		return (duty_cycles[(apu->channel[1].wave_select & 0b11000000) >> 6][apu->channel[1].wave_index] ? 1.0 : 0.0);
+		return (duty_cycles[(apu->channel[1].wave_select & 0b11000000) >> 6][apu->channel[1].wave_index] ? 1.0 : 0.0) * (apu->channel[1].volume / (float)0xf);
 	}
 	else return 0.0f;
 
