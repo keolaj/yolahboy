@@ -172,12 +172,14 @@ void write8(Memory* mem, u16 address, u8 data) {
 			if (address == NR11) {
 				mem->apu->channel[0].wave_select = (data & 0b11000000) >> 6;
 				mem->apu->channel[0].length = data & 0b0011111;
+				return;
 			}
 			if (address == NR12) {
 				mem->apu->nr12 = data;
 				mem->apu->channel[0].env_initial_volume = (data & 0b11110000) >> 4;
 				mem->apu->channel[0].env_dir = data & 0b00001000;
 				mem->apu->channel[0].env_sweep_pace = data & 0b00000111;
+				return;
 			}
 			if (address == NR13) {
 				mem->apu->nr13 = data;
@@ -194,17 +196,20 @@ void write8(Memory* mem, u16 address, u8 data) {
 				if (data & 0b10000000) {
 					trigger_channel(&mem->apu->channel[0]);
 				}
+				return;
 			}
 			if (address == NR21) {
 				mem->apu->nr21 = data;
 				mem->apu->channel[1].wave_select = (data & 0b11000000) >> 6;
 				mem->apu->channel[1].length = data & 0b0011111;
+				return;
 			}
 			if (address == NR22) {
 				mem->apu->nr22 = data;
 				mem->apu->channel[1].env_initial_volume = (data & 0b11110000) >> 4;
 				mem->apu->channel[1].env_dir = data & 0b00001000;
 				mem->apu->channel[1].env_sweep_pace = data & 0b00000111;
+				return;
 			}
 			if (address == NR23) {
 				mem->apu->nr23 = data;
@@ -221,6 +226,12 @@ void write8(Memory* mem, u16 address, u8 data) {
 				if (data & 0b10000000) {
 					trigger_channel(&mem->apu->channel[1]);
 				}
+				return;
+			}
+
+			if (address >= 0xFF30 && address == 0xFF3F) {
+				mem->apu->wave_pattern_ram[address - 0xFF30] = data;
+				return;
 			}
 
 		}

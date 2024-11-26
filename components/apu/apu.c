@@ -57,10 +57,10 @@ void div_apu_step(Apu* apu, u8 cycles) {
 		++apu->div_apu_counter;
 
 		// Timer Controls
-		if (apu->div_apu_counter % 2 == 0) { // decrement each channels length timer every other counter
+		if ((apu->div_apu_counter + 1) % 2 == 0) { // decrement each channels length timer every other counter
 			for (int i = 0; i < 4; ++i) {
 				if (apu->channel[i].length_enabled) {
-					--apu->channel[i].length_timer;
+					++apu->channel[i].length_timer;
 				}
 			}
 		}
@@ -90,8 +90,10 @@ void trigger_channel(Channel* channel) {
 void channel_1_step(Apu* apu, u8 cycles) {
 	if (apu->channel[0].enabled) {
 		apu->channel[0].frequency_timer -= cycles;
-		if (apu->channel[0].length_enabled && apu->channel[0].length_timer == 0) {
-			apu->channel[0].enabled = false;
+		if (apu->channel[0].length_enabled) {
+			if (apu->channel[0].length_timer == 64) {
+				apu->channel[0].enabled = false;
+			}
 		}
 		if (apu->channel[0].frequency_timer < 0) {
 			apu->channel[0].frequency_timer += ((2048 - apu->channel[0].frequency) * 4);
@@ -113,8 +115,10 @@ float channel_1_sample(Apu* apu) {
 void channel_2_step(Apu* apu, u8 cycles) {
 	if (apu->channel[1].enabled) {
 		apu->channel[1].frequency_timer -= cycles;
-		if (apu->channel[1].length_enabled && apu->channel[1].length_timer < 0) {
-			apu->channel[1].enabled = false;
+		if (apu->channel[1].length_enabled) {
+			if (apu->channel[1].length_timer == 64) {
+				apu->channel[1].enabled = false;
+			}
 		}
 		if (apu->channel[1].frequency_timer < 0) {
 			apu->channel[1].frequency_timer += ((2048 - apu->channel[1].frequency) * 4);
