@@ -1,5 +1,7 @@
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
+#include <math.h>
 #include "apu.h"
 #include "../debugger/imgui_custom_widget_wrapper.h"
 
@@ -72,20 +74,22 @@ void div_apu_step(Apu* apu, u8 cycles) {
 					continue;
 				}
 				--apu->channel[i].env_timer;
-				if (apu->channel[i].env_timer == 0) {
+				if (apu->channel[i].env_timer <= 0) {
 					if (!apu->channel[i].env_dir) { // decreasing volume envelope
 						if (apu->channel[i].volume == 0) {
 							apu->channel[i].enabled = false;
+							continue;
 						}
 						--apu->channel[i].volume;
 						apu->channel[i].env_timer = apu->channel[i].env_sweep_pace;
 					}
 					else {
-						++apu->channel[i].volume;
-						apu->channel[i].env_timer = apu->channel[i].env_sweep_pace;
 						if (apu->channel[i].volume == 0xF) {
 							apu->channel[i].enabled = false;
+							continue;
 						}
+						++apu->channel[i].volume;
+						apu->channel[i].env_timer = apu->channel[i].env_sweep_pace;
 					}
 				}
 			}
@@ -186,22 +190,37 @@ void channel_4_step(Apu* apu, u8 cycles) {
 }
 
 float channel_4_sample(Apu* apu) {
-	return (((bool)(apu->lfsr & 0x8000)) ? (1.0) : (0.0)) * (float)apu->channel[3].volume / 0xF;
+	if (apu->channel[3].volume > 0xf || apu->channel[3].volume < 0) {
+		apu->channel[3].volume = 0x0;
+	}
+	return ((apu->lfsr & 0x8000) ? (1.0) : (0.0)) * ((float)apu->channel[3].volume / 0xF);
 }
 
 void handle_sample(Apu* apu, u8 cycles) {
 
 }
 
+#define CLAMP(x, upper, lower) (min(upper, max(x, lower)))
+
+static float prev_sample = 0.0f;
+
 // BUFFER FUNCTIONS
 void write_channels_to_buffer(Apu* apu) {
+	
 	// TODO 
 	float ch1_sample = channel_1_sample(apu) / 3;
 	float ch2_sample = channel_2_sample(apu) / 3;
 	float ch4_sample = channel_4_sample(apu) / 5;
 
-	apu->buffer[apu->buffer_position * 2] = ch1_sample + ch2_sample + ch4_sample;
-	apu->buffer[(apu->buffer_position * 2) + 1] = ch1_sample + ch2_sample + ch4_sample;
+	float sample = ch1_sample + ch2_sample + ch4_sample;
+	sample = CLAMP(sample, 1.0, 0.0);
+	
+	static float beta = 0.1;
+	float filtered = beta * sample + (1 - beta) * prev_sample;
+	prev_sample = filtered;
+
+	apu->buffer[apu->buffer_position * 2] = filtered;
+	apu->buffer[(apu->buffer_position * 2) + 1] = filtered;
 	++apu->buffer_position;
 }
 

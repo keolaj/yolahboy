@@ -160,12 +160,16 @@ void write8(Memory* mem, u16 address, u8 data) {
 		if (address == WY) mem->gpu->wy = data;
 		if (address == WX) mem->gpu->wx = data;
 		if (address == BGP) {
-			AddLog("writing palette");
+
 		}
 
 		// APU regsiters
 		if (address == NR52) { 
 			mem->apu->nr52 = data & 0b10000000;
+			return;
+		}
+		if (address == NR51) {
+			mem->apu->nr51 = data;
 			return;
 		}
 		if (mem->apu->nr52 & 0b10000000) { // audio is on and we can write to audio registers
@@ -265,12 +269,10 @@ void write8(Memory* mem, u16 address, u8 data) {
 				return;
 
 			}
-
 			if (address >= 0xFF30 && address == 0xFF3F) {
 				mem->apu->wave_pattern_ram[address - 0xFF30] = data;
 				return;
 			}
-
 		}
 
 		mem->memory[address] = data;
@@ -285,7 +287,7 @@ void write8(Memory* mem, u16 address, u8 data) {
 		return;
 	}
 	else {
-		AddLog("wtf going on\tADDRESS: %04hX\tdata: %02hX\n");
+		AddLog("out of bounds write in write8\tADDRESS: %04hX\tdata: %02hX\n");
 	}
 
 	mem->memory[address] = data;

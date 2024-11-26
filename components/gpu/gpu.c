@@ -97,7 +97,7 @@ void draw_line(Gpu* gpu, Memory* mem) {
 	}
 
 	// draw window
-    int windowx = gpu->wx - 7;
+	int windowx = gpu->wx - 7;
 	u8 windowy = gpu->wy;
 	if (gpu->lcdc & (1 << 5) && gpu->ly >= windowy) { // if window enabled draw window
 		bool BGTileMapArea = (gpu->lcdc & (1 << 6));
@@ -179,7 +179,9 @@ void draw_line(Gpu* gpu, Memory* mem) {
 					u32 pixel = pixel_from_palette(palette, id);
 					int x = i;
 					if (x_flip) x = 7 - i;
-					gpu->framebuffer[gpu->ly * SCREEN_WIDTH + sprite_pos_x - 8 + x] = pixel;
+					int fb_index = gpu->ly * SCREEN_WIDTH + sprite_pos_x - 8 + x;
+					if (fb_index >= 23040 || fb_index < 0) continue;
+					gpu->framebuffer[fb_index] = pixel;
 				}
 			}
 			current_OAM_address += 4;
@@ -207,7 +209,7 @@ void handle_oam(Gpu* gpu, Memory* mem) {
 
 void handle_vram(Gpu* gpu, Memory* mem) {
 	if (gpu->clock >= 172) {
-		gpu->clock -= 172;
+		gpu->clock = 0;
 		gpu->mode = HBLANK;
 		draw_line(gpu, mem);
 		if (gpu->stat & (1 << 3)) {
@@ -222,7 +224,7 @@ void handle_hblank(Gpu* gpu, Memory* mem) {
 		gpu->should_stat_interrupt = false;
 	}
 	if (gpu->clock >= 204) {
-		gpu->clock -= 204;
+		gpu->clock = 0;
 		++gpu->ly;
 		if (gpu->lyc == gpu->ly) {
 			gpu->stat |= (1 << 2);
@@ -233,7 +235,6 @@ void handle_hblank(Gpu* gpu, Memory* mem) {
 		else {
 			gpu->stat &= ~(1 << 2);
 		}
-
 		if (gpu->ly == 143) {
 			u8 interrupt = read8(mem, IF);
 			write8(mem, IF, interrupt | VBLANK_INTERRUPT);
@@ -272,7 +273,7 @@ void handle_vblank(Gpu* gpu, Memory* mem) {
 		}
 
 
-		if (gpu->ly > 153) {	
+		if (gpu->ly > 153) {
 			gpu->should_draw = true;
 			gpu->mode = OAM_ACCESS;
 			gpu->ly = 0;

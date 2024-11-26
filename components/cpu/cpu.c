@@ -523,10 +523,6 @@ u16 get_source_16(Cpu* cpu, Memory* mem, Operation* op) {
 			sourceVal = (u16)relative;
 			break;
 		}
-		default:
-			AddLog("What are we doing here");
-			assert(false);
-		}
 		break;
 	}
 	default:
@@ -1076,7 +1072,6 @@ u16 interrupt_address_from_flag(u8 flag) {
 	case JOYPAD_INTERRUPT:
 		return JOYPAD_ADDRESS;
 	default:
-		AddLog("how did we get here: 0x%02X", flag);
 		return 0;
 	}
 }

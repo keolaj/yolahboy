@@ -115,7 +115,7 @@ typedef struct _channel {
 	int frequency;
 	int frequency_timer;
 	int divider;
-	u8 volume;
+	i8 volume;
 
 	bool length_enabled;
 	u8 length;

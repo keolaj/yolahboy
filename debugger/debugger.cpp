@@ -839,8 +839,8 @@ int debugger_run(char* rom_path, char* bootrom_path) {
 				SDL_RenderPresent(renderer);
 				timer = 0;
 
-				while (timer < 16.7) {
-					SDL_DelayNS(1000);
+				while (timer < 16.76) {
+					//SDL_DelayNS(100);
 					LAST = NOW;
 					NOW = SDL_GetPerformanceCounter();
 					deltaTime = ((NOW - LAST) * 1000 / (double)SDL_GetPerformanceFrequency());
