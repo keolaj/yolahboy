@@ -68,14 +68,17 @@ void div_apu_step(Apu* apu, u8 cycles) {
 		}
 		if (apu->div_apu_counter == 7) { // envelope timer
 			for (int i = 0; i < 4; ++i) {
+				if (apu->channel[i].env_sweep_pace == 0) {
+					continue;
+				}
 				--apu->channel[i].env_timer;
 				if (apu->channel[i].env_timer == 0) {
 					if (!apu->channel[i].env_dir) { // decreasing volume envelope
-						--apu->channel[i].volume;
-						apu->channel[i].env_timer = apu->channel[i].env_sweep_pace;
 						if (apu->channel[i].volume == 0) {
 							apu->channel[i].enabled = false;
 						}
+						--apu->channel[i].volume;
+						apu->channel[i].env_timer = apu->channel[i].env_sweep_pace;
 					}
 					else {
 						++apu->channel[i].volume;
@@ -183,7 +186,7 @@ void channel_4_step(Apu* apu, u8 cycles) {
 }
 
 float channel_4_sample(Apu* apu) {
-	return ((bool)(apu->lfsr & 0x8000)) ? (1.0) : (0.0) * apu->channel[3].volume;
+	return (((bool)(apu->lfsr & 0x8000)) ? (1.0) : (0.0)) * (float)apu->channel[3].volume / 0xF;
 }
 
 void handle_sample(Apu* apu, u8 cycles) {
