@@ -173,18 +173,10 @@ void channel_4_step(Apu* apu, u8 cycles) {
 		if (apu->channel[3].length_enabled) {
 			if (apu->channel[3].length_timer == 64) {
 				apu->channel[3].enabled = false;
-				apu->lfsr = 0xc8a7;
 			}
 		}
 		if (apu->channel[3].frequency_timer < 0) {
-			u16 frequency;
-			if (apu->lfsr_clock_divider == 0) {
-				frequency = ((262144.0 / (0.5 * (1 << apu->lfsr_clock_shift))));
-			}
-			else {
-				frequency = (262144.0 / (apu->lfsr_clock_divider * (1 << apu->lfsr_clock_shift)));
-			}
-			apu->channel[3].frequency_timer = frequency;
+			apu->channel[3].frequency_timer = apu->channel[3].frequency;
 			step_lfsr(apu);
 		}
 	}

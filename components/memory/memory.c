@@ -250,14 +250,8 @@ void write8(Memory* mem, u16 address, u8 data) {
 				mem->apu->lfsr_clock_shift = ((data & 0b11110000) >> 4);
 				mem->apu->lfsr_width = data & 0b00001000;
 				mem->apu->lfsr_clock_divider = data & 0b00000111;
-				float frequency;
-				if (mem->apu->lfsr_clock_divider != 0) {
-					frequency = (262144.0 / mem->apu->lfsr_clock_divider / pow(2, mem->apu->lfsr_clock_shift));
-				}
-				else {
-					frequency = (262144.0 / 0.5 / pow(2, mem->apu->lfsr_clock_shift));
-				}
-				mem->apu->channel[3].frequency = (u16)frequency;
+				int frequency = (((data & 7) > 0) ? ((data & 7) << 4) : 8) << ((data & 0xF0) >> 4);
+				mem->apu->channel[3].frequency = frequency;
 				return;
 			}
 			if (address == NR44) {
@@ -265,14 +259,7 @@ void write8(Memory* mem, u16 address, u8 data) {
 
 				mem->apu->channel[3].length_enabled = data & 0b01000000;
 				if (data & 0b10000000) {
-					float frequency;
-					if (mem->apu->lfsr_clock_divider != 0) {
-						frequency = (262144.0 / mem->apu->lfsr_clock_divider / pow(2, mem->apu->lfsr_clock_shift));
-					}
-					else {
-						frequency = (262144.0 / 0.5 / pow(2, mem->apu->lfsr_clock_shift));
-					}
-					mem->apu->channel[3].frequency = (u16)frequency;
+					mem->apu->lfsr = 0xFFFF;
 					trigger_channel(&mem->apu->channel[3]);
 				}
 				return;
