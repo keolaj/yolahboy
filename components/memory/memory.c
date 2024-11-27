@@ -135,7 +135,7 @@ void write8(Memory* mem, u16 address, u8 data) {
 			mem->timer->clock = 0;
 			return;
 		}
-		
+
 		// GPU registers
 		if (address == LCDC) { // if setting off bit reset lcd
 			if ((data & (1 << 7)) == 0) {
@@ -164,7 +164,7 @@ void write8(Memory* mem, u16 address, u8 data) {
 		}
 
 		// APU regsiters
-		if (address == NR52) { 
+		if (address == NR52) {
 			mem->apu->nr52 = data & 0b10000000;
 			return;
 		}
@@ -183,6 +183,7 @@ void write8(Memory* mem, u16 address, u8 data) {
 				mem->apu->channel[0].env_initial_volume = (data & 0b11110000) >> 4;
 				mem->apu->channel[0].env_dir = data & 0b00001000;
 				mem->apu->channel[0].env_sweep_pace = data & 0b00000111;
+				mem->apu->channel[0].dac_enable = data & 0b11111000;
 				return;
 			}
 			if (address == NR13) {
@@ -200,6 +201,7 @@ void write8(Memory* mem, u16 address, u8 data) {
 
 				mem->apu->channel[0].length_enabled = data & 0b01000000;
 				if (data & 0b10000000) {
+					mem->apu->channel[0].wave_index = 0;
 					trigger_channel(&mem->apu->channel[0]);
 				}
 				return;
@@ -215,6 +217,7 @@ void write8(Memory* mem, u16 address, u8 data) {
 				mem->apu->channel[1].env_initial_volume = (data & 0b11110000) >> 4;
 				mem->apu->channel[1].env_dir = data & 0b00001000;
 				mem->apu->channel[1].env_sweep_pace = data & 0b00000111;
+				mem->apu->channel[1].dac_enable = data & 0b11111000;
 				return;
 			}
 			if (address == NR23) {
@@ -232,12 +235,54 @@ void write8(Memory* mem, u16 address, u8 data) {
 
 				mem->apu->channel[1].length_enabled = data & 0b01000000;
 				if (data & 0b10000000) {
+					mem->apu->channel[1].wave_index = 0;
 					trigger_channel(&mem->apu->channel[1]);
 				}
 				return;
 			}
 
+			if (address == NR30) {
+				bool enabled = data & 0x80;
+				mem->apu->nr30 = data & 0x80;
+				mem->apu->channel[2].dac_enable = enabled;
+				return;
+			}
+			if (address == NR31) {
+				mem->apu->nr31 = data;
+				mem->apu->channel[2].length = data;
+				return;
+			}
+			if (address == NR32) {
+				mem->apu->nr32 = data;
+				mem->apu->channel[2].volume = (data & 0b01100000) >> 5;
+				return;
+			}
+			if (address == NR33) {
+				mem->apu->nr33 = data;
+				int frequency = (mem->apu->nr33) | ((mem->apu->nr34 & 0b00000111) << 8);
+				frequency = (2048 - frequency) * 2;
+				mem->apu->channel[2].frequency = frequency;
+				return;
+			}
+			if (address == NR34) {
+				mem->apu->nr34 = data;
+				int frequency = (mem->apu->nr33) | ((mem->apu->nr34 & 0b00000111) << 8);
+				frequency = (2048 - frequency) * 2;
+				mem->apu->channel[2].frequency = frequency;
 
+				mem->apu->channel[2].length_enabled = data & 0b01000000;
+				if (data & 0b10000000) {
+					mem->apu->channel[2].wave_index = 1;
+					mem->apu->channel[2].env_dir = true;
+					trigger_channel(&mem->apu->channel[2]);
+				}
+				return;
+
+			}
+			if (address >= 0xFF30 && address <= 0xFF3F) {
+				mem->apu->wave_pattern_ram[address - 0xFF30] = data;
+				return;
+			}
 			if (address == NR41) {
 				mem->apu->nr41 = data;
 				mem->apu->channel[3].length = data & 0b0011111;
@@ -247,15 +292,20 @@ void write8(Memory* mem, u16 address, u8 data) {
 				mem->apu->channel[3].env_initial_volume = (data & 0b11110000) >> 4;
 				mem->apu->channel[3].env_dir = data & 0b00001000;
 				mem->apu->channel[3].env_sweep_pace = data & 0b00000111;
+				mem->apu->channel[3].dac_enable = data & 0b11111000;
 				return;
 			}
 			if (address == NR43) {
 				mem->apu->nr43 = data;
-				mem->apu->lfsr_clock_shift = ((data & 0b11110000) >> 4);
-				mem->apu->lfsr_width = data & 0b00001000;
-				mem->apu->lfsr_clock_divider = data & 0b00000111;
-				int frequency = (((data & 7) > 0) ? ((data & 7) << 4) : 8) << ((data & 0xF0) >> 4);
-				mem->apu->channel[3].frequency = frequency;
+
+				u8 clock_shift = ((data & 0xF0) >> 4);
+				bool width = data & 0x8;
+				u8 divider = data & 0x7;
+
+				mem->apu->lfsr_clock_shift = clock_shift;
+				mem->apu->lfsr_width = width;
+				mem->apu->lfsr_clock_divider = divider;
+				mem->apu->channel[3].frequency = (divider > 0 ? (divider << 4) : 8) << clock_shift;
 				return;
 			}
 			if (address == NR44) {
@@ -268,10 +318,6 @@ void write8(Memory* mem, u16 address, u8 data) {
 				}
 				return;
 
-			}
-			if (address >= 0xFF30 && address == 0xFF3F) {
-				mem->apu->wave_pattern_ram[address - 0xFF30] = data;
-				return;
 			}
 		}
 
@@ -375,7 +421,7 @@ int load_rom(Memory* mem, const char* path) { // I believe this is working
 		break;
 	default:
 		actual_ram_size = 0;
-		AddLog("bad read from cartridge ram size");
+		AddLog("Bad read from cartridge ram size\n");
 		break;
 	}
 	mem->cartridge.ram_size = actual_ram_size;
@@ -397,21 +443,19 @@ int load_rom(Memory* mem, const char* path) { // I believe this is working
 }
 
 int load_save(Memory* mem, const char* path) {
-	FILE* fp; 
-	fp = fopen(path, "rb");
+	FILE* fp;
+	fp = fopen("game.sav", "rb");
 
 	if (fp == NULL) {
 		AddLog("Unable to open save file\n");
 		return -1;
 	}
+	if (fread(mem->cartridge.ram, sizeof(u8), mem->cartridge.ram_size, fp) != mem->cartridge.ram_size) {
+		return 0;
+	}
 	else {
-		if (fread(mem->cartridge.ram, sizeof(u8), mem->cartridge.ram_size, fp) >= 0) {
-			return 1;
-		}
-		else {
-			AddLog("Unable to load ram\n");
-			return -1;
-		}
+		AddLog("Unable to load ram\n");
+		return -1;
 	}
 }
 
@@ -421,18 +465,18 @@ void destroy_memory(Memory* mem) {
 	if (mem->cartridge.type == MBC1_RAM_BATTERY) {
 		FILE* fp = fopen("game.sav", "wb");
 		if (fp == NULL) {
-			AddLog("couldn't save file");
+			AddLog("Couldn't open save file\n");
 		}
 		else {
 			size_t save_size = mem->cartridge.ram_size;
 			size_t written = fwrite(mem->cartridge.ram, sizeof(u8), save_size, fp);
 
 			if (written != save_size) {
-				AddLog("error writing to file\n");
+				AddLog("Error writing to save file\n");
 				fclose(fp);
 			}
 			else {
-				AddLog("saved\n");
+				AddLog("Saved\n");
 				fclose(fp);
 			}
 		}

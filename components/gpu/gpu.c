@@ -92,7 +92,6 @@ void draw_line(Gpu* gpu, Memory* mem) {
 					if (BGTileAddressMode && tile < 128) tile += 256;
 				}
 			}
-
 		}
 	}
 
@@ -173,12 +172,11 @@ void draw_line(Gpu* gpu, Memory* mem) {
 				}
 				u8 palette = read8(mem, (palette_mode ? OBP1 : OBP0));
 				for (int i = 0; i < 8; ++i) {
-					if (sprite_pos_x - 7 + i < 0) continue;
+					if ((int)sprite_pos_x - 8 + i < 0) continue;
 					u8 id = read_tile(mem, tile_index, i, sprite_line);
 					if (id == 0) continue;
 					u32 pixel = pixel_from_palette(palette, id);
-					int x = i;
-					if (x_flip) x = 7 - i;
+					int x = x_flip ? (7 - i) : i;
 					int fb_index = gpu->ly * SCREEN_WIDTH + sprite_pos_x - 8 + x;
 					if (fb_index >= 23040 || fb_index < 0) continue;
 					gpu->framebuffer[fb_index] = pixel;
@@ -209,7 +207,7 @@ void handle_oam(Gpu* gpu, Memory* mem) {
 
 void handle_vram(Gpu* gpu, Memory* mem) {
 	if (gpu->clock >= 172) {
-		gpu->clock = 0;
+		gpu->clock -= 172;
 		gpu->mode = HBLANK;
 		draw_line(gpu, mem);
 		if (gpu->stat & (1 << 3)) {
@@ -224,7 +222,7 @@ void handle_hblank(Gpu* gpu, Memory* mem) {
 		gpu->should_stat_interrupt = false;
 	}
 	if (gpu->clock >= 204) {
-		gpu->clock = 0;
+		gpu->clock -= 204;
 		++gpu->ly;
 		if (gpu->lyc == gpu->ly) {
 			gpu->stat |= (1 << 2);

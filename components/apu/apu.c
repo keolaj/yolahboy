@@ -111,6 +111,8 @@ void trigger_channel(Channel* channel) {
 	channel->volume = channel->env_initial_volume;
 	channel->length_timer = channel->length;
 	channel->env_timer = channel->env_sweep_pace;
+	if (channel->env_dir == false && channel->volume == 0) channel->enabled = false;
+	if (channel->dac_enable == false) channel->enabled = false;
 }
 
 void channel_1_step(Apu* apu, u8 cycles) {
@@ -174,6 +176,45 @@ void step_lfsr(Apu* apu) {
 	}
 }
 
+void channel_3_step(Apu* apu, u8 cycles) {
+	if (apu->channel[2].enabled) {
+		apu->channel[2].frequency_timer -= cycles;
+		if (apu->channel[2].length_enabled) {
+			if (apu->channel[2].length_timer == 256) {
+				apu->channel[2].enabled = false;
+			}
+		}
+		if (apu->channel[2].frequency_timer < 0) {
+			apu->channel[2].frequency_timer = apu->channel[2].frequency;
+			++apu->channel[2].wave_index;
+			if (apu->channel[2].wave_index > 31) {
+				apu->channel[2].wave_index = 0;
+			}
+		}
+	}
+}
+
+u8 read_wave_ram(Apu* apu, u8 position) {
+	u8 index = position / 2;
+	u8 val = 0;
+	if (position % 2 == 0) {
+		val = (apu->wave_pattern_ram[index] & 0b11110000) >> 4;
+	}
+	else {
+		val = apu->wave_pattern_ram[index] & 0b00001111;
+	}
+	return val;
+}
+
+float channel_3_sample(Apu* apu) {
+	if (apu->channel[2].enabled) {
+		return ((float)read_wave_ram(apu, apu->channel[2].wave_index) / (float)0xf);
+	}
+	else {
+		return 0.0f;
+	}
+}
+
 void channel_4_step(Apu* apu, u8 cycles) {
 	if (apu->channel[3].enabled) {
 		apu->channel[3].frequency_timer -= cycles;
@@ -208,11 +249,12 @@ static float prev_sample = 0.0f;
 void write_channels_to_buffer(Apu* apu) {
 	
 	// TODO 
-	float ch1_sample = channel_1_sample(apu) / 3;
-	float ch2_sample = channel_2_sample(apu) / 3;
-	float ch4_sample = channel_4_sample(apu) / 5;
+	float ch1_sample = channel_1_sample(apu) / 4;
+	float ch2_sample = channel_2_sample(apu) / 4;
+	float ch3_sample = channel_3_sample(apu) / 4;
+	float ch4_sample = channel_4_sample(apu) / 4;
 
-	float sample = ch1_sample + ch2_sample + ch4_sample;
+	float sample = ch1_sample + ch2_sample + ch3_sample + ch4_sample;
 	sample = CLAMP(sample, 1.0, 0.0);
 	
 	static float beta = 0.1;
@@ -247,6 +289,7 @@ void apu_step(Apu* apu, u8 cycles) {
 
 		channel_1_step(apu, cycles);
 		channel_2_step(apu, cycles);
+		channel_3_step(apu, cycles);
 		channel_4_step(apu, cycles);
 
 		handle_buffers(apu, cycles);

@@ -121,6 +121,8 @@ typedef struct _channel {
 	u8 length;
 	u8 length_timer;
 
+	bool dac_enable;
+
 	// frequency sweep control
 	u8 freq_sweep_timer;
 

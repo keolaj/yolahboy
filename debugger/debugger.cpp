@@ -786,6 +786,9 @@ int debugger_run(char* rom_path, char* bootrom_path) {
 		if (emu.should_run) {
 			if (step(&emu) < 0) emu.should_run = false; // if step returns negative the operation failed to execute
 			if (emu.apu->buffer_full) {
+				while (SDL_GetAudioStreamAvailable(stream) != 0) {
+
+				}
 				SDL_PutAudioStreamData(stream, get_buffer(emu.apu), emu.apu->buffer_size * 2 * sizeof(float));
 				emu.apu->buffer_full = false;
 			}
@@ -839,13 +842,13 @@ int debugger_run(char* rom_path, char* bootrom_path) {
 				SDL_RenderPresent(renderer);
 				timer = 0;
 
-				while (timer < 16.76) {
-					//SDL_DelayNS(100);
-					LAST = NOW;
-					NOW = SDL_GetPerformanceCounter();
-					deltaTime = ((NOW - LAST) * 1000 / (double)SDL_GetPerformanceFrequency());
-					timer += deltaTime;
-				}
+				//while (timer < 16.6) {
+				//	SDL_DelayNS(100);
+				//	LAST = NOW;
+				//	NOW = SDL_GetPerformanceCounter();
+				//	deltaTime = ((NOW - LAST) * 1000 / (double)SDL_GetPerformanceFrequency());
+				//	timer += deltaTime;
+				//}
 
 			}
 			set_run_once = false;

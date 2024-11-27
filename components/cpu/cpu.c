@@ -523,6 +523,7 @@ u16 get_source_16(Cpu* cpu, Memory* mem, Operation* op) {
 			sourceVal = (u16)relative;
 			break;
 		}
+		}
 		break;
 	}
 	default:
@@ -622,9 +623,6 @@ u16 get_dest16(Cpu* cpu, Memory* mem, Operation* op) {
 	}
 	return dest_val;
 }
-
-
-
 
 Operation get_operation(Cpu* cpu, Memory* mem) {
 	u8 opcode = read8(mem, cpu->registers.pc);
@@ -1072,6 +1070,7 @@ u16 interrupt_address_from_flag(u8 flag) {
 	case JOYPAD_INTERRUPT:
 		return JOYPAD_ADDRESS;
 	default:
+		AddLog("how did we get here: 0x%02X", flag);
 		return 0;
 	}
 }
