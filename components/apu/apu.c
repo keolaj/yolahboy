@@ -208,7 +208,8 @@ u8 read_wave_ram(Apu* apu, u8 position) {
 
 float channel_3_sample(Apu* apu) {
 	if (apu->channel[2].enabled) {
-		return ((float)read_wave_ram(apu, apu->channel[2].wave_index) / (float)0xf);
+		u8 shift = (apu->channel[2].volume == 0) ? 4 : (apu->channel[2].volume - 1);
+		return (read_wave_ram(apu, apu->channel[2].wave_index) >> shift) / (float)0xf;
 	}
 	else {
 		return 0.0f;
@@ -255,9 +256,8 @@ void write_channels_to_buffer(Apu* apu) {
 	float ch4_sample = channel_4_sample(apu) / 4;
 
 	float sample = ch1_sample + ch2_sample + ch3_sample + ch4_sample;
-	sample = CLAMP(sample, 1.0, 0.0);
-	
-	static float beta = 0.1;
+		
+	static float beta = 0.2;
 	float filtered = beta * sample + (1 - beta) * prev_sample;
 	prev_sample = filtered;
 
