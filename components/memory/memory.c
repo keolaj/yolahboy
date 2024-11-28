@@ -305,7 +305,36 @@ void write8(Memory* mem, u16 address, u8 data) {
 				mem->apu->lfsr_clock_shift = clock_shift;
 				mem->apu->lfsr_width = width;
 				mem->apu->lfsr_clock_divider = divider;
-				mem->apu->channel[3].frequency = (divider > 0 ? (divider << 4) : 8) << clock_shift;
+				u8 div_value;
+				switch (mem->apu->lfsr_clock_divider) {
+				case 0:
+					div_value = 8;
+					break;
+				case 1:
+					div_value = 16;
+					break;
+				case 2:
+					div_value = 32;
+					break;
+				case 3:
+					div_value = 48;
+					break;
+				case 4:
+					div_value = 64;
+					break;
+				case 5:
+					div_value = 80;
+					break;
+				case 6:
+					div_value = 96;
+					break;
+				case 7:
+					div_value = 112;
+					break;
+				default:
+					div_value = 8;
+				}
+				mem->apu->channel[3].frequency = (div_value) << clock_shift;
 				return;
 			}
 			if (address == NR44) {

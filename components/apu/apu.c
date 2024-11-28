@@ -59,11 +59,12 @@ void div_apu_step(Apu* apu, u8 cycles) {
 	if (apu->div_apu_internal >= 8192) {
 		apu->div_apu_internal -= 8192;
 		++apu->div_apu_counter;
+		if (apu->div_apu_counter == 8) apu->div_apu_counter = 0;
 
 		// Timer Controls
 		if ((apu->div_apu_counter + 1) % 2 == 0) { // length timer
 			for (int i = 0; i < 4; ++i) {
-				if (apu->channel[i].length_enabled) {
+				if (apu->channel[i].length_enabled && apu->channel[i].enabled) {
 					++apu->channel[i].length_timer;
 				}
 			}
@@ -74,7 +75,7 @@ void div_apu_step(Apu* apu, u8 cycles) {
 					continue;
 				}
 				--apu->channel[i].env_timer;
-				if (apu->channel[i].env_timer <= 0) {
+				if (apu->channel[i].env_timer <= 0 && apu->channel[i].enabled) {
 					if (!apu->channel[i].env_dir) { // decreasing volume envelope
 						if (apu->channel[i].volume == 0) {
 							apu->channel[i].enabled = false;
@@ -99,8 +100,6 @@ void div_apu_step(Apu* apu, u8 cycles) {
 				--apu->channel[i].freq_sweep_timer;
 			}
 		}
-
-		if (apu->div_apu_counter == 8) apu->div_apu_counter = 0;
 	}
 }
 
@@ -167,12 +166,15 @@ float channel_2_sample(Apu* apu) {
 }
 
 void step_lfsr(Apu* apu) {
-	bool result = ((apu->lfsr & 2) >> 1) != (apu->lfsr & 1);
+	//bool result = ((apu->lfsr & 2) >> 1) != (apu->lfsr & 1);
+	u8 res = apu->lfsr & 1;
+	res ^= (apu->lfsr >> 1) & 1;
 	apu->lfsr >>= 1;
-	apu->lfsr |= result << 15;
+	apu->lfsr |= (res << 14);
 	
 	if (apu->lfsr_width) {
-		apu->lfsr |= result << 7;
+		apu->lfsr &= ~(1 << 6);
+		apu->lfsr |= (res << 6);
 	}
 }
 
@@ -232,10 +234,15 @@ void channel_4_step(Apu* apu, u8 cycles) {
 }
 
 float channel_4_sample(Apu* apu) {
-	if (apu->channel[3].volume > 0xf || apu->channel[3].volume < 0) {
-		apu->channel[3].volume = 0x0;
+	if (apu->channel[3].enabled) {
+		if (apu->channel[3].volume > 0xF || apu->channel[3].volume < 0) {
+			apu->channel[3].volume = 0x0;
+		}
+		return ((apu->lfsr & 0x1) ? (0.0) : (1.0)) * ((float)apu->channel[3].volume / 0xF);
 	}
-	return ((apu->lfsr & 0x8000) ? (1.0) : (0.0)) * ((float)apu->channel[3].volume / 0xF);
+	else {
+		return 0.0f;
+	}
 }
 
 void handle_sample(Apu* apu, u8 cycles) {
@@ -258,8 +265,10 @@ void write_channels_to_buffer(Apu* apu) {
 	float sample = ch1_sample + ch2_sample + ch3_sample + ch4_sample;
 		
 	static float beta = 0.2;
-	float filtered = beta * sample + (1 - beta) * prev_sample;
+	float filtered = beta * sample + (1 - beta) * prev_sample; // this is a simple low pass filter.
 	prev_sample = filtered;
+
+	filtered = CLAMP((filtered * 2), 1.0, 0.0);
 
 	apu->buffer[apu->buffer_position * 2] = filtered;
 	apu->buffer[(apu->buffer_position * 2) + 1] = filtered;
