@@ -18,11 +18,11 @@ void tick(Emulator* emu, int t_cycles) {
 	u16 old_clock = emu->timer->clock;
 
 	if ((old_clock & 0xFF) + t_cycles > 0xFF) {
-		++(emu->memory->memory[DIV]);
+		++(emu->memory.memory[DIV]);
 	}
 
 	emu->timer->clock += t_cycles;
-	u8 tac = emu->memory->memory[TAC];
+	u8 tac = emu->memory.memory[TAC];
 
 	bool tac_enable = tac & (1 << 2);
 	u8 tac_mode = tac & 3;
@@ -54,12 +54,12 @@ void tick(Emulator* emu, int t_cycles) {
 	emu->timer->old_and = and_result;
 
 	if (tac_enable && should_inc_tima) {
-		if (emu->memory->memory[TIMA] == 255) {
-			emu->memory->memory[IF] |= TIMER_INTERRUPT;
-			emu->memory->memory[TIMA] = emu->memory->memory[TMA];
+		if (emu->memory.memory[TIMA] == 255) {
+			emu->memory.memory[IF] |= TIMER_INTERRUPT;
+			emu->memory.memory[TIMA] = emu->memory.memory[TMA];
 		}
 		else {
-			(emu->memory->memory[TIMA])++;
+			(emu->memory.memory[TIMA])++;
 		}
 	}
 

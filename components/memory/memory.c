@@ -10,24 +10,18 @@
 #include "../debugger/imgui_custom_widget_wrapper.h"
 #include "./cartridge.h"
 
-Memory* create_memory() {
-	Memory* ret = (Memory*)malloc(sizeof(Memory));
-	if (ret == NULL) {
-		printf("could not allocate memory");
-		return NULL;
-	}
-	ret->cartridge.rom = NULL;
-	ret->cartridge.ram = NULL;
-	ret->cartridge.rom_bank = 1;
-	ret->cartridge.ram_bank = 0;
-	ret->cartridge.banking_mode = BANKMODESIMPLE;
-	ret->cartridge.ram_enabled = false;
-	ret->wrote_dma = false;
-	memset((void*)&ret->controller, 0, sizeof(Controller));
-	memset(ret->memory, 0, 0x10000);
-	memset(ret->bios, 0, 0x100);
-	ret->in_bios = true;
-	return ret;
+void init_memory(Memory* mem) {
+	mem->cartridge.rom = NULL;
+	mem->cartridge.ram = NULL;
+	mem->cartridge.rom_bank = 1;
+	mem->cartridge.ram_bank = 0;
+	mem->cartridge.banking_mode = BANKMODESIMPLE;
+	mem->cartridge.ram_enabled = false;
+	mem->wrote_dma = false;
+	memset((void*)&mem->controller, 0, sizeof(Controller));
+	memset(mem->memory, 0, 0x10000);
+	memset(mem->bios, 0, 0x100);
+	mem->in_bios = true;
 }
 
 u8 read8(Memory* mem, u16 address) {
@@ -512,7 +506,6 @@ void destroy_memory(Memory* mem) {
 	}
 	if (mem->cartridge.rom) free(mem->cartridge.rom);
 	if (mem->cartridge.ram) free(mem->cartridge.ram);
-	free(mem);
 }
 
 void set_use_gbd_log(Memory* mem, bool use_gbd_log) {

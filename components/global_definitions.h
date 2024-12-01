@@ -326,7 +326,7 @@ struct _gpu {
 
 typedef struct {
 	Cpu cpu;
-	Memory* memory;
+	Memory memory;
 	Gpu* gpu;
 	Timer* timer;
 	Apu* apu;

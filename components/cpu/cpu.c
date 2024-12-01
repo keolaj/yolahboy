@@ -1030,11 +1030,6 @@ Cycles cpu_step(Cpu* cpu, Memory* mem, Operation op) {
 	return (Cycles) { op.m_cycles, op.t_cycles };
 }
 
-void destroy_cpu(Cpu* cpu) {
-	if (cpu == NULL) return;
-	free(cpu);
-}
-
 Cycles run_halted(Cpu* cpu, Memory* mem) {
 	Cycles cycles = { 1, 4 };
 

@@ -2,7 +2,7 @@
 #include <stdbool.h>
 #include "../global_definitions.h"
 
-Memory* create_memory();
+void init_memory(Memory* mem);
 int load_bootrom(Memory* mem, const char* path);
 int load_rom(Memory* mem, const char* path);
 u8 read8(Memory* mem, u16 address);
