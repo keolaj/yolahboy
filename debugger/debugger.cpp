@@ -190,12 +190,12 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 	char div_buf[20];
 	char ly_buf[20];
 
-	sprintf_s(af_buf, "AF: %04hX", emu->cpu->registers.af);
-	sprintf_s(bc_buf, "BC: %04hX", emu->cpu->registers.bc);
-	sprintf_s(de_buf, "DE: %04hX", emu->cpu->registers.de);
-	sprintf_s(hl_buf, "HL: %04hX", emu->cpu->registers.hl);
-	sprintf_s(sp_buf, "SP: %04hX", emu->cpu->registers.sp);
-	sprintf_s(pc_buf, "PC: %04hX", emu->cpu->registers.pc);
+	sprintf_s(af_buf, "AF: %04hX", emu->cpu.registers.af);
+	sprintf_s(bc_buf, "BC: %04hX", emu->cpu.registers.bc);
+	sprintf_s(de_buf, "DE: %04hX", emu->cpu.registers.de);
+	sprintf_s(hl_buf, "HL: %04hX", emu->cpu.registers.hl);
+	sprintf_s(sp_buf, "SP: %04hX", emu->cpu.registers.sp);
+	sprintf_s(pc_buf, "PC: %04hX", emu->cpu.registers.pc);
 	sprintf_s(rom_bank_buf, "ROM BANK: %04hX", emu->memory->cartridge.rom_bank);
 	sprintf_s(ram_bank_buf, "RAM BANK: %04hX", emu->memory->cartridge.ram_bank);
 	sprintf_s(clock_buf, "CLOCK: %04hX", emu->timer->clock);
@@ -258,7 +258,7 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 	ImGui::SetNextWindowPos({ (float)DEBUGGER_X + SCREEN_X + TILE_X, (float)0 });
 	ImGui::Begin("INSTRUCTIONS", NULL, ImGuiWindowFlags_NoResize);
 
-	u16 currentPC = emu->cpu->registers.pc;
+	u16 currentPC = emu->cpu.registers.pc;
 
 	static int GOTO_Y = 50;
 
@@ -331,7 +331,7 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 			}
 		}
 		if (run_once) {
-			float item_pos_y = clipper.ItemsHeight * (emu->cpu->registers.pc) + (clipper.ItemsHeight * 0.5);
+			float item_pos_y = clipper.ItemsHeight * (emu->cpu.registers.pc) + (clipper.ItemsHeight * 0.5);
 			ImGui::SetScrollY(item_pos_y);
 		}
 	}
@@ -786,15 +786,13 @@ int debugger_run(char* rom_path, char* bootrom_path) {
 		if (emu.should_run) {
 			if (step(&emu) < 0) emu.should_run = false; // if step returns negative the operation failed to execute
 			if (emu.apu->buffer_full) {
-				while (SDL_GetAudioStreamAvailable(stream) != 0) {
-
-				}
+				while (SDL_GetAudioStreamQueued(stream) != 0);
 				SDL_PutAudioStreamData(stream, get_buffer(emu.apu), emu.apu->buffer_size * 2 * sizeof(float));
 				emu.apu->buffer_full = false;
 			}
 		}
 
-		if (breakpoints[emu.cpu->registers.pc]) {
+		if (breakpoints[emu.cpu.registers.pc]) {
 			emu.should_run = false;
 			if (!set_run_once) { // logic for only running a function once in draw debug ui
 				SDL_DestroyTexture(tile_tex);
@@ -803,7 +801,7 @@ int debugger_run(char* rom_path, char* bootrom_path) {
 
 				run_once = true;
 				set_run_once = true;
-				app_log.AddLog("BREAKPOINT! 0x%04hX\n", emu.cpu->registers.pc);
+				app_log.AddLog("BREAKPOINT! 0x%04hX\n", emu.cpu.registers.pc);
 			}
 		}
 

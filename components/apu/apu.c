@@ -173,7 +173,7 @@ void step_lfsr(Apu* apu) {
 	apu->lfsr |= (res << 14);
 	
 	if (apu->lfsr_width) {
-		apu->lfsr &= ~(1 << 6);
+		apu->lfsr &= ~(1 << 6);	
 		apu->lfsr |= (res << 6);
 	}
 }
@@ -264,7 +264,7 @@ void write_channels_to_buffer(Apu* apu) {
 
 	float sample = ch1_sample + ch2_sample + ch3_sample + ch4_sample;
 		
-	static float beta = 0.2;
+	static float beta = 0.5;
 	float filtered = beta * sample + (1 - beta) * prev_sample; // this is a simple low pass filter.
 	prev_sample = filtered;
 

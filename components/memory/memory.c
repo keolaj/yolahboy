@@ -334,7 +334,7 @@ void write8(Memory* mem, u16 address, u8 data) {
 				default:
 					div_value = 8;
 				}
-				mem->apu->channel[3].frequency = (div_value) << clock_shift;
+				mem->apu->channel[3].frequency = (divider > 0 ? (divider << 4) : 8) << clock_shift;
 				return;
 			}
 			if (address == NR44) {
