@@ -1,4 +1,4 @@
 #include "../global_definitions.h"
 
-Timer* create_timer();
+void init_timer(Timer* timer);
 void tick(Emulator* emu, int m_cycles);

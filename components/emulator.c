@@ -16,24 +16,15 @@
 
 int init_emulator(Emulator* emu) {
 	memset(&emu->cpu, 0, sizeof(Cpu));
-	init_Mmu(&emu->mmu);
-	emu->gpu = create_gpu(&emu->mmu);
-	emu->timer = create_timer();
-	emu->apu = create_apu(48000, 1024);
-	emu->timer->clock = 0;
-	emu->cpu.timer = emu->timer;
-	emu->mmu.timer = emu->timer;
-	emu->should_run = false;
-	emu->clock = 0;
+	init_mmu(&emu->mmu);
+	init_gpu(&emu->gpu);
+	init_timer(&emu->timer);
+	init_apu(&emu->apu, 48000, 1024);
 	memset(&emu->controller, 0, sizeof(Controller));
 
-	if (emu->gpu == NULL) {
-		destroy_emulator(emu);
-		return -1;
-	}
-	emu->mmu.gpu = emu->gpu;
-	emu->mmu.controller =  &emu->controller;
-	emu->mmu.apu = emu->apu;
+	emu->should_run = false;
+	emu->clock = 0;
+
 	return 0;
 }
 
@@ -43,20 +34,20 @@ void update_emu_controller(Emulator* emu, Controller controller) {
 }
 
 int step(Emulator* emu) {
-	Operation to_exec = get_operation(&emu->cpu, &emu->mmu);
+	Operation to_exec = get_operation(emu);
 	Cycles c;
 	if (!emu->cpu.halted) {
-		c = cpu_step(&emu->cpu, &emu->mmu, to_exec);
+		c = cpu_step(emu, to_exec);
 	}
 	else {
-		c = run_halted(&emu->cpu, &emu->mmu);
+		c = run_halted(emu);
 	}
 	if (c.t_cycles < 0) {
 		return -1;
 	}
 	tick(emu, c.t_cycles);
-	gpu_step(emu->gpu, &emu->mmu, c.t_cycles);
-	apu_step(emu->apu, c.t_cycles);
+	gpu_step(emu, c.t_cycles);
+	apu_step(&emu->apu, c.t_cycles);
 
 	return 0;
 }
@@ -64,13 +55,6 @@ int step(Emulator* emu) {
 
 void destroy_emulator(Emulator* emu) {
 	// if (emu->cpu) destroy_cpu(emu->cpu);
-	if (&emu->mmu) destroy_Mmu(&emu->mmu);
-	if (emu->gpu) destroy_gpu(emu->gpu);
-	if (emu->timer) free(emu->timer);
-	if (emu->apu) destroy_apu(emu->apu);
-	emu->gpu = NULL;
-	emu->timer = NULL;
-	emu->apu = NULL;
 }
 
 bool cartridge_loaded(Emulator* emu) {

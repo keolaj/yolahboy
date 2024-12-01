@@ -337,23 +337,23 @@ alu16_return run_alu16(Cpu* cpu, u16 x, u16 y, instruction_type type, address_mo
 
 
 
-u8* get_reg_from_type(Cpu* cpu, operand_type type) {
+u8* get_reg_from_type(Emulator* emu, operand_type type) {
 
 	switch (type) {
 	case A:
-		return &cpu->registers.a;
+		return &emu->cpu.registers.a;
 	case B:
-		return &cpu->registers.b;
+		return &emu->cpu.registers.b;
 	case C:
-		return &cpu->registers.c;
+		return &emu->cpu.registers.c;
 	case D:
-		return &cpu->registers.d;
+		return &emu->cpu.registers.d;
 	case E:
-		return &cpu->registers.e;
+		return &emu->cpu.registers.e;
 	case H:
-		return &cpu->registers.h;
+		return &emu->cpu.registers.h;
 	case L:
-		return &cpu->registers.l;
+		return &emu->cpu.registers.l;
 	default:
 		assert(false && "Not a register");
 		return NULL;
@@ -381,6 +381,50 @@ u16* get_reg16_from_type(Cpu* cpu, operand_type type) {
 		return NULL;
 	}
 }
+
+u8 get_dest(Emulator* emu, Operation* op) {
+
+	u8 destVal;
+	switch (op->dest_addr_mode) {
+	case ADDRESS_R8_OFFSET:
+	case REGISTER:
+		destVal = *get_reg_from_type(&emu->cpu, op->dest);
+		break;
+	case ADDRESS_R16:
+		destVal = read8(emu, *get_reg16_from_type(&emu->cpu, op->dest));
+		break;
+	case MEM_READ_ADDR_OFFSET:
+	case MEM_READ:
+		destVal = read8(emu, emu->cpu.registers.pc);
+		++emu->cpu.registers.pc;
+		break;
+	case OPERAND_NONE:
+		destVal = 0;
+		break;
+	default:
+		destVal = 0;
+		AddLog("unimplemented 8 bit dest read\n");
+		print_operation(*op);
+		assert(false);
+	}
+	return destVal;
+}
+u16 get_dest16(Emulator* emu, Operation* op) {
+	u16 dest_val;
+	switch (op->dest_addr_mode) {
+	case REGISTER16:
+		dest_val = *get_reg16_from_type(&emu->cpu, op->dest);
+		break;
+	case ADDRESS_R16:
+		dest_val = read16(emu, *get_reg16_from_type(&emu->cpu, op->dest));
+		break;
+	default:
+		dest_val = 0;
+		break;
+	}
+	return dest_val;
+}
+
 
 void write_dest(Emulator* emu, Operation* op, u8 value) {
 	switch (op->dest_addr_mode) {
@@ -559,48 +603,6 @@ u8 get_source(Emulator* emu, Operation* op) { // maybe I'll change this to be ab
 	return sourceVal;
 }
 
-u8 get_dest(Emulator* emu, Operation* op) {
-
-	u8 destVal;
-	switch (op->dest_addr_mode) {
-	case ADDRESS_R8_OFFSET:
-	case REGISTER:
-		destVal = *get_reg_from_type(&emu->cpu, op->dest);
-		break;
-	case ADDRESS_R16:
-		destVal = read8(emu, *get_reg16_from_type(&emu->cpu, op->dest));
-		break;
-	case MEM_READ_ADDR_OFFSET:
-	case MEM_READ:
-		destVal = read8(emu, emu->cpu.registers.pc);
-		++emu->cpu.registers.pc;
-		break;
-	case OPERAND_NONE:
-		destVal = 0;
-		break;
-	default:
-		destVal = 0;
-		AddLog("unimplemented 8 bit dest read\n");
-		print_operation(*op);
-		assert(false);
-	}
-	return destVal;
-}
-u16 get_dest16(Emulator* emu, Operation* op) {
-	u16 dest_val;
-	switch (op->dest_addr_mode) {
-	case REGISTER16:
-		dest_val = *get_reg16_from_type(&emu->cpu, op->dest);
-		break;
-	case ADDRESS_R16:
-		dest_val = read16(emu, *get_reg16_from_type(&emu->cpu, op->dest));
-		break;
-	default:
-		dest_val = 0;
-		break;
-	}
-	return dest_val;
-}
 
 Operation get_operation(Emulator* emu) {
 	u8 opcode = read8(emu, emu->cpu.registers.pc);
@@ -849,6 +851,61 @@ void CCF_impl(Emulator* emu, Operation* op) {
 	emu->cpu.registers.f &= (FLAG_CARRY & FLAG_ZERO);
 }
 
+bool should_run_interrupt(Emulator* emu) {
+	u8 j_ret = joypad_return(emu->controller, emu->mmu.memory[0xFF00]);
+	if ((~j_ret & 0b00001111)) emu->mmu.memory[IF] = emu->mmu.memory[IF] | JOYPAD_INTERRUPT;
+	u8 interrupt_flag = emu->mmu.memory[IF];
+	u8 interrupt_enable = emu->mmu.memory[IE];
+	
+	if ((interrupt_flag & interrupt_enable)) {
+		emu->cpu.halted = false;
+		if (emu->cpu.IME) return true;
+		else return false;
+	}
+	else {
+		return false;
+	}
+}
+
+u16 interrupt_address_from_flag(u8 flag) {
+	switch (flag) {
+	case VBLANK_INTERRUPT:
+		return VBLANK_ADDRESS;
+	case STAT_INTERRUPT:
+		return LCDSTAT_ADDRESS;
+	case TIMER_INTERRUPT:
+		return TIMER_ADDRESS;
+	case SERIAL_INTERRUPT:
+		return SERIAL_ADDRESS;
+	case JOYPAD_INTERRUPT:
+		return JOYPAD_ADDRESS;
+	default:
+		return 0;
+	}
+}
+
+u16 interrupt_priority(Emulator* emu, u8 interrupt_flag) {
+	for (int i = 0; i < 5; ++i) {
+		u8 itX = interrupt_flag & (1 << i);
+		itX = (read8(emu, IE) & itX);
+		if (itX) {
+			write8(emu, IF, interrupt_flag & ~itX);
+			return interrupt_address_from_flag(itX);
+		}
+	}
+	return 0;
+}
+
+void run_interrupt(Emulator* emu) {
+	u16 jump_to = interrupt_priority(emu, read8(emu, IF));
+	if (jump_to != 0) {
+		
+		emu->cpu.IME = false;
+		push(emu, emu->cpu.registers.pc);
+		jump(emu, jump_to);
+	}
+}
+
 Cycles cpu_step(Emulator* emu, Operation op) {
 	++emu->cpu.registers.pc;
 
@@ -937,7 +994,7 @@ Cycles cpu_step(Emulator* emu, Operation op) {
 		break;
 
 	case CB: {
-		Cycles cb_ret = cpu_step(emu, get_cb_operation(&emu->cpu, &emu->mmu));
+		Cycles cb_ret = cpu_step(emu, get_cb_operation(emu));
 		if (cb_ret.t_cycles == -1) {
 			AddLog("Unimplemented CB op\n");
 			return (Cycles) { -1, -1 };
@@ -974,8 +1031,8 @@ Cycles cpu_step(Emulator* emu, Operation op) {
 		}
 	}
 
-	if (should_run_interrupt(&emu->cpu, &emu->mmu)) {
-		run_interrupt(&emu->cpu, &emu->mmu);
+	if (should_run_interrupt(emu)) {
+		run_interrupt(emu);
 
 		op.m_cycles += 5;
 		op.t_cycles += 20;
@@ -984,79 +1041,27 @@ Cycles cpu_step(Emulator* emu, Operation op) {
 	return (Cycles) { op.m_cycles, op.t_cycles };
 }
 
-Cycles run_halted(Cpu* cpu, Mmu* mem) {
+Cycles run_halted(Emulator* emu) {
 	Cycles cycles = { 1, 4 };
 
-	if (cpu->should_update_IME) {
-		if (cpu->update_IME_counter == 0) {
-			cpu->IME = cpu->update_IME_value;
-			cpu->should_update_IME = false;
+	if (emu->cpu.should_update_IME) {
+		if (emu->cpu.update_IME_counter == 0) {
+			emu->cpu.IME = emu->cpu.update_IME_value;
+			emu->cpu.should_update_IME = false;
 		}
 		else {
-			--cpu->update_IME_counter;
+			--emu->cpu.update_IME_counter;
 		}
 	}
 
-	if (should_run_interrupt(cpu, mem)) {
+	if (should_run_interrupt(emu)) {
 
-		run_interrupt(cpu, mem);
+		run_interrupt(emu);
 		cycles.m_cycles += 5;
 		cycles.t_cycles += 20;
 	}
 	return cycles;
 }
 
-u16 interrupt_address_from_flag(u8 flag) {
-	switch (flag) {
-	case VBLANK_INTERRUPT:
-		return VBLANK_ADDRESS;
-	case STAT_INTERRUPT:
-		return LCDSTAT_ADDRESS;
-	case TIMER_INTERRUPT:
-		return TIMER_ADDRESS;
-	case SERIAL_INTERRUPT:
-		return SERIAL_ADDRESS;
-	case JOYPAD_INTERRUPT:
-		return JOYPAD_ADDRESS;
-	default:
-		return 0;
-	}
-}
 
-u16 interrupt_priority(Emulator* emu, u8 interrupt_flag) {
-	for (int i = 0; i < 5; ++i) {
-		u8 itX = interrupt_flag & (1 << i);
-		itX = (read8(emu, IE) & itX);
-		if (itX) {
-			write8(emu, IF, interrupt_flag & ~itX);
-			return interrupt_address_from_flag(itX);
-		}
-	}
-	return 0;
-}
 
-void run_interrupt(Emulator* emu) {
-	u16 jump_to = interrupt_priority(emu, read8(emu, IF));
-	if (jump_to != 0) {
-		
-		emu->cpu.IME = false;
-		push(emu, emu->cpu.registers.pc);
-		jump(emu, jump_to);
-	}
-}
-
-bool should_run_interrupt(Cpu* cpu, Mmu* mem) {
-	u8 j_ret = joypad_return(mem->controller, mem->memory[0xFF00]);
-	if ((~j_ret & 0b00001111)) mem->memory[IF] = mem->memory[IF] | JOYPAD_INTERRUPT;
-	u8 interrupt_flag = mem->memory[IF];
-	u8 interrupt_enable = mem->memory[IE];
-	
-	if ((interrupt_flag & interrupt_enable)) {
-		cpu->halted = false;
-		if (cpu->IME) return true;
-		else return false;
-	}
-	else {
-		return false;
-	}
-}

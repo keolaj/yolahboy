@@ -2,7 +2,7 @@
 #include <stdbool.h>
 #include "../global_definitions.h"
 
-void init_Mmu(Mmu* mem);
+void init_mmu(Mmu* mem);
 int load_bootrom(Mmu* mem, const char* path);
 int load_rom(Mmu* mem, const char* path);
 u8 read8(Emulator* emu, u16 address);

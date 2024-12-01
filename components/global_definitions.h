@@ -239,10 +239,6 @@ typedef struct _Mmu {
 	u8 memory[0x10000];
 	Cartridge cartridge;
 	bool in_bios;
-	Gpu* gpu;
-	Controller* controller;
-	Timer* timer;
-	Apu* apu;
 } Mmu;
 
 typedef struct {
@@ -325,9 +321,9 @@ struct _gpu {
 typedef struct {
 	Cpu cpu;
 	Mmu mmu;
-	Gpu* gpu;
-	Timer* timer;
-	Apu* apu;
+	Gpu gpu;
+	Timer timer;
+	Apu apu;
 	Controller controller;
 	
 	int clock;	

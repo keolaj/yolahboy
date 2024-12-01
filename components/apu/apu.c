@@ -12,40 +12,21 @@ static bool duty_cycles[4][16] = {
 	{ 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 1 }
 };
 
-// APU SETUP FUNCTIONS
-Apu* create_apu(int sample_rate, int buffer_size) {
-	Apu* apu = (Apu*)malloc(sizeof(Apu));
-	memset(apu, 0, sizeof(Apu));
-	if (apu == NULL) {
-		AddLog("Couldn't allocate Apu!\n");
-		return NULL;
-	}
 
-	apu->buffer_size = buffer_size;
-	apu->sample_rate = sample_rate;
+void init_apu(Apu* apu, int sample_rate, int buffer_size) {
 
-	apu->lfsr = 0xF3C9;
-
+	memset(apu, 0, sizeof(Apu)); // This resets all Apu registers and controls
+	
 	apu->buffer = (float*)malloc(sizeof(float) * buffer_size * 2); // Allocate main buffers
-
 	if (apu->buffer == NULL) {
-		AddLog("Couldn't allocate Apu buffer\n");
-		destroy_apu(apu);
-		return NULL;
+		AddLog("Couldn't allocate apu\n");
+		return;
 	}
 
-	return apu;
-}
-
-void init_apu(Apu* apu) {
-	int buffer_size = apu->buffer_size;
-	int sample_rate = apu->sample_rate;
-
-	memset(apu, 0, 0x30); // This resets all Apu registers and controls
-	
-	memset(&apu->channel, 0, sizeof(Channel) * 4);
 	memset(apu->buffer, 0, buffer_size * 2 * sizeof(float));
-	
+
+	apu->lfsr = 0xFFFF;
+
 	apu->buffer_size = buffer_size;
 	apu->sample_rate = sample_rate;
 }

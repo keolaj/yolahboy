@@ -11,18 +11,22 @@ Timer* create_timer() {
 	return ret;
 }
 
+void init_timer(Timer* timer) {
+	memset(timer, 0, sizeof(Timer));
+}
+
 static u16 freq_divider[] = { 1024, 16, 64, 256 };
 
 void tick(Emulator* emu, int t_cycles) {
 
-	u16 old_clock = emu->timer->clock;
+	u16 old_clock = emu->timer.clock;
 
 	if ((old_clock & 0xFF) + t_cycles > 0xFF) {
-		++(emu->mmu.Mmu[DIV]);
+		++(emu->mmu.memory[DIV]);
 	}
 
-	emu->timer->clock += t_cycles;
-	u8 tac = emu->mmu.Mmu[TAC];
+	emu->timer.clock += t_cycles;
+	u8 tac = emu->mmu.memory[TAC];
 
 	bool tac_enable = tac & (1 << 2);
 	u8 tac_mode = tac & 3;
@@ -45,21 +49,21 @@ void tick(Emulator* emu, int t_cycles) {
 		break;
 	}
 
-	bool and_result = tac_enable && (emu->timer->clock & (1 << bit_check));
+	bool and_result = tac_enable && (emu->timer.clock & (1 << bit_check));
 
-	if (emu->timer->old_and && !and_result) {
+	if (emu->timer.old_and && !and_result) {
 		should_inc_tima = true;
 	}
 
-	emu->timer->old_and = and_result;
+	emu->timer.old_and = and_result;
 
 	if (tac_enable && should_inc_tima) {
-		if (emu->mmu.Mmu[TIMA] == 255) {
-			emu->mmu.Mmu[IF] |= TIMER_INTERRUPT;
-			emu->mmu.Mmu[TIMA] = emu->mmu.Mmu[TMA];
+		if (emu->mmu.memory[TIMA] == 255) {
+			emu->mmu.memory[IF] |= TIMER_INTERRUPT;
+			emu->mmu.memory[TIMA] = emu->mmu.memory[TMA];
 		}
 		else {
-			(emu->mmu.Mmu[TIMA])++;
+			(emu->mmu.memory[TIMA])++;
 		}
 	}
 
