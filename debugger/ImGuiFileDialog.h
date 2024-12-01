@@ -208,7 +208,7 @@ struct IGFD_Thumbnail_Info {
 #include <condition_variable>
 #include <thread>
 #include <cfloat>
-#include <memory>
+#include <Mmu>
 #include <string>
 #include <vector>
 #include <utility>
@@ -896,7 +896,7 @@ protected:
 
 public:
     // Singleton for easier accces form anywhere but only one dialog at a time
-    // vCopy or vForce can be used for share a memory pointer in a new memory space like a dll module
+    // vCopy or vForce can be used for share a Mmu pointer in a new Mmu space like a dll module
     static FileDialog* Instance(FileDialog* vCopy = nullptr, bool vForce = false) {
         static FileDialog _instance;
         static FileDialog* _instance_copy = nullptr;

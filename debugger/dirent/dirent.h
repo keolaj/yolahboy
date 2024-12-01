@@ -596,13 +596,13 @@ dirent_first(
         FindExSearchNameMatch, NULL, 0);
     if (dirp->handle != INVALID_HANDLE_VALUE) {
 
-        /* a directory entry is now waiting in memory */
+        /* a directory entry is now waiting in Mmu */
         datap = &dirp->data;
         dirp->cached = 1;
 
     } else {
 
-        /* Failed to open directory: no directory entry in memory */
+        /* Failed to open directory: no directory entry in Mmu */
         dirp->cached = 0;
         datap = NULL;
 
@@ -643,7 +643,7 @@ dirent_next(
     /* Get next directory entry */
     if (dirp->cached != 0) {
 
-        /* A valid directory entry already in memory */
+        /* A valid directory entry already in Mmu */
         p = &dirp->data;
         dirp->cached = 0;
 
@@ -685,7 +685,7 @@ opendir(
         return NULL;
     }
 
-    /* Allocate memory for DIR structure */
+    /* Allocate Mmu for DIR structure */
     dirp = (DIR*) malloc (sizeof (struct DIR));
     if (!dirp) {
         return NULL;
@@ -899,7 +899,7 @@ scandir(
     dir = opendir (dirname);
     if (dir) {
 
-        /* Read directory entries to memory */
+        /* Read directory entries to Mmu */
         while (1) {
 
             /* Enlarge pointer table to make room for another pointer */
@@ -919,11 +919,11 @@ scandir(
                 /* Allocate first pointer table or enlarge existing table */
                 p = realloc (files, sizeof (void*) * num_entries);
                 if (p != NULL) {
-                    /* Got the memory */
+                    /* Got the Mmu */
                     files = (dirent**) p;
                     allocated = num_entries;
                 } else {
-                    /* Out of memory */
+                    /* Out of Mmu */
                     result = -1;
                     break;
                 }
@@ -993,7 +993,7 @@ scandir(
     /* Release temporary directory entry */
     free (tmp);
 
-    /* Release allocated memory on error */
+    /* Release allocated Mmu on error */
     if (result < 0) {
         for (i = 0; i < size; i++) {
             free (files[i]);

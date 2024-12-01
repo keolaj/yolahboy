@@ -34,7 +34,7 @@ int vasprintf(char** strp, const char* fmt, va_list ap)
     requiredSize = ((size_t)formattedLength) + 1;
     *strp = (char*)malloc(requiredSize);
 
-    // bail out on failed memory allocation
+    // bail out on failed Mmu allocation
     if (*strp == NULL)
     {
         errno = ENOMEM;

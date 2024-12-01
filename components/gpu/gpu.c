@@ -1,9 +1,9 @@
 #include "gpu.h"
 #include <stdio.h>
 #include <SDL3/SDL.h>
-#include "../memory/memory.h"
+#include "../mmu/mmu.h"
 
-Gpu* create_gpu(Memory* mem) {
+Gpu* create_gpu(Mmu* mem) {
 	Gpu* ret = (Gpu*)malloc(sizeof(Gpu));
 	if (ret == NULL) {
 		printf("could not allocate Gpu");
@@ -21,15 +21,15 @@ int init_gpu(Gpu* gpu) {
 	return 0;
 }
 
-u8 read_tile(Memory* mem, int tile_index, u8 x, u8 y) { // TODO: this function returns a pixel from a position in a tile
+u8 read_tile(Mmu* mem, int tile_index, u8 x, u8 y) { // TODO: this function returns a pixel from a position in a tile
 	u16 address = 0x8000;
 	address += (tile_index * 16);
 	address += (y * 2);
 
 	x = (7 - x);
 
-	u8 id = (mem->memory[address] & (1 << x)) ? 1 : 0;
-	id += (mem->memory[address + 1] & (1 << x)) ? 2 : 0;
+	u8 id = (mem->Mmu[address] & (1 << x)) ? 1 : 0;
+	id += (mem->Mmu[address + 1] & (1 << x)) ? 2 : 0;
 
 	return id;
 }
@@ -66,7 +66,7 @@ u32 pixel_from_palette(u8 palette, u8 id) {
 	}
 }
 
-void draw_line(Gpu* gpu, Memory* mem) {
+void draw_line(Gpu* gpu, Mmu* mem) {
 
 	if (gpu->lcdc & 1) { // if BG enabled draw BG
 		bool BGTileMapArea = (gpu->lcdc & (1 << 3));
@@ -193,7 +193,7 @@ void destroy_gpu(Gpu* gpu) {
 	}
 }
 
-void handle_oam(Gpu* gpu, Memory* mem) {
+void handle_oam(Gpu* gpu, Mmu* mem) {
 	if (gpu->should_stat_interrupt && gpu->clock > 4) {
 		write8(mem, IF, read8(mem, IF) | STAT_INTERRUPT);
 		gpu->should_stat_interrupt = false;
@@ -205,7 +205,7 @@ void handle_oam(Gpu* gpu, Memory* mem) {
 	}
 }
 
-void handle_vram(Gpu* gpu, Memory* mem) {
+void handle_vram(Gpu* gpu, Mmu* mem) {
 	if (gpu->clock >= 172) {
 		gpu->clock -= 172;
 		gpu->mode = HBLANK;
@@ -216,7 +216,7 @@ void handle_vram(Gpu* gpu, Memory* mem) {
 	}
 }
 
-void handle_hblank(Gpu* gpu, Memory* mem) {
+void handle_hblank(Gpu* gpu, Mmu* mem) {
 	if (gpu->should_stat_interrupt && gpu->clock > 4) {
 		write8(mem, IF, read8(mem, IF) | STAT_INTERRUPT);
 		gpu->should_stat_interrupt = false;
@@ -251,7 +251,7 @@ void handle_hblank(Gpu* gpu, Memory* mem) {
 	}
 }
 
-void handle_vblank(Gpu* gpu, Memory* mem) {
+void handle_vblank(Gpu* gpu, Mmu* mem) {
 	if (gpu->should_stat_interrupt && gpu->clock > 4) {
 		write8(mem, IF, read8(mem, IF) | STAT_INTERRUPT);
 		gpu->should_stat_interrupt = false;
@@ -259,11 +259,11 @@ void handle_vblank(Gpu* gpu, Memory* mem) {
 	if (gpu->clock >= 456) {
 		gpu->clock -= 456;
 		++gpu->ly;
-		mem->memory[LY] = gpu->ly;
-		if (mem->memory[LYC] == gpu->ly) {
+		mem->Mmu[LY] = gpu->ly;
+		if (mem->Mmu[LYC] == gpu->ly) {
 			gpu->stat |= (1 << 2);
 			if (read8(mem, STAT) & (1 << 6)) {
-				mem->memory[IF] |= STAT_INTERRUPT;
+				mem->Mmu[IF] |= STAT_INTERRUPT;
 			}
 		}
 		else {
@@ -279,7 +279,7 @@ void handle_vblank(Gpu* gpu, Memory* mem) {
 				gpu->stat |= (1 << 2);
 				if (read8(mem, STAT) & (1 << 6)) {
 					gpu->should_stat_interrupt = true;
-					// mem->memory[IF] |= STAT_INTERRUPT;
+					// mem->Mmu[IF] |= STAT_INTERRUPT;
 				}
 			}
 			else {
@@ -294,7 +294,7 @@ void handle_vblank(Gpu* gpu, Memory* mem) {
 
 }
 
-void gpu_step(Gpu* gpu, Memory* mem, u8 cycles) {
+void gpu_step(Gpu* gpu, Mmu* mem, u8 cycles) {
 	bool lcd_enabled = gpu->lcdc & (1 << 7);
 	gpu->should_draw = false;
 	if (!lcd_enabled) {

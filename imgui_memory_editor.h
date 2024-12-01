@@ -1,4 +1,4 @@
-// Mini memory editor for Dear ImGui (to embed in your game/tools)
+// Mini Mmu editor for Dear ImGui (to embed in your game/tools)
 // Get latest version at http://www.github.com/ocornut/imgui_club
 // Licensed under The MIT License (MIT)
 
@@ -8,15 +8,15 @@
 // If you don't use the default font, use ImGui::PushFont()/PopFont() to switch to a mono-space font before calling this.
 //
 // Usage:
-//   // Create a window and draw memory editor inside it:
-//   static MemoryEditor mem_edit_1;
+//   // Create a window and draw Mmu editor inside it:
+//   static MmuEditor mem_edit_1;
 //   static char data[0x10000];
 //   size_t data_size = 0x10000;
-//   mem_edit_1.DrawWindow("Memory Editor", data, data_size);
+//   mem_edit_1.DrawWindow("Mmu Editor", data, data_size);
 //
 // Usage:
 //   // If you already have a window, use DrawContents() instead:
-//   static MemoryEditor mem_edit_2;
+//   static MmuEditor mem_edit_2;
 //   ImGui::Begin("MyWindow")
 //   mem_edit_2.DrawContents(this, sizeof(*this), (size_t)this);
 //   ImGui::End();
@@ -74,7 +74,7 @@
 #pragma warning (disable: 4996) // warning C4996: 'sprintf': This function or variable may be unsafe.
 #endif
 
-struct MemoryEditor
+struct MmuEditor
 {
     enum DataFormat
     {
@@ -122,7 +122,7 @@ struct MemoryEditor
     int             PreviewEndianness;
     ImGuiDataType   PreviewDataType;
 
-    MemoryEditor()
+    MmuEditor()
     {
         // Settings
         Open = true;
@@ -205,7 +205,7 @@ struct MemoryEditor
         s.WindowWidth = s.PosAsciiEnd + style.ScrollbarSize + style.WindowPadding.x * 2 + s.GlyphWidth;
     }
 
-    // Standalone Memory Editor window
+    // Standalone Mmu Editor window
     void DrawWindow(const char* title, void* mem_data, size_t mem_size, size_t base_display_addr = 0x0000)
     {
         Sizes s;
@@ -226,7 +226,7 @@ struct MemoryEditor
         ImGui::End();
     }
 
-    // Memory Editor contents only
+    // Mmu Editor contents only
     void DrawContents(void* mem_data_void, size_t mem_size, size_t base_display_addr = 0x0000)
     {
         if (Cols < 1)
@@ -362,7 +362,7 @@ struct MemoryEditor
 #endif
                                 if (data->SelectionStart == 0 && data->SelectionEnd == data->BufTextLen)
                                 {
-                                    // When not editing a byte, always refresh its InputText content pulled from underlying memory data
+                                    // When not editing a byte, always refresh its InputText content pulled from underlying Mmu data
                                     // (this is a bit tricky, since InputText technically "owns" the master copy of the buffer we edit it in there)
                                     data->DeleteChars(0, data->BufTextLen);
                                     data->InsertChars(0, user_data->CurrentBufOverwrite);

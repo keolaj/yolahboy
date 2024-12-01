@@ -10,7 +10,7 @@
 //#include "components/operations.h"
 //#include "components/operation_defitions.h"
 //#include "components/cpu.h"
-//#include "components/memory.h"
+//#include "components/Mmu.h"
 //#include "components/gpu.h"
 //
 //// extern Emulator emu;
@@ -39,9 +39,9 @@
 //			}
 //		}
 //
-//		Operation to_execute = get_operation(emu.cpu, emu.memory);
+//		Operation to_execute = get_operation(emu.cpu, emu.Mmu);
 //		// print_operation(to_execute);
-//		Cycles clock = cpu_step(emu.cpu, emu.memory, to_execute);
+//		Cycles clock = cpu_step(emu.cpu, emu.Mmu, to_execute);
 //		if (clock.m_cycles == -1 && clock.t_cycles == -1) {
 //			emu.should_quit = true;
 //		}

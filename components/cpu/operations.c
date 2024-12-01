@@ -1,5 +1,5 @@
 #include "operations.h"
-#include "../memory/memory.h"
+#include "../mmu/mmu.h"
 #include "../debugger/imgui_custom_widget_wrapper.h"
 #include <stdio.h>
 

@@ -57,7 +57,7 @@
 
      If you pass NULL or zero for the output_pixels, we will allocate the output buffer
      for you and return it from the function (free with free() or STBIR_FREE).
-     As a special case, XX_stride_in_bytes of 0 means packed continuously in memory.
+     As a special case, XX_stride_in_bytes of 0 means packed continuously in Mmu.
 
    API LEVELS
       There are three levels of API - easy-to-use, medium-complexity and extended-complexity.
@@ -66,9 +66,9 @@
 
    ADDITIONAL DOCUMENTATION
 
-      MEMORY ALLOCATION
-         By default, we use malloc and free for memory allocation.  To override the
-         memory allocation, before the implementation #include, add a:
+      Mmu ALLOCATION
+         By default, we use malloc and free for Mmu allocation.  To override the
+         Mmu allocation, before the implementation #include, add a:
 
             #define STBIR_MALLOC(size,user_data) ...
             #define STBIR_FREE(ptr,user_data)   ...
@@ -298,7 +298,7 @@
 
       FUTURE TODOS
         *  For polyphase integral filters, we just memcpy the coeffs to dupe
-           them, but we should indirect and use the same coeff memory.
+           them, but we should indirect and use the same coeff Mmu.
         *  Add pixel layout conversions for sensible different channel counts
            (maybe, 1->3/4, 3->4, 4->1, 3->1).
          * For SIMD encode and decode scanline routines, do any pre-aligning
@@ -313,8 +313,8 @@
          * Convert the reincludes to macros when we know they aren't changing.
          * Experiment with pivoting the horizontal and always using the
            vertical filters (which are faster, but perhaps not enough to overcome
-           the pivot cost and the extra memory touches). Need to buffer the whole
-           image so have to balance memory use.
+           the pivot cost and the extra Mmu touches). Need to buffer the whole
+           image so have to balance Mmu use.
          * Most of our code is internally function pointers, should we compile
            all the SIMD stuff always and dynamically dispatch?
 
@@ -442,7 +442,7 @@ typedef uint64_t stbir_uint64;
 // Easy-to-use API:
 //
 //     * stride is the offset between successive rows of image data
-//        in memory, in bytes. specify 0 for packed continuously in memory
+//        in Mmu, in bytes. specify 0 for packed continuously in Mmu
 //     * colorspace is linear or sRGB as specified by function name
 //     * Uses the default filters
 //     * Uses edge mode clamped
@@ -518,7 +518,7 @@ typedef enum
 {
   STBIR_EDGE_CLAMP   = 0,
   STBIR_EDGE_REFLECT = 1,
-  STBIR_EDGE_WRAP    = 2,  // this edge mode is slower and uses more memory
+  STBIR_EDGE_WRAP    = 2,  // this edge mode is slower and uses more Mmu
   STBIR_EDGE_ZERO    = 3,
 } stbir_edge;
 
@@ -563,7 +563,7 @@ STBIRDEF void *  stbir_resize( const void *input_pixels , int input_w , int inpu
 //     * Separate input and output data types
 //     * Can specify regions with subpixel correctness
 //     * Can specify alpha flags
-//     * Can specify a memory callback
+//     * Can specify a Mmu callback
 //     * Can specify a callback data type for pixel input and output
 //     * Can be threaded for a single resize
 //     * Can be used to resize many frames without recalculating the sampler info
@@ -826,7 +826,7 @@ STBIRDEF void stbir_resize_split_profile_info( STBIR_PROFILE_INFO * out_info, ST
 
 // Clang address sanitizer
 #if defined(__has_feature)
-  #if __has_feature(address_sanitizer) || __has_feature(memory_sanitizer)
+  #if __has_feature(address_sanitizer) || __has_feature(Mmu_sanitizer)
     #ifndef STBIR__SEPARATE_ALLOCATIONS
       #define STBIR__SEPARATE_ALLOCATIONS
     #endif
@@ -4333,7 +4333,7 @@ static void stbir__decode_scanline(stbir__info const * stbir_info, int n, float 
     // if we have an input callback, call it to get the input data
     if ( stbir_info->in_pixels_cb )
     {
-      // call the callback with a temp buffer (that they can choose to use or not).  the temp is just right aligned memory in the decode_buffer itself
+      // call the callback with a temp buffer (that they can choose to use or not).  the temp is just right aligned Mmu in the decode_buffer itself
       input_data = stbir_info->in_pixels_cb( ( (char*) end_decode ) - ( width * input_sample_in_bytes ), input_plane_data, width, spans->pixel_offset_for_input, row, stbir_info->user_data );
     }
 
@@ -4353,7 +4353,7 @@ static void stbir__decode_scanline(stbir__info const * stbir_info, int n, float 
   } while ( spans <= ( &stbir_info->scanline_extents.spans[1] ) );
 
   // handle the edge_wrap filter (all other types are handled back out at the calculate_filter stage)
-  // basically the idea here is that if we have the whole scanline in memory, we don't redecode the
+  // basically the idea here is that if we have the whole scanline in Mmu, we don't redecode the
   //   wrapped edge pixels, and instead just memcpy them from the scanline into the edge positions
   if ( ( edge_horizontal == STBIR_EDGE_WRAP ) && ( stbir_info->scanline_extents.edge_sizes[0] | stbir_info->scanline_extents.edge_sizes[1] ) )
   {
@@ -6268,10 +6268,10 @@ static void stbir__set_sampler(stbir__sampler * samp, stbir_filter filter, stbir
 
   samp->edge = edge;
   samp->filter_pixel_width  = stbir__get_filter_pixel_width (samp->filter_support, scale_info->scale, user_data );
-  // Gather is always better, but in extreme downsamples, you have to most or all of the data in memory
+  // Gather is always better, but in extreme downsamples, you have to most or all of the data in Mmu
   //    For horizontal, we always have all the pixels, so we always use gather here (always_gather==1).
   //    For vertical, we use gather if scaling up (which means we will have samp->filter_pixel_width
-  //    scanlines in memory at once).
+  //    scanlines in Mmu at once).
   samp->is_gather = 0;
   if ( scale_info->scale >= ( 1.0f - stbir__small_float ) )
     samp->is_gather = 1;
@@ -6861,7 +6861,7 @@ static stbir__info * stbir__alloc_internal_mem_and_build_samplers( stbir__sample
       STBIR__NEXT_PTR( info->split_info[i].vertical_buffer, vertical_buffer_size, float );
     }
 
-    // alloc memory for to-be-pivoted coeffs (if necessary)
+    // alloc Mmu for to-be-pivoted coeffs (if necessary)
     if ( vertical->is_gather == 0 )
     {
       int both;
@@ -6869,7 +6869,7 @@ static stbir__info * stbir__alloc_internal_mem_and_build_samplers( stbir__sample
 
       // when in vertical scatter mode, we first build the coefficients in gather mode, and then pivot after,
       //   that means we need two buffers, so we try to use the decode buffer and ring buffer for this. if that
-      //   is too small, we just allocate extra memory to use as this temp.
+      //   is too small, we just allocate extra Mmu to use as this temp.
 
       both = vertical->gather_prescatter_contributors_size + vertical->gather_prescatter_coefficients_size;
 
@@ -6888,7 +6888,7 @@ static stbir__info * stbir__alloc_internal_mem_and_build_samplers( stbir__sample
       }
       else
       {
-        // ring+decode memory is too small, so allocate temp memory
+        // ring+decode Mmu is too small, so allocate temp Mmu
         STBIR__NEXT_PTR( vertical->gather_prescatter_contributors, vertical->gather_prescatter_contributors_size, stbir__contributors );
         STBIR__NEXT_PTR( vertical->gather_prescatter_coefficients, vertical->gather_prescatter_coefficients_size, float );
       }

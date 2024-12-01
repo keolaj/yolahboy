@@ -13,17 +13,7 @@ void init_cpu(Cpu* cpu) {
 	cpu->registers.pc = 0;
 	cpu->IME = false;
 	cpu->should_update_IME = false;
-	cpu->halted = false;
-}
-
-Cpu* create_cpu() {
-	Cpu* ret = (Cpu*)malloc(sizeof(Cpu));
-	if (ret == NULL) {
-		AddLog("could not allocate cpu");
-		return NULL;
-	}
-	init_cpu(ret);
-	return ret;
+	cpu->halted = false; 
 }
 void print_registers(Cpu* cpu) {
 	AddLog("af: 0x%04hX\n", cpu->registers.af);
@@ -33,31 +23,26 @@ void print_registers(Cpu* cpu) {
 	AddLog("sp: 0x%04hX\n", cpu->registers.sp);
 	AddLog("pc: 0x%04hX\n", cpu->registers.pc);
 }
-
 void update_IME(Cpu* cpu, bool value) {
 	cpu->should_update_IME = true;
 	cpu->update_IME_value = value;
 	cpu->update_IME_counter = 1;
 }
 
-void push(Cpu* cpu, Memory* mem, u16 value) {
-	write16(mem, cpu->registers.sp - 2, value);
-	cpu->registers.sp -= 2;
+void push(Emulator* emu, u16 value) {
+	write16(emu, emu->cpu.registers.sp - 2, value);
+	emu->cpu.registers.sp -= 2;
 }
-void pop(Cpu* cpu, Memory* mem, u16* reg, operand_type operand) {
-	*reg = read16(mem, cpu->registers.sp);
+void pop(Emulator* emu, u16* reg, operand_type operand) {
+	*reg = read16(emu, emu->cpu.registers.sp);
 	if (operand == AF) {
-		cpu->registers.f &= 0xF0;
+		emu->cpu.registers.f &= 0xF0;
 	}
-	cpu->registers.sp += 2;
+	emu->cpu.registers.sp += 2;
 }
-void jump(Cpu* cpu, u16 jump_to) {
-	cpu->registers.pc = jump_to;
+void jump(Emulator* emu, u16 jump_to) {
+	emu->cpu.registers.pc = jump_to;
 }
-
-
-
-
 u8 generate_set_mask(instruction_flags flag_actions) {
 	u8 ret = 0;
 	if (flag_actions.zero == SET) {
@@ -108,25 +93,25 @@ u8 generate_ignore_mask(instruction_flags flag_actions) {
 	return ret;
 }
 
-bool condition_passed(Cpu* cpu, Operation* op) {
+bool condition_passed(Emulator* emu, Operation* op) {
 	switch (op->condition) {
 	case CONDITION_Z:
-		if ((cpu->registers.f & FLAG_ZERO) == FLAG_ZERO) {
+		if ((emu->cpu.registers.f & FLAG_ZERO) == FLAG_ZERO) {
 			return true;
 		}
 		break;
 	case CONDITION_NZ:
-		if ((cpu->registers.f & FLAG_ZERO) != FLAG_ZERO) {
+		if ((emu->cpu.registers.f & FLAG_ZERO) != FLAG_ZERO) {
 			return true;
 		}
 		break;
 	case CONDITION_C:
-		if ((cpu->registers.f & FLAG_CARRY) == FLAG_CARRY) {
+		if ((emu->cpu.registers.f & FLAG_CARRY) == FLAG_CARRY) {
 			return true;
 		}
 		break;
 	case CONDITION_NC:
-		if ((cpu->registers.f & FLAG_CARRY) != FLAG_CARRY) {
+		if ((emu->cpu.registers.f & FLAG_CARRY) != FLAG_CARRY) {
 			return true;
 		}
 		break;
@@ -397,29 +382,29 @@ u16* get_reg16_from_type(Cpu* cpu, operand_type type) {
 	}
 }
 
-void write_dest(Cpu* cpu, Memory* mem, Operation* op, u8 value) {
+void write_dest(Emulator* emu, Operation* op, u8 value) {
 	switch (op->dest_addr_mode) {
 	case REGISTER:
-		*get_reg_from_type(cpu, op->dest) = value;
+		*get_reg_from_type(&emu->cpu, op->dest) = value;
 		break;
 	case ADDRESS_R16:
-		write8(mem, *get_reg16_from_type(cpu, op->dest), value);
+		write8(emu, *get_reg16_from_type(&emu->cpu, op->dest), value);
 		break;
 		//case MEM_READ16:
-		//	write8(mem, read8(mem, cpu->registers.pc), value);
+		//	write8(emu, read8(emu, cpu->registers.pc), value);
 		//	cpu->registers.pc += 2;
 		//	break;
 	case ADDRESS_R8_OFFSET:
-		write8(mem, (0xFF00 + get_dest(cpu, mem, op)), value);
+		write8(emu, (0xFF00 + get_dest(emu, op)), value);
 		break;
 	case MEM_READ_ADDR:
-		write8(mem, read16(mem, cpu->registers.pc), value);
-		cpu->registers.pc += 2;
+		write8(emu, read16(emu, emu->cpu.registers.pc), value);
+		emu->cpu.registers.pc += 2;
 		break;
 	case MEM_READ_ADDR_OFFSET: {
-		u8 offset = read8(mem, cpu->registers.pc);
-		++cpu->registers.pc;
-		write8(mem, (0xFF00 + offset), value);
+		u8 offset = read8(emu, emu->cpu.registers.pc);
+		++emu->cpu.registers.pc;
+		write8(emu, (0xFF00 + offset), value);
 		break;
 	}
 	case OPERAND_NONE:
@@ -430,10 +415,10 @@ void write_dest(Cpu* cpu, Memory* mem, Operation* op, u8 value) {
 	}
 }
 
-void write_dest16(Cpu* cpu, Memory* mem, address_mode mode, operand_type dest, u16 value) {
+void write_dest16(Emulator* emu, address_mode mode, operand_type dest, u16 value) {
 	switch (mode) {
 	case REGISTER16:
-		*get_reg16_from_type(cpu, dest) = value;
+		*get_reg16_from_type(&emu->cpu, dest) = value;
 		break;
 	default:
 		AddLog("unimplemented write dest16 type");
@@ -451,23 +436,23 @@ bool bit_mode_16(Operation* op) {
 	}
 }
 
-void run_secondary(Cpu* cpu, Operation* op) {
+void run_secondary(Emulator* emu, Operation* op) {
 	u16* reg;
 	switch (op->secondary) {
 	case INC_R_1:
-		reg = get_reg16_from_type(cpu, op->dest);
+		reg = get_reg16_from_type(&emu->cpu, op->dest);
 		*reg = *reg + 1;
 		break;
 	case DEC_R_1:
-		reg = get_reg16_from_type(cpu, op->dest);
+		reg = get_reg16_from_type(&emu->cpu, op->dest);
 		*reg -= 1;
 		break;
 	case INC_R_2:
-		reg = get_reg16_from_type(cpu, op->source);
+		reg = get_reg16_from_type(&emu->cpu, op->source);
 		*reg += 1;
 		break;
 	case DEC_R_2:
-		reg = get_reg16_from_type(cpu, op->source);
+		reg = get_reg16_from_type(&emu->cpu, op->source);
 		*reg -= 1;
 		break;
 	case ADD_T_4:
@@ -481,12 +466,12 @@ void run_secondary(Cpu* cpu, Operation* op) {
 	}
 }
 
-u16 get_source_16(Cpu* cpu, Memory* mem, Operation* op) {
+u16 get_source_16(Emulator* emu, Operation* op) {
 	u16 sourceVal;
 	switch (op->source_addr_mode) {
 	case REGISTER16:
 		if (op->source == SP_ADD_I8) {
-			u8 val = read8(mem, cpu->registers.pc++);
+			u8 val = read8(emu, emu->cpu.registers.pc++);
 			i8 relative;
 
 			if (val > 127) {
@@ -498,21 +483,21 @@ u16 get_source_16(Cpu* cpu, Memory* mem, Operation* op) {
 			}
 
 
-			alu16_return alu_ret = run_alu16(cpu, *get_reg16_from_type(cpu, op->source), (i16)relative, ADD, MEM_READ, op->flag_actions);
+			alu16_return alu_ret = run_alu16(&emu->cpu, *get_reg16_from_type(&emu->cpu, op->source), (i16)relative, ADD, MEM_READ, op->flag_actions);
 			sourceVal = alu_ret.result;
-			cpu->registers.f = alu_ret.flags;
+			emu->cpu.registers.f = alu_ret.flags;
 			break;
 		}
-		sourceVal = *get_reg16_from_type(cpu, op->source);
+		sourceVal = *get_reg16_from_type(&emu->cpu, op->source);
 		break;
 	case MEM_READ16:
-		sourceVal = read16(mem, cpu->registers.pc);
-		cpu->registers.pc += 2;
+		sourceVal = read16(emu, emu->cpu.registers.pc);
+		emu->cpu.registers.pc += 2;
 		break;
 	case MEM_READ: {
 		switch (op->source) {
 		case I8: {
-			u8 value = read8(mem, cpu->registers.pc++);
+			u8 value = read8(emu, emu->cpu.registers.pc++);
 			i8 relative;
 			if (value > 127) {
 				relative = -(~value + 1);
@@ -528,9 +513,6 @@ u16 get_source_16(Cpu* cpu, Memory* mem, Operation* op) {
 	}
 	default:
 		sourceVal = 0;
-		AddLog("unimplemented 16 bit source read\n");
-		print_operation(*op);
-		assert(false);
 	}
 	return sourceVal;
 }
@@ -545,56 +527,53 @@ i16 unsigned_to_relative16(u8 x) {
 	return (i16)relative;
 }
 
-u8 get_source(Cpu* cpu, Memory* mem, Operation* op) { // maybe I'll change this to be able to read dest too at some point. Might make life easier
+u8 get_source(Emulator* emu, Operation* op) { // maybe I'll change this to be able to read dest too at some point. Might make life easier
 	u8 sourceVal;
 	switch (op->source_addr_mode) {
 	case REGISTER:
-		sourceVal = *get_reg_from_type(cpu, op->source);
+		sourceVal = *get_reg_from_type(emu, op->source);
 		break;
 	case MEM_READ:
-		sourceVal = read8(mem, cpu->registers.pc);
-		++cpu->registers.pc;
+		sourceVal = read8(emu, emu->cpu.registers.pc);
+		++emu->cpu.registers.pc;
 		break;
 	case ADDRESS_R16:
-		sourceVal = read8(mem, *get_reg16_from_type(cpu, op->source));
+		sourceVal = read8(emu, *get_reg16_from_type(&emu->cpu, op->source));
 		break;
 	case ADDRESS_R8_OFFSET:
-		sourceVal = read8(mem, 0xff00 + *get_reg_from_type(cpu, op->source));
+		sourceVal = read8(emu, 0xff00 + *get_reg_from_type(emu, op->source));
 		break;
 	case MEM_READ_ADDR:
-		sourceVal = read8(mem, read16(mem, cpu->registers.pc));
-		cpu->registers.pc += 2;
+		sourceVal = read8(emu, read16(emu, emu->cpu.registers.pc));
+		emu->cpu.registers.pc += 2;
 		break;
 	case MEM_READ_ADDR_OFFSET:
-		sourceVal = read8(mem, 0xFF00 + read8(mem, cpu->registers.pc++));
+		sourceVal = read8(emu, 0xFF00 + read8(emu, emu->cpu.registers.pc++));
 		break;
 	case ADDR_MODE_NONE:
 		sourceVal = op->source; // this should be fine
 		break;
 	default:
 		sourceVal = 0;
-		AddLog("unimplemented 8 bit source read\n");
-		print_operation(*op);
-		assert(false);
 	}
 	return sourceVal;
 }
 
-u8 get_dest(Cpu* cpu, Memory* mem, Operation* op) {
+u8 get_dest(Emulator* emu, Operation* op) {
 
 	u8 destVal;
 	switch (op->dest_addr_mode) {
 	case ADDRESS_R8_OFFSET:
 	case REGISTER:
-		destVal = *get_reg_from_type(cpu, op->dest);
+		destVal = *get_reg_from_type(&emu->cpu, op->dest);
 		break;
 	case ADDRESS_R16:
-		destVal = read8(mem, *get_reg16_from_type(cpu, op->dest));
+		destVal = read8(emu, *get_reg16_from_type(&emu->cpu, op->dest));
 		break;
 	case MEM_READ_ADDR_OFFSET:
 	case MEM_READ:
-		destVal = read8(mem, cpu->registers.pc);
-		++cpu->registers.pc;
+		destVal = read8(emu, emu->cpu.registers.pc);
+		++emu->cpu.registers.pc;
 		break;
 	case OPERAND_NONE:
 		destVal = 0;
@@ -607,114 +586,94 @@ u8 get_dest(Cpu* cpu, Memory* mem, Operation* op) {
 	}
 	return destVal;
 }
-u16 get_dest16(Cpu* cpu, Memory* mem, Operation* op) {
+u16 get_dest16(Emulator* emu, Operation* op) {
 	u16 dest_val;
 	switch (op->dest_addr_mode) {
 	case REGISTER16:
-		dest_val = *get_reg16_from_type(cpu, op->dest);
+		dest_val = *get_reg16_from_type(&emu->cpu, op->dest);
 		break;
 	case ADDRESS_R16:
-		dest_val = read16(mem, *get_reg16_from_type(cpu, op->dest));
+		dest_val = read16(emu, *get_reg16_from_type(&emu->cpu, op->dest));
 		break;
 	default:
-		AddLog("unimplemented get_dest16");
-		assert(false);
+		dest_val = 0;
 		break;
 	}
 	return dest_val;
 }
 
-Operation get_operation(Cpu* cpu, Memory* mem) {
-	u8 opcode = read8(mem, cpu->registers.pc);
+Operation get_operation(Emulator* emu) {
+	u8 opcode = read8(emu, emu->cpu.registers.pc);
 	Operation ret = operations[opcode];
 	ret.opcode = opcode;
 	return ret;
 }
 
-Operation get_cb_operation(Cpu* cpu, Memory* mem) {
-	u8 cb_opcode = read8(mem, cpu->registers.pc);
+Operation get_cb_operation(Emulator* emu) {
+	u8 cb_opcode = read8(emu, emu->cpu.registers.pc);
 	Operation ret = cb_operations[cb_opcode];
 	ret.opcode = cb_opcode;
 	return ret;
 }
 
-void LD_impl(Cpu* cpu, Memory* mem, Operation* op) {
+void LD_impl(Emulator* emu, Operation* op) {
 	if (bit_mode_16(op)) {
-		u16 source = get_source_16(cpu, mem, op);
+		u16 source = get_source_16(emu, op);
 		switch (op->dest_addr_mode) {
 		case REGISTER16:
-			*get_reg16_from_type(cpu, op->dest) = source;
+			*get_reg16_from_type(&emu->cpu, op->dest) = source;
 			break;
 		case MEM_READ_ADDR:
-			write16(mem, read16(mem, cpu->registers.pc), source);
-			cpu->registers.pc += 2;
+			write16(emu, read16(emu, emu->cpu.registers.pc), source);
+			emu->cpu.registers.pc += 2;
 			break;
 		}
 
 	}
 	else {
-		u8 source = get_source(cpu, mem, op);
-
-		//case REGISTER:
-		//	*get_reg_from_type(cpu, op->dest) = source;
-		//	break;
-		//case ADDRESS_R16:
-		//	write8(mem, *get_reg16_from_type(cpu, op->dest), source);
-		//	break;
-		//case ADDRESS_R8_OFFSET:
-		//	write8(mem, (0xFF00 + get_dest(cpu, mem, op)), source);
-		//	break;
-		//case MEM_READ_ADDR:
-		//	write8(mem, read16(mem, cpu->registers.pc), source);
-		//	cpu->registers.pc += 2;
-		//	break;
-		//case MEM_READ_ADDR_OFFSET: {
-		//	u8 reg_value = get_dest(cpu, mem, op);
-		//	u16 addr = 0xFF00 + reg_value;
-		//	write8(mem, addr, source);
-		//	break;
-		write_dest(cpu, mem, op, source);
+		u8 source = get_source(emu, op);
+		write_dest(emu, op, source);
 
 	}
-	if (op->secondary != SECONDARY_NONE) run_secondary(cpu, op);
+	if (op->secondary != SECONDARY_NONE) run_secondary(emu, op);
 
 }
 
 
-void CALL_impl(Cpu* cpu, Memory* mem, Operation* op) {
+void CALL_impl(Emulator* emu, Operation* op) {
 	// Calls should only be u16 address mode
-	u16 addr = get_source_16(cpu, mem, op);
-	if (condition_passed(cpu, op)) {
-		push(cpu, mem, cpu->registers.pc);
-		jump(cpu, addr);
+	u16 addr = get_source_16(emu, op);
+	if (condition_passed(emu, op)) {
+		push(emu, emu->cpu.registers.pc);
+		jump(emu, addr);
 	}
-	run_secondary(cpu, op);
+	run_secondary(emu, op);
 }
 
 
-void BIT_impl(Cpu* cpu, Memory* mem, Operation* op) {
+void BIT_impl(Emulator* emu, Operation* op) {
 
 	u8 test = 1 << op->dest; // for some reason it made sense for me to put the bit here instead of dest. hopefully just this once i do something like this
 
-	alu_return alu_ret = run_alu(cpu, get_source(cpu, mem, op), test, op->type, op->flag_actions);
-	cpu->registers.f = alu_ret.flags;
+	alu_return alu_ret = run_alu(&emu->cpu, get_source(emu, op), test, op->type, op->flag_actions);
+	emu->cpu.registers.f = alu_ret.flags;
 
 }
 
 
-void JP_impl(Cpu* cpu, Memory* mem, Operation* op) {
+void JP_impl(Emulator* emu, Operation* op) {
 	if (bit_mode_16(op)) {
-		u16 addr = get_source_16(cpu, mem, op);
-		if (condition_passed(cpu, op)) {
-			jump(cpu, addr);
-			run_secondary(cpu, op);
+		u16 addr = get_source_16(emu, op);
+		if (condition_passed(emu, op)) {
+			jump(emu, addr);
+			run_secondary(emu, op);
 		}
 	}
 	else {
 		switch (op->source_addr_mode) {
 		case MEM_READ: {
-			u8 relative = get_source(cpu, mem, op);
-			u16 jump_to = cpu->registers.pc;
+			u8 relative = get_source(emu, op);
+			u16 jump_to = emu->cpu.registers.pc;
 			if (relative > 127) {
 				relative = ~relative + 1;
 				jump_to -= relative;
@@ -723,14 +682,14 @@ void JP_impl(Cpu* cpu, Memory* mem, Operation* op) {
 				jump_to += relative;
 			}
 
-			if (condition_passed(cpu, op)) {
-				jump(cpu, jump_to);
-				run_secondary(cpu, op);
+			if (condition_passed(emu, op)) {
+				jump(emu, jump_to);
+				run_secondary(emu, op);
 			}
 			break;
 		}
 		case REGISTER16: {
-			jump(cpu, cpu->registers.hl);
+			jump(emu, emu->cpu.registers.hl);
 			break;
 		}
 		default:
@@ -740,192 +699,187 @@ void JP_impl(Cpu* cpu, Memory* mem, Operation* op) {
 	}
 }
 
-void INC_impl(Cpu* cpu, Memory* mem, Operation* op) {
+void INC_impl(Emulator* emu, Operation* op) {
 	switch (op->dest_addr_mode) {
 	case REGISTER: {
-		u8* dest_addr = get_reg_from_type(cpu, op->dest);
-		alu_return alu_ret = run_alu(cpu, *dest_addr, 1, op->type, op->flag_actions);
+		u8* dest_addr = get_reg_from_type(emu, op->dest);
+		alu_return alu_ret = run_alu(&emu->cpu, *dest_addr, 1, op->type, op->flag_actions);
 		*dest_addr = alu_ret.result;
-		cpu->registers.f = alu_ret.flags;
+		emu->cpu.registers.f = alu_ret.flags;
 		break;
 	}
 	case REGISTER16: {
-		u16* dest_addr = get_reg16_from_type(cpu, op->dest);
+		u16* dest_addr = get_reg16_from_type(&emu->cpu, op->dest);
 		*dest_addr += 1;
 		break;
 	}
 	case ADDRESS_R16: {
-		u8 prev = get_dest(cpu, mem, op);
-		alu_return alu_ret = run_alu(cpu, prev, 1, op->type, op->flag_actions);
-		write_dest(cpu, mem, op, alu_ret.result);
-		cpu->registers.f = alu_ret.flags;
+		u8 prev = get_dest(emu, op);
+		alu_return alu_ret = run_alu(&emu->cpu, prev, 1, op->type, op->flag_actions);
+		write_dest(emu, op, alu_ret.result);
+		emu->cpu.registers.f = alu_ret.flags;
 		break;
 	}
-	default:
-		AddLog("unimplemented increment");
-		assert(false);
 	}
 }
 
-void DEC_impl(Cpu* cpu, Memory* mem, Operation* op) {
+void DEC_impl(Emulator* emu, Operation* op) {
 	switch (op->dest_addr_mode) {
 	case REGISTER: {
-		u8* dest_addr = get_reg_from_type(cpu, op->dest);
-		alu_return alu_ret = run_alu(cpu, *dest_addr, 1, op->type, op->flag_actions);
+		u8* dest_addr = get_reg_from_type(emu, op->dest);
+		alu_return alu_ret = run_alu(&emu->cpu, *dest_addr, 1, op->type, op->flag_actions);
 		*dest_addr = alu_ret.result;
-		cpu->registers.f = alu_ret.flags;
+		emu->cpu.registers.f = alu_ret.flags;
 		break;
 	}
 	case REGISTER16: {
-		u16* dest_addr = get_reg16_from_type(cpu, op->dest);
+		u16* dest_addr = get_reg16_from_type(&emu->cpu, op->dest);
 		*dest_addr = *dest_addr - 1;
 		break;
 	}
 	case ADDRESS_R16: {
-		u8 prev = get_dest(cpu, mem, op);
-		alu_return alu_ret = run_alu(cpu, prev, 1, op->type, op->flag_actions);
-		write_dest(cpu, mem, op, alu_ret.result);
-		cpu->registers.f = alu_ret.flags;
+		u8 prev = get_dest(emu, op);
+		alu_return alu_ret = run_alu(&emu->cpu, prev, 1, op->type, op->flag_actions);
+		write_dest(emu, op, alu_ret.result);
+		emu->cpu.registers.f = alu_ret.flags;
 		break;
 	}
-	default:
-		AddLog("unimplemented dec");
 	}
 }
 
-void XOR_impl(Cpu* cpu, Memory* mem, Operation* op) {
-	u8 source = get_source(cpu, mem, op);
-	alu_return alu_ret = run_alu(cpu, get_dest(cpu, mem, op), source, op->type, op->flag_actions);
-	write_dest(cpu, mem, op, alu_ret.result);
-	cpu->registers.f = alu_ret.flags;
+void XOR_impl(Emulator* emu, Operation* op) {
+	u8 source = get_source(emu, op);
+	alu_return alu_ret = run_alu(&emu->cpu, get_dest(emu, op), source, op->type, op->flag_actions);
+	write_dest(emu, op, alu_ret.result);
+	emu->cpu.registers.f = alu_ret.flags;
 
 }
 
-void SWAP_impl(Cpu* cpu, Memory* mem, Operation* op) {
-	alu_return alu_ret = run_alu(cpu, get_dest(cpu, mem, op), 0, op->type, op->flag_actions);
-	write_dest(cpu, mem, op, alu_ret.result);
-	cpu->registers.f = alu_ret.flags;
+void SWAP_impl(Emulator* emu, Operation* op) {
+	alu_return alu_ret = run_alu(&emu->cpu, get_dest(emu, op), 0, op->type, op->flag_actions);
+	write_dest(emu, op, alu_ret.result);
+	emu->cpu.registers.f = alu_ret.flags;
 
 }
 
-void CP_impl(Cpu* cpu, Memory* mem, Operation* op) {
-	alu_return alu_ret = run_alu(cpu, get_dest(cpu, mem, op), get_source(cpu, mem, op), op->type, op->flag_actions);
-	cpu->registers.f = alu_ret.flags;
+void CP_impl(Emulator* emu, Operation* op) {
+	alu_return alu_ret = run_alu(&emu->cpu, get_dest(emu, op), get_source(emu, op), op->type, op->flag_actions);
+	emu->cpu.registers.f = alu_ret.flags;
 }
 
-void SUB_impl(Cpu* cpu, Memory* mem, Operation* op) {
-	alu_return alu_ret = run_alu(cpu, get_dest(cpu, mem, op), get_source(cpu, mem, op), op->type, op->flag_actions);
-	write_dest(cpu, mem, op, alu_ret.result);
-	cpu->registers.f = alu_ret.flags;
+void SUB_impl(Emulator* emu, Operation* op) {
+	alu_return alu_ret = run_alu(&emu->cpu, get_dest(emu, op), get_source(emu, op), op->type, op->flag_actions);
+	write_dest(emu, op, alu_ret.result);
+	emu->cpu.registers.f = alu_ret.flags;
 }
 
-void ALU_impl(Cpu* cpu, Memory* mem, Operation* op) {
+void ALU_impl(Emulator* emu, Operation* op) {
 	if (bit_mode_16(op)) {
-		alu16_return alu_ret = run_alu16(cpu, get_dest16(cpu, mem, op), get_source_16(cpu, mem, op), op->type, op->source_addr_mode, op->flag_actions);
-		write_dest16(cpu, mem, op->dest_addr_mode, op->dest, alu_ret.result);
-		cpu->registers.f = alu_ret.flags;
+		alu16_return alu_ret = run_alu16(&emu->cpu, get_dest16(emu, op), get_source_16(emu, op), op->type, op->source_addr_mode, op->flag_actions);
+		write_dest16(emu, op->dest_addr_mode, op->dest, alu_ret.result);
+		emu->cpu.registers.f = alu_ret.flags;
 	}
 	else {
-		alu_return alu_ret = run_alu(cpu, get_dest(cpu, mem, op), get_source(cpu, mem, op), op->type, op->flag_actions);
-		write_dest(cpu, mem, op, alu_ret.result);
-		cpu->registers.f = alu_ret.flags;
+		alu_return alu_ret = run_alu(&emu->cpu, get_dest(emu, op), get_source(emu, op), op->type, op->flag_actions);
+		write_dest(emu, op, alu_ret.result);
+		emu->cpu.registers.f = alu_ret.flags;
 
 	}
 }
 
-void PUSH_impl(Cpu* cpu, Memory* mem, Operation* op) {
-	u16 to_push = get_source_16(cpu, mem, op);
-	push(cpu, mem, to_push);
+void PUSH_impl(Emulator* emu, Operation* op) {
+	u16 to_push = get_source_16(emu, op);
+	push(emu, to_push);
 }
 
-void POP_impl(Cpu* cpu, Memory* mem, Operation* op) {
-	u16* reg = get_reg16_from_type(cpu, op->dest);
+void POP_impl(Emulator* emu, Operation* op) {
+	u16* reg = get_reg16_from_type(&emu->cpu, op->dest);
 
-	pop(cpu, mem, reg, op->dest);
+	pop(emu, reg, op->dest);
 }
 
-void RL_impl(Cpu* cpu, Memory* mem, Operation* op) {
-	alu_return alu_ret = run_alu(cpu, get_dest(cpu, mem, op), 0, op->type, op->flag_actions);
-	write_dest(cpu, mem, op, alu_ret.result);
-	cpu->registers.f = alu_ret.flags;
+void RL_impl(Emulator* emu, Operation* op) {
+	alu_return alu_ret = run_alu(&emu->cpu, get_dest(emu, op), 0, op->type, op->flag_actions);
+	write_dest(emu, op, alu_ret.result);
+	emu->cpu.registers.f = alu_ret.flags;
 }
 
-void RET_impl(Cpu* cpu, Memory* mem, Operation* op) {
-	if (condition_passed(cpu, op)) {
-		pop(cpu, mem, get_reg16_from_type(cpu, PC), 0);
-		run_secondary(cpu, op);
+void RET_impl(Emulator* emu, Operation* op) {
+	if (condition_passed(emu, op)) {
+		pop(emu, get_reg16_from_type(&emu->cpu, PC), 0);
+		run_secondary(emu, op);
 	}
 }
 
-void RST_impl(Cpu* cpu, Memory* mem, Operation* op) {
-	push(cpu, mem, cpu->registers.pc);
-	jump(cpu, op->dest);
+void RST_impl(Emulator* emu, Operation* op) {
+	push(emu, emu->cpu.registers.pc);
+	jump(emu, op->dest);
 }
 
-void DAA_impl(Cpu* cpu, Memory* mem, Operation* op) {
+void DAA_impl(Emulator* emu, Operation* op) {
 
 	u8 offset = 0;
-	u8 a = cpu->registers.a;
-	u8 flags = cpu->registers.f;
-	cpu->registers.f = 0;
+	u8 a = emu->cpu.registers.a;
+	u8 flags = emu->cpu.registers.f;
+	emu->cpu.registers.f = 0;
 	if ((flags & FLAG_HALFCARRY) || (!(flags & FLAG_SUB) && (a & 0xf) > 0x09)) {
 		offset |= 0x06;
 	}
 	if ((flags & FLAG_CARRY) || (!(flags & FLAG_SUB) && (a > 0x99))) {
 		offset |= 0x60;
-		cpu->registers.f |= FLAG_CARRY;
+		emu->cpu.registers.f |= FLAG_CARRY;
 	}
 
 	if (flags & FLAG_SUB) {
-		cpu->registers.a = a - offset;
+		emu->cpu.registers.a = a - offset;
 	}
 	else {
-		cpu->registers.a = a + offset;
+		emu->cpu.registers.a = a + offset;
 	}
 
-	if (flags & FLAG_SUB) cpu->registers.f |= FLAG_SUB;
-	if (cpu->registers.a == 0) cpu->registers.f |= FLAG_ZERO;
+	if (flags & FLAG_SUB) emu->cpu.registers.f |= FLAG_SUB;
+	if (emu->cpu.registers.a == 0) emu->cpu.registers.f |= FLAG_ZERO;
 
 }
 
-void CCF_impl(Cpu* cpu, Memory* mem, Operation* op) {
-	u8 new_carry = ~cpu->registers.f & FLAG_CARRY;
-	u8 old_zero = cpu->registers.f & FLAG_ZERO;
-	cpu->registers.f |= new_carry | old_zero;
-	cpu->registers.f &= (FLAG_CARRY & FLAG_ZERO);
+void CCF_impl(Emulator* emu, Operation* op) {
+	u8 new_carry = ~emu->cpu.registers.f & FLAG_CARRY;
+	u8 old_zero = emu->cpu.registers.f & FLAG_ZERO;
+	emu->cpu.registers.f |= new_carry | old_zero;
+	emu->cpu.registers.f &= (FLAG_CARRY & FLAG_ZERO);
 }
 
-Cycles cpu_step(Cpu* cpu, Memory* mem, Operation op) {
-	++cpu->registers.pc;
+Cycles cpu_step(Emulator* emu, Operation op) {
+	++emu->cpu.registers.pc;
 
-	if (cpu->registers.pc == 0x101) {
-		mem->in_bios = false;
+	if (emu->cpu.registers.pc == 0x101) {
+		emu->mmu.in_bios = false;
 	}
 
 	switch (op.type) {
 	case NOP:
 		break;
 	case HALT:
-		cpu->halted = true;
+		emu->cpu.halted = true;
 		break;
 	case LD:
-		LD_impl(cpu, mem, &op);
+		LD_impl(emu, &op);
 		break;
 
 	case XOR:
-		XOR_impl(cpu, mem, &op);
+		XOR_impl(emu, &op);
 		break;
 	case INC:
-		INC_impl(cpu, mem, &op);
+		INC_impl(emu, &op);
 		break;
 	case DEC:
-		DEC_impl(cpu, mem, &op);
+		DEC_impl(emu, &op);
 		break;
 	case BIT:
-		BIT_impl(cpu, mem, &op);
+		BIT_impl(emu, &op);
 		break;
 	case CP:
-		CP_impl(cpu, mem, &op);
+		CP_impl(emu, &op);
 		break;
 
 	case ADD:
@@ -945,45 +899,45 @@ Cycles cpu_step(Cpu* cpu, Memory* mem, Operation op) {
 	case RRC:
 	case SCF:
 	case CCF:
-		ALU_impl(cpu, mem, &op);
+		ALU_impl(emu, &op);
 		break;
 	case JP:
-		JP_impl(cpu, mem, &op);
+		JP_impl(emu, &op);
 		break;
 
 	case CALL:
-		CALL_impl(cpu, mem, &op);
+		CALL_impl(emu, &op);
 		break;
 	case RET:
-		RET_impl(cpu, mem, &op);
+		RET_impl(emu, &op);
 		break;
 	case RETI:
-		RET_impl(cpu, mem, &op);
-		update_IME(cpu, true);
+		RET_impl(emu, &op);
+		update_IME(&emu->cpu, true);
 		break;
 
 	case RST:
-		RST_impl(cpu, mem, &op);
+		RST_impl(emu, &op);
 		break;
 
 	case PUSH:
-		PUSH_impl(cpu, mem, &op);
+		PUSH_impl(emu, &op);
 		break;
 	case POP:
-		POP_impl(cpu, mem, &op);
+		POP_impl(emu, &op);
 		break;
 
 	case RLA:
 	case RL:
-		RL_impl(cpu, mem, &op);
+		RL_impl(emu, &op);
 		break;
 
 	case SWAP:
-		SWAP_impl(cpu, mem, &op);
+		SWAP_impl(emu, &op);
 		break;
 
 	case CB: {
-		Cycles cb_ret = cpu_step(cpu, mem, get_cb_operation(cpu, mem));
+		Cycles cb_ret = cpu_step(emu, get_cb_operation(&emu->cpu, &emu->mmu));
 		if (cb_ret.t_cycles == -1) {
 			AddLog("Unimplemented CB op\n");
 			return (Cycles) { -1, -1 };
@@ -993,35 +947,35 @@ Cycles cpu_step(Cpu* cpu, Memory* mem, Operation op) {
 		break;
 	}
 	case EI:
-		update_IME(cpu, true);
+		update_IME(&emu->cpu, true);
 		break;
 	case DI:
-		update_IME(cpu, false);
+		update_IME(&emu->cpu, false);
 		break;
 
 	case DAA:
-		DAA_impl(cpu, mem, &op);
+		DAA_impl(emu, &op);
 		break;
 	case UNIMPLEMENTED:
 	default:
-		--cpu->registers.pc;
+		--emu->cpu.registers.pc;
 		AddLog("\nunimplemented operation\t");
 		print_operation(op);
 		return (Cycles) { -1, -1 };
 	}
 
-	if (cpu->should_update_IME) {
-		if (cpu->update_IME_counter == 0) {
-			cpu->IME = cpu->update_IME_value;
-			cpu->should_update_IME = false;
+	if (emu->cpu.should_update_IME) {
+		if (emu->cpu.update_IME_counter == 0) {
+			emu->cpu.IME = emu->cpu.update_IME_value;
+			emu->cpu.should_update_IME = false;
 		}
 		else {
-			--cpu->update_IME_counter;
+			--emu->cpu.update_IME_counter;
 		}
 	}
 
-	if (should_run_interrupt(cpu, mem)) {
-		run_interrupt(cpu, mem);
+	if (should_run_interrupt(&emu->cpu, &emu->mmu)) {
+		run_interrupt(&emu->cpu, &emu->mmu);
 
 		op.m_cycles += 5;
 		op.t_cycles += 20;
@@ -1030,7 +984,7 @@ Cycles cpu_step(Cpu* cpu, Memory* mem, Operation op) {
 	return (Cycles) { op.m_cycles, op.t_cycles };
 }
 
-Cycles run_halted(Cpu* cpu, Memory* mem) {
+Cycles run_halted(Cpu* cpu, Mmu* mem) {
 	Cycles cycles = { 1, 4 };
 
 	if (cpu->should_update_IME) {
@@ -1065,36 +1019,35 @@ u16 interrupt_address_from_flag(u8 flag) {
 	case JOYPAD_INTERRUPT:
 		return JOYPAD_ADDRESS;
 	default:
-		AddLog("how did we get here: 0x%02X", flag);
 		return 0;
 	}
 }
 
-u16 interrupt_priority(Cpu* cpu, Memory* mem, u8 interrupt_flag) {
+u16 interrupt_priority(Emulator* emu, u8 interrupt_flag) {
 	for (int i = 0; i < 5; ++i) {
 		u8 itX = interrupt_flag & (1 << i);
-		itX = (read8(mem, IE) & itX);
+		itX = (read8(emu, IE) & itX);
 		if (itX) {
-			write8(mem, IF, interrupt_flag & ~itX);
+			write8(emu, IF, interrupt_flag & ~itX);
 			return interrupt_address_from_flag(itX);
 		}
 	}
 	return 0;
 }
 
-void run_interrupt(Cpu* cpu, Memory* mem) {
-	u16 jump_to = interrupt_priority(cpu, mem, read8(mem, IF));
+void run_interrupt(Emulator* emu) {
+	u16 jump_to = interrupt_priority(emu, read8(emu, IF));
 	if (jump_to != 0) {
 		
-		cpu->IME = false;
-		push(cpu, mem, cpu->registers.pc);
-		jump(cpu, jump_to);
+		emu->cpu.IME = false;
+		push(emu, emu->cpu.registers.pc);
+		jump(emu, jump_to);
 	}
 }
 
-bool should_run_interrupt(Cpu* cpu, Memory* mem) {
+bool should_run_interrupt(Cpu* cpu, Mmu* mem) {
 	u8 j_ret = joypad_return(mem->controller, mem->memory[0xFF00]);
-	if ((~j_ret & 0b00001111)) mem->memory[IF] = mem->memory[IF] | JOYPAD_INTERRUPT; // I think this is right
+	if ((~j_ret & 0b00001111)) mem->memory[IF] = mem->memory[IF] | JOYPAD_INTERRUPT;
 	u8 interrupt_flag = mem->memory[IF];
 	u8 interrupt_enable = mem->memory[IE];
 	

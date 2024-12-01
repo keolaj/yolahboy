@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <string.h>
-#include "memory.h"
+#include "Mmu.h"
 #include "../timer/timer.h"
 #include "../gpu/gpu.h"
 #include "../apu/apu.h"
@@ -10,71 +10,73 @@
 #include "../debugger/imgui_custom_widget_wrapper.h"
 #include "./cartridge.h"
 
-void init_memory(Memory* mem) {
+void init_Mmu(Mmu* mem) {
+	memset(mem, 0, sizeof(Mmu));
 	mem->cartridge.rom = NULL;
 	mem->cartridge.ram = NULL;
 	mem->cartridge.rom_bank = 1;
 	mem->cartridge.ram_bank = 0;
 	mem->cartridge.banking_mode = BANKMODESIMPLE;
 	mem->cartridge.ram_enabled = false;
-	mem->wrote_dma = false;
 	memset((void*)&mem->controller, 0, sizeof(Controller));
-	memset(mem->memory, 0, 0x10000);
+	memset(mem->Mmu, 0, 0x10000);
 	memset(mem->bios, 0, 0x100);
 	mem->in_bios = true;
 }
 
-u8 read8(Memory* mem, u16 address) {
-	if (mem->in_bios) {
+u8 read8(Emulator* emu, u16 address) {
+	if (emu->mmu.in_bios) {
 		if (address < 0x100) {
-			return mem->bios[address];
+			return emu->mmu.bios[address];
 		}
 	}
 	if (address < 0x8000) { // cartridge rom
-		return cart_read8(&mem->cartridge, address);
+		return cart_read8(&emu->mmu.cartridge, address);
 	}
 	if (address >= 0xA000 && address < 0xC000) { // cartridge ram
-		return cart_read8(&mem->cartridge, address);
+		return cart_read8(&emu->mmu.cartridge, address);
 	}
-	if (address >= 0xE000 && address <= 0xFDFF) {
-		return mem->memory[address - 0x2000];
+	if (address >= 0xE000 && address <= 0xFDFF) { // echo ram
+		return emu->mmu.Mmu[address - 0x2000];
 	}
 	if (address >= 0xFF00 && address <= 0xFFFE) {
 		if (address == 0xFF00) {
-			u8 j_ret = joypad_return(*mem->controller, mem->memory[address]);
+			u8 j_ret = joypad_return(*emu->mmu.controller, emu->mmu.Mmu[address]);
 			return j_ret;
 		}
 
 		// GPU registers
-		if (address == STAT) return mem->gpu->stat;
-		if (address == LCDC) return mem->gpu->lcdc;
-		if (address == LY) return mem->gpu->ly;
-		if (address == LYC) return mem->gpu->lyc;
-		if (address == SCY) return mem->gpu->scy;
-		if (address == SCX) return mem->gpu->scx;
-		if (address == WY) return mem->gpu->wy;
-		if (address == WX) return mem->gpu->wx;
+		if (address == STAT) return emu->mmu.gpu->stat;
+		if (address == LCDC) return emu->mmu.gpu->lcdc;
+		if (address == LY) return emu->mmu.gpu->ly;
+		if (address == LYC) return emu->mmu.gpu->lyc;
+		if (address == SCY) return emu->mmu.gpu->scy;
+		if (address == SCX) return emu->mmu.gpu->scx;
+		if (address == WY) return emu->mmu.gpu->wy;
+		if (address == WX) return emu->mmu.gpu->wx;
 
 		// APU registers
-		if (address == NR52) return mem->apu->nr52;
+		if (address == NR52) return emu->mmu.apu->nr52;
 
 	}
-	return mem->memory[address];
+	return emu->mmu.Mmu[address];
 }
 
-u16 read16(Memory* mem, u16 address) {
+u16 read16(Emulator* emu, u16 address) {
+	Mmu* mem = &emu->mmu;
 	u16 ret = 0;
 	ret |= read8(mem, address);
 	ret |= read8(mem, address + 1) << 8;
 	return ret;
 }
 
-void write16(Memory* mem, u16 address, u16 value) {
+void write16(Emulator* emu, u16 address, u16 value) {
+	Mmu* mem = &emu->mmu;
 	write8(mem, address, value & 0xFF);
 	write8(mem, address + 1, value >> 8);
 }
-void write8(Memory* mem, u16 address, u8 data) {
-
+void write8(Emulator* emu, u16 address, u8 data) {
+	Mmu* mem = &emu->mmu;
 	if (address <= 0x7FFF) { // cartridge rom
 		return cart_write8(&mem->cartridge, address, data);
 	}
@@ -82,40 +84,40 @@ void write8(Memory* mem, u16 address, u8 data) {
 		if (mem->gpu->mode == 3) {
 			return;
 		}
-		mem->memory[address] = data;
+		mem->Mmu[address] = data;
 		return;
 	}
 	else if (address >= 0xA000 && address <= 0xBFFF) { // cartridge ram
 		return cart_write8(&mem->cartridge, address, data);
 	}
 	else if (address >= 0xC000 && address <= 0xCFFF) { // wram
-		mem->memory[address] = data;
+		mem->Mmu[address] = data;
 		return;
 	}
 	else if (address >= 0xD000 && address <= 0xDFFF) {
-		mem->memory[address] = data;
+		mem->Mmu[address] = data;
 		return;
 	}
 	else if (address >= 0xE000 && address <= 0xFDFF) { // ECHO
-		mem->memory[address] = data;
+		mem->Mmu[address] = data;
 		return;
 	}
 	else if (address >= 0xFE00 && address <= 0xFE9F) { // oam
-		mem->memory[address] = data; // TODO implement proper oam writes and reads
+		mem->Mmu[address] = data; // TODO implement proper oam writes and reads
 		return;
 	}
 	else if (address >= 0xFEA0 && address < 0xFEFF) { // prohibited
-		mem->memory[address] = data;
+		mem->Mmu[address] = data;
 		return;
 	}
 	else if (address >= 0xFF00 && address <= 0xFF7F) { // IO Registers		
-		// mem->memory[address] = data;
+		// mem->Mmu[address] = data;
 
 		if (address == DMA) {
 			data &= 0xDF;
 			u16 src_addr = data << 8;
 			for (int i = 0; i < 0x9F; ++i) {
-				mem->memory[0xFE00 + i] = mem->memory[src_addr + i];
+				mem->Mmu[0xFE00 + i] = mem->Mmu[src_addr + i];
 			}
 			return;
 		}
@@ -125,7 +127,7 @@ void write8(Memory* mem, u16 address, u8 data) {
 		}
 
 		if (address == DIV) {
-			mem->memory[address] = 0;
+			mem->Mmu[address] = 0;
 			mem->timer->clock = 0;
 			return;
 		}
@@ -344,26 +346,26 @@ void write8(Memory* mem, u16 address, u8 data) {
 			}
 		}
 
-		mem->memory[address] = data;
+		mem->Mmu[address] = data;
 		return;
 	}
 	else if (address >= 0xFF80 && address <= 0xFFFE) { // hram
-		mem->memory[address] = data;
+		mem->Mmu[address] = data;
 		return;
 	}
 	else if (address == 0xffff) {
-		mem->memory[address] = data;
+		mem->Mmu[address] = data;
 		return;
 	}
 	else {
 		AddLog("out of bounds write in write8\tADDRESS: %04hX\tdata: %02hX\n");
 	}
 
-	mem->memory[address] = data;
+	mem->Mmu[address] = data;
 
 }
 
-int load_bootrom(Memory* mem, const char* path) {
+int load_bootrom(Mmu* mem, const char* path) {
 	FILE* fp;
 	fp = fopen(path, "rb");
 	if (fp == NULL) {
@@ -374,14 +376,14 @@ int load_bootrom(Memory* mem, const char* path) {
 	return 0;
 }
 
-int load_rom(Memory* mem, const char* path) { // I believe this is working
+int load_rom(Mmu* mem, const char* path) { // I believe this is working
 	FILE* fp;
 	fp = fopen(path, "rb");
 	if (fp == NULL) {
 		AddLog("error opening rom");
 		return -1;
 	}
-	memset(mem->memory, 0, sizeof(mem->memory));
+	memset(mem->Mmu, 0, sizeof(mem->Mmu));
 
 	u8 cart_type_val;
 	if (fseek(fp, 0x147, SEEK_SET) != 0) {
@@ -465,7 +467,7 @@ int load_rom(Memory* mem, const char* path) { // I believe this is working
 	return 0;
 }
 
-int load_save(Memory* mem, const char* path) {
+int load_save(Mmu* mem, const char* path) {
 	FILE* fp;
 	fp = fopen("game.sav", "rb");
 
@@ -473,7 +475,7 @@ int load_save(Memory* mem, const char* path) {
 		AddLog("Unable to open save file\n");
 		return -1;
 	}
-	if (fread(mem->cartridge.ram, sizeof(u8), mem->cartridge.ram_size, fp) != mem->cartridge.ram_size) {
+	if (fread(mem->cartridge.ram, sizeof(u8), mem->cartridge.ram_size, fp) == mem->cartridge.ram_size) {
 		return 0;
 	}
 	else {
@@ -482,7 +484,7 @@ int load_save(Memory* mem, const char* path) {
 	}
 }
 
-void destroy_memory(Memory* mem) {
+void destroy_Mmu(Mmu* mem) {
 	if (mem == NULL) return;
 
 	if (mem->cartridge.type == MBC1_RAM_BATTERY) {
@@ -506,8 +508,4 @@ void destroy_memory(Memory* mem) {
 	}
 	if (mem->cartridge.rom) free(mem->cartridge.rom);
 	if (mem->cartridge.ram) free(mem->cartridge.ram);
-}
-
-void set_use_gbd_log(Memory* mem, bool use_gbd_log) {
-	mem->use_gbd_log = use_gbd_log;
 }

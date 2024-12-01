@@ -231,21 +231,19 @@ typedef struct {
 	u8 cgb_flag;
 } Cartridge;
 
-typedef struct _memory Memory;
+typedef struct _Mmu Mmu;
 typedef struct _gpu Gpu;
 
-typedef struct _memory {
+typedef struct _Mmu {
 	u8 bios[0x100];
 	u8 memory[0x10000];
 	Cartridge cartridge;
 	bool in_bios;
-	bool use_gbd_log;
 	Gpu* gpu;
 	Controller* controller;
 	Timer* timer;
 	Apu* apu;
-	bool wrote_dma;
-} Memory;
+} Mmu;
 
 typedef struct {
 	union {
@@ -326,7 +324,7 @@ struct _gpu {
 
 typedef struct {
 	Cpu cpu;
-	Memory memory;
+	Mmu mmu;
 	Gpu* gpu;
 	Timer* timer;
 	Apu* apu;
