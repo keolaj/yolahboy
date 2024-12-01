@@ -236,7 +236,7 @@ typedef struct _gpu Gpu;
 
 typedef struct _Mmu {
 	u8 bios[0x100];
-	u8 memory[0x10000];
+	u8* memory;
 	Cartridge cartridge;
 	bool in_bios;
 } Mmu;

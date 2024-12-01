@@ -18,6 +18,12 @@ void init_mmu(Mmu* mem) {
 	mem->cartridge.ram_bank = 0;
 	mem->cartridge.banking_mode = BANKMODESIMPLE;
 	mem->cartridge.ram_enabled = false;
+
+	mem->memory = (u8*)malloc(sizeof(u8) * 0x10000);
+	if (mem->memory == NULL) {
+		return;
+	}
+
 	memset(mem->memory, 0, 0x10000);
 	memset(mem->bios, 0, 0x100);
 	mem->in_bios = true;

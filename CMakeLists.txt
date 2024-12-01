@@ -26,7 +26,7 @@ set(IMGUI_SRC
 )
 
 # Add source to this project's executable.
-add_executable (yolahboy WIN32 "yolahboy.c" "yolahboy.h" "components/cpu/cpu.h" "components/cpu/cpu.c"  "components/emulator.h" "components/emulator.c" "components/mmu/mmu.h" "components/mmu/mmu.c" "components/cpu/operation_defitions.h" "components/cpu/operations.h" "components/cpu/operations.c"  "components/gpu/gpu.h" "components/gpu/gpu.c" "components/controller/controller.h" "components/controller/controller.c" "debugger/debugger.cpp" "debugger/debugger.h" "imgui_memory_editor.h" ${IMGUI_SRC} "debugger/imgui_custom_widgets.h" "debugger/imgui_custom_widget_wrapper.h" "debugger/imgui_custom_widget_wrapper.cpp" "debugger/imgui_custom_widgets.cpp" "debugger/ImGuiFileDialog.cpp" "components/timer/timer.c" "components/timer/timer.h" "components/mmu/cartridge.c" "components/apu/apu.c")
+add_executable (yolahboy WIN32 "yolahboy.c" "yolahboy.h" "core/cpu/cpu.h" "core/cpu/cpu.c"  "core/emulator.h" "core/emulator.c" "core/mmu/mmu.h" "core/mmu/mmu.c" "core/cpu/operation_defitions.h" "core/cpu/operations.h" "core/cpu/operations.c"  "core/gpu/gpu.h" "core/gpu/gpu.c" "core/controller/controller.h" "core/controller/controller.c" "debugger/debugger.cpp" "debugger/debugger.h" "imgui_memory_editor.h" ${IMGUI_SRC} "debugger/imgui_custom_widgets.h" "debugger/imgui_custom_widget_wrapper.h" "debugger/imgui_custom_widget_wrapper.cpp" "debugger/imgui_custom_widgets.cpp" "debugger/ImGuiFileDialog.cpp" "core/timer/timer.c" "core/timer/timer.h" "core/mmu/cartridge.c" "core/apu/apu.c")
 target_include_directories(yolahboy PUBLIC ./imgui)
 target_link_libraries(yolahboy PUBLIC SDL3::SDL3)
 set_property(TARGET yolahboy PROPERTY CXX_STANDARD 20)

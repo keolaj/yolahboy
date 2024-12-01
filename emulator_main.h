@@ -1,7 +1,5 @@
 #pragma once
 
-#include "components/global_definitions.h"
-
-
+#include "core/global_definitions.h"
 
 int run_emulator(LPVOID t_args);

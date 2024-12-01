@@ -7,14 +7,14 @@ extern "C" {
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_render.h>
 #include "debugger.h"
-#include "../components/global_definitions.h"
-#include "../components/emulator.h"
-#include "../components/controller/controller.h"
-#include "../components/Mmu/Mmu.h"
-#include "../components/cpu/operations.h"
-#include "../components/cpu/operation_defitions.h"
-#include "../components/gpu/gpu.h"
-#include "../components/apu/apu.h"
+#include "../core/global_definitions.h"
+#include "../core/emulator.h"
+#include "../core/controller/controller.h"
+#include "../core/Mmu/Mmu.h"
+#include "../core/cpu/operations.h"
+#include "../core/cpu/operation_defitions.h"
+#include "../core/gpu/gpu.h"
+#include "../core/apu/apu.h"
 
 	extern Operation operations[];
 	extern Operation cb_operations[];
@@ -839,15 +839,6 @@ int debugger_run(char* rom_path, char* bootrom_path) {
 				SDL_RenderTexture(renderer, tile_tex, nullptr, &tile_screen_rect);
 				SDL_RenderPresent(renderer);
 				timer = 0;
-
-				//while (timer < 16.6) {
-				//	SDL_DelayNS(100);
-				//	LAST = NOW;
-				//	NOW = SDL_GetPerformanceCounter();
-				//	deltaTime = ((NOW - LAST) * 1000 / (double)SDL_GetPerformanceFrequency());
-				//	timer += deltaTime;
-				//}
-
 			}
 			set_run_once = false;
 		

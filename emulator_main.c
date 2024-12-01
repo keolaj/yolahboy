@@ -1,17 +1,17 @@
 //#include <SDL3/SDL.h>
 //
 //#include <Windows.h>
-//#include "components/global_definitions.h"
+//#include "core/global_definitions.h"
 //
 //#include "emulator_main.h"
-//#include "components/global_definitions.h"
-//#include "components/gpu_definitions.h"
-//#include "components/emulator.h"
-//#include "components/operations.h"
-//#include "components/operation_defitions.h"
-//#include "components/cpu.h"
-//#include "components/Mmu.h"
-//#include "components/gpu.h"
+//#include "core/global_definitions.h"
+//#include "core/gpu_definitions.h"
+//#include "core/emulator.h"
+//#include "core/operations.h"
+//#include "core/operation_defitions.h"
+//#include "core/cpu.h"
+//#include "core/Mmu.h"
+//#include "core/gpu.h"
 //
 //// extern Emulator emu;
 //extern LPHANDLE emu_breakpoint_event;

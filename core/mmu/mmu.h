@@ -9,5 +9,6 @@ u8 read8(Emulator* emu, u16 address);
 void write8(Emulator* emu, u16 address, u8 data);
 u16 read16(Emulator* emu, u16 address);
 void write16(Emulator* emu, u16 address, u16 data);
+int load_save(Mmu* mem, const char* path);
 
 void destroy_Mmu(Mmu* mem);

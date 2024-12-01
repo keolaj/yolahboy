@@ -6,7 +6,7 @@
 #include <SDL3/SDL_main.h>
 
 #include "emulator_main.h"
-#include "components/emulator.h"
+#include "core/emulator.h"
 #include "debugger/debugger.h"
 
 #define APP_NAME "YolahBoy Debugger"
