@@ -143,14 +143,3 @@ void cart_write8(Cartridge* cart, u16 address, u8 data) {
 	}
 }
 
-void set_current_rom_bank(Cartridge* cart, u8 data) {
-	cart->rom_bank = data & 0b00011111;
-}
-
-void print_cartridge(Cartridge* cart) {
-	char title[TITLE_SIZE + 1];
-	strcpy_s(title, TITLE_SIZE, cart->rom[0x0134]);
-	title[TITLE_SIZE] = '/0';
-
-	AddLog("CARTRIDGE:\nTITLE: %s\nCARTRIDGE_TYPE: %d", title, cart->rom[CARTRIDGE_TYPE]);
-}
