@@ -100,18 +100,16 @@ bool condition_passed(Emulator* emu, Operation* op) {
 		}
 		break;
 	default:
-		// why get here
 		return true;
 	}
 	return false;
 }
 
 alu_return run_alu(Cpu* cpu, u8 x, u8 y, instruction_type type, instruction_flags flag_actions) {
-	u8 new_flags = 0;
 
-	new_flags |= generate_set_mask(flag_actions);
-
+	u8 new_flags = generate_set_mask(flag_actions);
 	u8 result = 0;
+
 	switch (type) {
 	case AND:
 		result = x & y;
@@ -137,7 +135,6 @@ alu_return run_alu(Cpu* cpu, u8 x, u8 y, instruction_type type, instruction_flag
 		if ((int)x + (int)y > 255) {
 			new_flags |= FLAG_CARRY;
 		}
-
 		break;
 	case ADC: {
 		u8 carry = ((cpu->registers.f & FLAG_CARRY) ? 1 : 0);
@@ -145,15 +142,11 @@ alu_return run_alu(Cpu* cpu, u8 x, u8 y, instruction_type type, instruction_flag
 			new_flags |= FLAG_HALFCARRY;
 		}
 		if ((int)x + (int)y + carry > 255) {
-
 			new_flags |= FLAG_CARRY;
-
 		}
-
 		result = x + y + carry;
 		break;
 	}
-
 	case SUB:
 	case CP:
 	case DEC:
@@ -166,7 +159,6 @@ alu_return run_alu(Cpu* cpu, u8 x, u8 y, instruction_type type, instruction_flag
 			new_flags |= FLAG_CARRY;
 		}
 		break;
-
 	case SBC: {
 		u8 carry = ((cpu->registers.f & FLAG_CARRY) ? 1 : 0);
 		result = x - y - carry;
@@ -184,11 +176,9 @@ alu_return run_alu(Cpu* cpu, u8 x, u8 y, instruction_type type, instruction_flag
 		}
 		break;
 	}
-
 	case SWAP:
 		result = (x << 4) | (x >> 4);
 		break;
-
 	case SET_OP:
 		result = x | (1 << y);
 		break;
@@ -208,11 +198,9 @@ alu_return run_alu(Cpu* cpu, u8 x, u8 y, instruction_type type, instruction_flag
 		new_flags |= (new_carry << 4);
 		break;
 	}
-
 	case RES:
 		result = x & ~(1 << y);
 		break;
-
 	case SLA: {
 		if (x & 0b10000000) new_flags |= FLAG_CARRY;
 		result = x << 1;
@@ -249,30 +237,19 @@ alu_return run_alu(Cpu* cpu, u8 x, u8 y, instruction_type type, instruction_flag
 	case SCF: 
 		break;
 	case CCF:
-		if (cpu->registers.f & FLAG_CARRY) {
-
-		}
-		else {
+		if (!(cpu->registers.f & FLAG_CARRY)) {
 			new_flags |= FLAG_CARRY;
 		}
 		break;
-
-
 	}
-
-
-
 	if (result == 0) {
 		new_flags |= FLAG_ZERO;
 	}
-
 	u8 ignore_mask = generate_ignore_mask(flag_actions);
+
 	new_flags &= ~ignore_mask;
 	new_flags |= ignore_mask & cpu->registers.f;
-
 	new_flags &= generate_reset_mask(flag_actions);
-
-
 	return (alu_return) { result, new_flags };
 }
 
@@ -300,12 +277,6 @@ alu16_return run_alu16(Cpu* cpu, u16 x, u16 y, instruction_type type, address_mo
 			}
 		}
 		break;
-
-	default:
-		AddLog("TODO: Unimplemented run_alu16 type");
-		result = 0;
-		assert(false);
-		break;
 	}
 	if (result == 0) {
 		new_flags |= FLAG_ZERO;
@@ -322,7 +293,6 @@ alu16_return run_alu16(Cpu* cpu, u16 x, u16 y, instruction_type type, address_mo
 
 
 u8* get_reg_from_type(Emulator* emu, operand_type type) {
-
 	switch (type) {
 	case A:
 		return &emu->cpu.registers.a;
@@ -339,10 +309,8 @@ u8* get_reg_from_type(Emulator* emu, operand_type type) {
 	case L:
 		return &emu->cpu.registers.l;
 	default:
-		assert(false && "Not a register");
 		return NULL;
 	}
-
 }
 
 u16* get_reg16_from_type(Cpu* cpu, operand_type type) {
@@ -361,7 +329,6 @@ u16* get_reg16_from_type(Cpu* cpu, operand_type type) {
 	case PC:
 		return &cpu->registers.pc;
 	default:
-		assert(false && "Not a register");
 		return NULL;
 	}
 }
@@ -406,7 +373,6 @@ u16 get_dest16(Emulator* emu, Operation* op) {
 	return dest_val;
 }
 
-
 void write_dest(Emulator* emu, Operation* op, u8 value) {
 	switch (op->dest_addr_mode) {
 	case REGISTER:
@@ -415,10 +381,6 @@ void write_dest(Emulator* emu, Operation* op, u8 value) {
 	case ADDRESS_R16:
 		write8(emu, *get_reg16_from_type(&emu->cpu, op->dest), value);
 		break;
-		//case MEM_READ16:
-		//	write8(emu, read8(emu, cpu->registers.pc), value);
-		//	cpu->registers.pc += 2;
-		//	break;
 	case ADDRESS_R8_OFFSET:
 		write8(emu, (0xFF00 + get_dest(emu, op)), value);
 		break;
@@ -434,9 +396,6 @@ void write_dest(Emulator* emu, Operation* op, u8 value) {
 	}
 	case OPERAND_NONE:
 		break;
-	default:
-		AddLog("unimplemented write dest addr mode");
-		assert(false);
 	}
 }
 
@@ -444,10 +403,6 @@ void write_dest16(Emulator* emu, address_mode mode, operand_type dest, u16 value
 	switch (mode) {
 	case REGISTER16:
 		*get_reg16_from_type(&emu->cpu, dest) = value;
-		break;
-	default:
-		AddLog("unimplemented write dest16 type");
-		assert(false);
 		break;
 	}
 }
@@ -506,8 +461,6 @@ u16 get_source_16(Emulator* emu, Operation* op) {
 			else {
 				relative = *(i8*)&val;
 			}
-
-
 			alu16_return alu_ret = run_alu16(&emu->cpu, *get_reg16_from_type(&emu->cpu, op->source), (i16)relative, ADD, MEM_READ, op->flag_actions);
 			sourceVal = alu_ret.result;
 			emu->cpu.registers.f = alu_ret.flags;
@@ -550,7 +503,7 @@ i16 unsigned_to_relative16(u8 x) {
 	return (i16)relative;
 }
 
-u8 get_source(Emulator* emu, Operation* op) { // maybe I'll change this to be able to read dest too at some point. Might make life easier
+u8 get_source(Emulator* emu, Operation* op) { 
 	u8 sourceVal;
 	switch (op->source_addr_mode) {
 	case REGISTER:
@@ -574,7 +527,7 @@ u8 get_source(Emulator* emu, Operation* op) { // maybe I'll change this to be ab
 		sourceVal = read8(emu, 0xFF00 + read8(emu, emu->cpu.registers.pc++));
 		break;
 	case ADDR_MODE_NONE:
-		sourceVal = op->source; // this should be fine
+		sourceVal = op->source;
 		break;
 	default:
 		sourceVal = 0;
@@ -620,9 +573,7 @@ void LD_impl(Emulator* emu, Operation* op) {
 
 }
 
-
 void CALL_impl(Emulator* emu, Operation* op) {
-	// Calls should only be u16 address mode
 	u16 addr = get_source_16(emu, op);
 	if (condition_passed(emu, op)) {
 		push(emu, emu->cpu.registers.pc);
@@ -630,7 +581,6 @@ void CALL_impl(Emulator* emu, Operation* op) {
 	}
 	run_secondary(emu, op);
 }
-
 
 void BIT_impl(Emulator* emu, Operation* op) {
 
@@ -640,7 +590,6 @@ void BIT_impl(Emulator* emu, Operation* op) {
 	emu->cpu.registers.f = alu_ret.flags;
 
 }
-
 
 void JP_impl(Emulator* emu, Operation* op) {
 	if (bit_mode_16(op)) {
@@ -673,9 +622,6 @@ void JP_impl(Emulator* emu, Operation* op) {
 			jump(emu, emu->cpu.registers.hl);
 			break;
 		}
-		default:
-			AddLog("unimplemented jump");
-			assert(false);
 		}
 	}
 }
@@ -798,7 +744,6 @@ void RST_impl(Emulator* emu, Operation* op) {
 }
 
 void DAA_impl(Emulator* emu, Operation* op) {
-
 	u8 offset = 0;
 	u8 a = emu->cpu.registers.a;
 	u8 flags = emu->cpu.registers.f;
@@ -817,10 +762,8 @@ void DAA_impl(Emulator* emu, Operation* op) {
 	else {
 		emu->cpu.registers.a = a + offset;
 	}
-
 	if (flags & FLAG_SUB) emu->cpu.registers.f |= FLAG_SUB;
 	if (emu->cpu.registers.a == 0) emu->cpu.registers.f |= FLAG_ZERO;
-
 }
 
 void CCF_impl(Emulator* emu, Operation* op) {
