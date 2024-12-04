@@ -18,7 +18,7 @@ void init_timer(Timer* timer) {
 
 static u16 freq_divider[] = { 1024, 16, 64, 256 };
 
-void tick(Emulator* emu, int t_cycles) {
+void timer_step(Emulator* emu, int t_cycles) {
 
 	u16 old_clock = emu->timer.clock;
 

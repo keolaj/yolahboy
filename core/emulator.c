@@ -46,7 +46,7 @@ int step(Emulator* emu) {
 		return -1;
 	}
 
-	tick(emu, c.t_cycles);
+	timer_step(emu, c.t_cycles);
 	gpu_step(emu, c.t_cycles);
 	apu_step(&emu->apu, c.t_cycles);
 
