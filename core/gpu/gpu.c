@@ -1,6 +1,6 @@
 #include "gpu.h"
 #include <stdio.h>
-#include <SDL3/SDL.h>
+#include <stdlib.h>
 #include "../mmu/mmu.h"
 
 int init_gpu(Gpu* gpu) {
@@ -14,7 +14,7 @@ int init_gpu(Gpu* gpu) {
 	return 0;
 }
 
-u8 read_tile(Emulator* emu, int tile_index, u8 x, u8 y) { 	
+u8 read_tile(Emulator* emu, int tile_index, u8 x, u8 y) { 
 	u16 address = 0x8000;
 	address += (tile_index * 16);
 	address += (y * 2);
@@ -28,7 +28,7 @@ u8 read_tile(Emulator* emu, int tile_index, u8 x, u8 y) {
 }
 
 u32 pixel_from_palette(u8 palette, u8 id) {
-	uint8_t value = 0;
+	u8 value = 0;
 	switch (id) { // read palette and assign value for id
 	case 0:
 		value = (palette & 0b00000011);
@@ -106,7 +106,7 @@ void draw_line(Emulator* emu) {
 
 		for (int i = windowx; i < SCREEN_WIDTH; ++i) {
 			if (i >= 0) {
-				uint32_t window_pixel = pixel_from_palette(read8(emu, BGP), read_tile(emu, tile, tileX, tileY));
+				u32 window_pixel = pixel_from_palette(read8(emu, BGP), read_tile(emu, tile, tileX, tileY));
 				emu->gpu.framebuffer[emu->gpu.ly * SCREEN_WIDTH + i] = window_pixel;
 			}
 			++tileX;

@@ -1,11 +1,9 @@
 #include <stdlib.h>
 #include "timer.h"
-#include "../debugger/imgui_custom_widget_wrapper.h"
 
 Timer* create_timer() {
 	Timer* ret = (Timer*)malloc(sizeof(Timer));
 	if (ret == NULL) {
-		AddLog("Couldn't initialize Timer!\n");
 		return NULL;
 	}
 	ret->clock = 0;

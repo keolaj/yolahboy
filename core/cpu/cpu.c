@@ -1,7 +1,5 @@
 #include "cpu.h"
 #include "../controller/controller.h"
-#include "../debugger/imgui_custom_widget_wrapper.h"
-
 
 void init_cpu(Cpu* cpu) {
 	memset(cpu, 0, sizeof(Cpu));
@@ -918,7 +916,6 @@ Cycles cpu_step(Emulator* emu, Operation op) {
 	case CB: {
 		Cycles cb_ret = cpu_step(emu, get_cb_operation(emu));
 		if (cb_ret.t_cycles == -1) {
-			AddLog("Unimplemented CB op\n");
 			return (Cycles) { -1, -1 };
 		}
 		op.m_cycles += cb_ret.m_cycles;

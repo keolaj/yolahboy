@@ -1,6 +1,5 @@
 #include <stdlib.h>
 #include "apu.h"
-#include "../debugger/imgui_custom_widget_wrapper.h"
 
 static bool duty_cycles[4][16] = {
 	{ 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 0 },
@@ -16,7 +15,6 @@ void init_apu(Apu* apu, int sample_rate, int buffer_size) {
 	
 	apu->buffer = (float*)malloc(sizeof(float) * buffer_size * 2); // Allocate main buffers
 	if (apu->buffer == NULL) {
-		AddLog("Couldn't allocate apu\n");
 		return;
 	}
 

@@ -55,12 +55,24 @@ bool breakpoints[0x10000];
 static char bootrom_path_buf[200] = "";
 static char rom_path_buf[200] = "";
 
+Controller get_controller_state(SDL_Gamepad* sdl_c) { // doesn't need previous state as every button is set
+	Controller c;
+	c.a = SDL_GetGamepadButton(sdl_c, SDL_GAMEPAD_BUTTON_SOUTH);
+	c.b = SDL_GetGamepadButton(sdl_c, SDL_GAMEPAD_BUTTON_SOUTH);
+	c.select = SDL_GetGamepadButton(sdl_c, SDL_GAMEPAD_BUTTON_BACK);
+	c.start = SDL_GetGamepadButton(sdl_c, SDL_GAMEPAD_BUTTON_START);
+	c.up = SDL_GetGamepadButton(sdl_c, SDL_GAMEPAD_BUTTON_DPAD_UP);
+	c.down = SDL_GetGamepadButton(sdl_c, SDL_GAMEPAD_BUTTON_DPAD_DOWN);
+	c.left = SDL_GetGamepadButton(sdl_c, SDL_GAMEPAD_BUTTON_DPAD_LEFT);
+	c.right = SDL_GetGamepadButton(sdl_c, SDL_GAMEPAD_BUTTON_DPAD_RIGHT);
+
+	return c;
+}
 
 void writePixel(SDL_Surface* surface, int x, int y, u32 pixel) {
 	uint32_t* const target = (u32*)((u8*)surface->pixels + y * surface->pitch + x * SDL_GetPixelFormatDetails(surface->format)->bytes_per_pixel); // for some reason I need to cast to uint8
 	*target = pixel;
 }
-
 
 void write_buffer_to_screen(Emulator* emu, SDL_Surface* screen) {
 	if (!SDL_LockSurface(screen)) {

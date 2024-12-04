@@ -12,7 +12,6 @@
 #include "./apu/apu.h"
 #include "../debugger/imgui_custom_widget_wrapper.h"
 
-#include <SDL3/SDL.h>
 
 int init_emulator(Emulator* emu) {
 	init_cpu(&emu->cpu);
