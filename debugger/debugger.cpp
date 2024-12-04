@@ -36,10 +36,10 @@ typedef struct {
 } KeyboardConfig;
 
 Controller get_keyboard_state(Controller prev, SDL_Event* e, KeyboardConfig* config) {
-	
+
 	Controller c = prev;
 
-	if (e->key.scancode == config->a) c.a = e->key.down;	
+	if (e->key.scancode == config->a) c.a = e->key.down;
 	if (e->key.scancode == config->b) c.b = e->key.down;
 	if (e->key.scancode == config->select) c.select = e->key.down;
 	if (e->key.scancode == config->start) c.start = e->key.down;
@@ -200,8 +200,10 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 
 	ImGui::SameLine();
 	if (ImGui::Button("RESET", { 40, 15 })) {
+		int sample_rate = emu->apu.sample_rate;
+		int buffer_size = emu->apu.buffer_size;
 		destroy_emulator(emu);
-		init_emulator(emu);
+		init_emulator(emu, sample_rate, buffer_size);
 		if (load_bootrom(&emu->mmu, bootrom_path_buf) < 0) {
 			skip_bootrom(emu);
 		}
@@ -428,10 +430,10 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 		ImGui::EndTabItem();
 	}
 	if (ImGui::BeginTabItem("GPU")) {
-		
+
 		ImVec2 contentSize = ImGui::GetContentRegionAvail();
 
-		ImGui::BeginChild("LCDC", {contentSize.x / 3, contentSize.y});
+		ImGui::BeginChild("LCDC", { contentSize.x / 3, contentSize.y });
 		ImGui::Text("LCD CONTROL (LCDC FF40)");
 		ImGui::Separator();
 		ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, { 15, 2 });
@@ -492,7 +494,7 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 			ImGui::TableNextColumn();
 			ImGui::Text("%s", (obj_enable ? "ON" : "OFF"));
 			ImGui::Separator();
-			
+
 			ImGui::TableNextRow();
 			ImGui::TableNextColumn();
 			bool bg_enable = emu->gpu.lcdc & (1 << 0);
@@ -505,7 +507,7 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 		ImGui::EndChild();
 
 		ImGui::SameLine();
-		ImGui::BeginChild("STAT", {contentSize.x / 3, contentSize.y});
+		ImGui::BeginChild("STAT", { contentSize.x / 3, contentSize.y });
 		ImGui::Text("LCD STATUS (STAT FF41)");
 		ImGui::Separator();
 		ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, { 15, 2 });
@@ -569,7 +571,7 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 			ImGui::Separator();
 
 			ImGui::EndTable();
-			
+
 		}
 		ImGui::PopStyleVar();
 		ImGui::EndChild();
@@ -586,7 +588,7 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 			ImGui::TableNextColumn();
 			ImGui::Text("%hX", emu->gpu.ly);
 			ImGui::Separator();
-			
+
 			ImGui::TableNextRow();
 			ImGui::TableNextColumn();
 			ImGui::Text("LYC");
@@ -739,7 +741,7 @@ int debugger_run(char* rom_path, char* bootrom_path) {
 
 	SDL_AudioStream* stream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &src_spec, NULL, NULL);
 	SDL_ResumeAudioStreamDevice(stream);
-	
+
 	KeyboardConfig k_config{};
 	k_config.a = SDL_SCANCODE_J;
 	k_config.b = SDL_SCANCODE_K;
@@ -769,7 +771,7 @@ int debugger_run(char* rom_path, char* bootrom_path) {
 	}
 
 	Emulator emu;
-	if (init_emulator(&emu) < 0) {
+	if (init_emulator(&emu, src_spec.freq, 512) < 0) {
 		SDL_DestroyWindow(window);
 		SDL_DestroyRenderer(renderer);
 		destroy_emulator(&emu);
@@ -787,7 +789,7 @@ int debugger_run(char* rom_path, char* bootrom_path) {
 			app_log.AddLog("Couldn't load rom!\n");
 		}
 	}
-	
+
 	screen_surface = SDL_CreateSurface(SCREEN_WIDTH, SCREEN_HEIGHT, SDL_PIXELFORMAT_ARGB32);
 	tile_surface = SDL_CreateSurface(TILES_X * 8, TILES_Y * 8, SDL_PIXELFORMAT_ARGB32);
 	screen_tex = SDL_CreateTextureFromSurface(renderer, screen_surface);
@@ -871,15 +873,15 @@ int debugger_run(char* rom_path, char* bootrom_path) {
 				timer = 0;
 			}
 			set_run_once = false;
-		
+
 		}
 		else { // emulator isn't running and we go to 60fps
-			//LAST = NOW;
-			//NOW = SDL_GetPerformanceCounter();
-			//deltaTime = ((NOW - LAST) * 1000 / (double)SDL_GetPerformanceFrequency());
-			//timer += deltaTime;
+			LAST = NOW;
+			NOW = SDL_GetPerformanceCounter();
+			deltaTime = ((NOW - LAST) * 1000 / (double)SDL_GetPerformanceFrequency());
+			timer += deltaTime;
 
-			// if (timer > 16.6) {
+			if (timer > 16.6) {
 				while (SDL_PollEvent(&e)) {
 					ImGui_ImplSDL3_ProcessEvent(&e);
 					switch (e.type) {
@@ -904,7 +906,7 @@ int debugger_run(char* rom_path, char* bootrom_path) {
 				run_once = false;
 
 				SDL_Delay(1);
-		//	}
+			}
 		}
 	}
 end:
