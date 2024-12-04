@@ -1,7 +1,4 @@
-#include <string.h>
 #include <stdlib.h>
-#include <stdio.h>
-#include <math.h>
 #include "apu.h"
 #include "../debugger/imgui_custom_widget_wrapper.h"
 

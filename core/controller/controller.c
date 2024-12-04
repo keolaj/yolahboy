@@ -22,21 +22,6 @@ Controller get_controller_state(SDL_Gamepad* sdl_c) { // doesn't need previous s
 	return c;
 }
 
-Controller get_keyboard_state(Controller prev, SDL_Event* e, KeyboardConfig* config) {
-	
-	Controller c = prev;
-
-	if (e->key.scancode == config->a) c.a = e->key.down;	
-	if (e->key.scancode == config->b) c.b = e->key.down;
-	if (e->key.scancode == config->select) c.select = e->key.down;
-	if (e->key.scancode == config->start) c.start = e->key.down;
-	if (e->key.scancode == config->up) c.up = e->key.down;
-	if (e->key.scancode == config->down) c.down = e->key.down;
-	if (e->key.scancode == config->left) c.left = e->key.down;
-	if (e->key.scancode == config->right) c.right = e->key.down;
-
-	return c;
-}
 
 Controller* create_controller() {
 	Controller* ret = malloc(sizeof(Controller));

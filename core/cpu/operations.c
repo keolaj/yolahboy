@@ -1,7 +1,4 @@
 #include "operations.h"
-#include "../mmu/mmu.h"
-#include "../debugger/imgui_custom_widget_wrapper.h"
-#include <stdio.h>
 
 Operation operations[0x100] = {
 	[0x00] = {"NOP", NOP, 0, 0, 0, 0, 0, 0, 1, 4, },
@@ -625,13 +622,4 @@ Operation cb_operations[0x100] = {
 	[0xFC] = {"SET 7, H", SET_OP, REGISTER, ADDR_MODE_NONE, H, 7, 0, 0, 2, 8 },
 	[0xFD] = {"SET 7, L", SET_OP, REGISTER, ADDR_MODE_NONE, L, 7, 0, 0, 2, 8 },
 	[0xFE] = {"SET 7, (HL)", SET_OP, ADDRESS_R16, ADDR_MODE_NONE, HL, 7, 0, 0, 2, 16, },
-
-
-
-
 };
-
-void print_operation(Operation op) {
-	AddLog("0x%02X: \t%s\n", op.opcode, op.mnemonic);
-}
-

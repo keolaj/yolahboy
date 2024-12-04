@@ -15,7 +15,7 @@
 #include <SDL3/SDL.h>
 
 int init_emulator(Emulator* emu) {
-	memset(&emu->cpu, 0, sizeof(Cpu));
+	init_cpu(&emu->cpu);
 	init_mmu(&emu->mmu);
 	init_gpu(&emu->gpu);
 	init_timer(&emu->timer);
@@ -45,6 +45,7 @@ int step(Emulator* emu) {
 	if (c.t_cycles < 0) {
 		return -1;
 	}
+
 	tick(emu, c.t_cycles);
 	gpu_step(emu, c.t_cycles);
 	apu_step(&emu->apu, c.t_cycles);
@@ -54,7 +55,9 @@ int step(Emulator* emu) {
 
 
 void destroy_emulator(Emulator* emu) {
-	// if (emu->cpu) destroy_cpu(emu->cpu);
+	destroy_mmu(&emu->mmu);
+	destroy_gpu(&emu->gpu);
+	destroy_apu(&emu->apu);
 }
 
 bool cartridge_loaded(Emulator* emu) {

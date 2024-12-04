@@ -1,6 +1,5 @@
 #pragma once
 #include <stdbool.h>
-#include <SDL3/SDL.h>
 
 typedef unsigned char u8;
 typedef char i8;
@@ -231,11 +230,8 @@ typedef struct {
 	u8 cgb_flag;
 } Cartridge;
 
-typedef struct _Mmu Mmu;
-typedef struct _gpu Gpu;
-
 typedef struct _Mmu {
-	u8 bios[0x100];
+	u8* bios;
 	u8* memory;
 	Cartridge cartridge;
 	bool in_bios;
@@ -277,7 +273,6 @@ typedef struct {
 
 typedef struct {
 	Registers registers;
-	Timer* timer;
 	bool halted;
 	bool IME;
 	bool should_update_IME;
@@ -297,7 +292,7 @@ typedef enum {
 	VRAM_ACCESS
 } gpu_mode;
 
-struct _gpu {
+typedef struct _gpu {
 
 	u8 stat;
 	u8 lcdc;
@@ -309,14 +304,15 @@ struct _gpu {
 	u8 wx;
 
 	int clock;
-	u32 framebuffer[23040];
+	//u32 framebuffer[23040];
+	u32* framebuffer;
 
 	gpu_mode mode;
 	bool should_stat_interrupt;
 	bool drawline;
 	bool should_draw;
 	bool drawtile;
-};
+} Gpu;
 
 typedef struct {
 	Cpu cpu;
@@ -331,13 +327,3 @@ typedef struct {
 	bool should_draw;
 } Emulator;
 
-typedef struct {
-	SDL_Scancode a;
-	SDL_Scancode b;
-	SDL_Scancode start;
-	SDL_Scancode select;
-	SDL_Scancode up;
-	SDL_Scancode down;
-	SDL_Scancode left;
-	SDL_Scancode right;
-} KeyboardConfig;

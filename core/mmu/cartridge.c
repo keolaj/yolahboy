@@ -1,6 +1,6 @@
+#include <stdlib.h>
 #include "cartridge.h"
 #include "../../debugger/imgui_custom_widget_wrapper.h"
-#include <assert.h>
 
 #define BANK_SELECT_HIGH 0x7FFF
 #define BANK_SELECT_LOW 0x6000

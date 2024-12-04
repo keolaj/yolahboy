@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include "timer.h"
 #include "../debugger/imgui_custom_widget_wrapper.h"
 

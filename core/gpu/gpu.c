@@ -5,10 +5,16 @@
 
 int init_gpu(Gpu* gpu) {
 	memset(gpu, 0, sizeof(Gpu));
+
+	gpu->framebuffer = (u32*)malloc(sizeof(u32) * 23040);
+	if (gpu->framebuffer == NULL) return -1;
+
+	memset(gpu->framebuffer, 0, sizeof(u32) * 23040);
+
 	return 0;
 }
 
-u8 read_tile(Emulator* emu, int tile_index, u8 x, u8 y) { // TODO: this function returns a pixel from a position in a tile
+u8 read_tile(Emulator* emu, int tile_index, u8 x, u8 y) { 	
 	u16 address = 0x8000;
 	address += (tile_index * 16);
 	address += (y * 2);
@@ -55,7 +61,7 @@ u32 pixel_from_palette(u8 palette, u8 id) {
 
 void draw_line(Emulator* emu) {
 
-	if (emu->gpu.lcdc & 1) { // if BG enabled draw BG
+	if (emu->gpu.lcdc & 1) { // if BG enabled
 		bool BGTileMapArea = (emu->gpu.lcdc & (1 << 3));
 		bool BGTileAddressMode = !(emu->gpu.lcdc & (1 << 4));
 		int mapAddress = (BGTileMapArea) ? 0x9C00 : 0x9800; // if bit 3 of the LCD Control registers is set we use the tilemap at 0x9C00, else use tile map at 0x9800
@@ -70,7 +76,7 @@ void draw_line(Emulator* emu) {
 
 		if (emu->gpu.lcdc & 1) {
 			for (int i = 0; i < SCREEN_WIDTH; ++i) {
-				emu->gpu.framebuffer[emu->gpu.ly * SCREEN_WIDTH + i] = pixel_from_palette(read8(emu, BGP), read_tile(emu, tile, tileX, tileY));// pixel_from_palette(read8(emu, BGP), emu->gpu.tiles[tile][tileY][tileX]);
+				emu->gpu.framebuffer[emu->gpu.ly * SCREEN_WIDTH + i] = pixel_from_palette(read8(emu, BGP), read_tile(emu, tile, tileX, tileY));
 				++tileX;
 				if (tileX == 8) {
 					tileX = 0;
@@ -85,7 +91,7 @@ void draw_line(Emulator* emu) {
 	// draw window
 	int windowx = emu->gpu.wx - 7;
 	u8 windowy = emu->gpu.wy;
-	if (emu->gpu.lcdc & (1 << 5) && emu->gpu.ly >= windowy) { // if window enabled draw window
+	if (emu->gpu.lcdc & (1 << 5) && emu->gpu.ly >= windowy) { // if window enabled
 		bool BGTileMapArea = (emu->gpu.lcdc & (1 << 6));
 		bool BGTileAddressMode = !(emu->gpu.lcdc & (1 << 4));
 		int mapAddress = (BGTileMapArea) ? 0x9C00 : 0x9800; // if bit 3 of the LCD Control registers is set we use the tilemap at 0x9C00, else use tile map at 0x9800
@@ -175,9 +181,7 @@ void draw_line(Emulator* emu) {
 }
 
 void destroy_gpu(Gpu* gpu) {
-	if (gpu == NULL) {
-		return;
-	}
+	if (gpu->framebuffer) free(gpu->framebuffer);
 }
 
 void handle_oam(Emulator* emu) {

@@ -1,12 +1,7 @@
-#include <Windows.h>
-#include <stdio.h>
-#include <assert.h>
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 
-#include "emulator_main.h"
-#include "core/emulator.h"
 #include "debugger/debugger.h"
 
 #define APP_NAME "YolahBoy Debugger"

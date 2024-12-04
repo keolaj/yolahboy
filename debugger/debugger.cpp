@@ -5,14 +5,12 @@
 
 extern "C" {
 #include <SDL3/SDL.h>
-#include <SDL3/SDL_render.h>
 #include "debugger.h"
 #include "../core/global_definitions.h"
 #include "../core/emulator.h"
 #include "../core/controller/controller.h"
 #include "../core/Mmu/Mmu.h"
-#include "../core/cpu/operations.h"
-#include "../core/cpu/operation_defitions.h"
+#include "../core/cpu/operation_definitions.h"
 #include "../core/gpu/gpu.h"
 #include "../core/apu/apu.h"
 
@@ -26,6 +24,33 @@ extern "C" {
 #include "../imgui_memory_editor.h"
 #include "./imgui_custom_widgets.h"
 
+typedef struct {
+	SDL_Scancode a;
+	SDL_Scancode b;
+	SDL_Scancode start;
+	SDL_Scancode select;
+	SDL_Scancode up;
+	SDL_Scancode down;
+	SDL_Scancode left;
+	SDL_Scancode right;
+} KeyboardConfig;
+
+Controller get_keyboard_state(Controller prev, SDL_Event* e, KeyboardConfig* config) {
+	
+	Controller c = prev;
+
+	if (e->key.scancode == config->a) c.a = e->key.down;	
+	if (e->key.scancode == config->b) c.b = e->key.down;
+	if (e->key.scancode == config->select) c.select = e->key.down;
+	if (e->key.scancode == config->start) c.start = e->key.down;
+	if (e->key.scancode == config->up) c.up = e->key.down;
+	if (e->key.scancode == config->down) c.down = e->key.down;
+	if (e->key.scancode == config->left) c.left = e->key.down;
+	if (e->key.scancode == config->right) c.right = e->key.down;
+
+	return c;
+}
+
 bool breakpoints[0x10000];
 static char bootrom_path_buf[200] = "";
 static char rom_path_buf[200] = "";
@@ -38,7 +63,7 @@ void writePixel(SDL_Surface* surface, int x, int y, u32 pixel) {
 
 
 void write_buffer_to_screen(Emulator* emu, SDL_Surface* screen) {
-	if (SDL_LockSurface(screen) < 0) {
+	if (!SDL_LockSurface(screen)) {
 		printf("could not lock screen surface");
 		return;
 	}
@@ -52,7 +77,7 @@ void write_buffer_to_screen(Emulator* emu, SDL_Surface* screen) {
 	SDL_UnlockSurface(screen);
 }
 void write_tiles_to_screen(Emulator* emu, SDL_Surface* screen, u8 palette) {
-	if (SDL_LockSurface(screen) < 0) {
+	if (!SDL_LockSurface(screen)) {
 		printf("could not lock tile screen");
 		return;
 	}
@@ -188,7 +213,6 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 	char ram_bank_buf[20];
 	char clock_buf[20];
 	char div_buf[20];
-	char ly_buf[20];
 
 	sprintf_s(af_buf, "AF: %04hX", emu->cpu.registers.af);
 	sprintf_s(bc_buf, "BC: %04hX", emu->cpu.registers.bc);
@@ -695,21 +719,15 @@ int debugger_run(char* rom_path, char* bootrom_path) {
 	SDL_FRect emulator_screen_rect{ 0, 0, 160, 144 };
 	SDL_FRect tile_screen_rect{ 0, 0, 128, 192 };
 
-	// const SDL_AudioSpec src_spec = { SDL_AUDIO_F32, 2, 48000 };
-	//SDL_AudioDeviceID audio_device_id =  SDL_OpenAudioDevice(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &src_spec);
-	//SDL_AudioSpec dest_spec;
-	//SDL_GetAudioDeviceFormat(audio_device_id, &dest_spec, NULL);
+	SDL_AudioSpec src_spec = {
+		SDL_AUDIO_F32LE,
+		2,
+		48000
+	};
 
-	SDL_AudioStream* stream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, NULL, NULL, NULL);
+	SDL_AudioStream* stream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &src_spec, NULL, NULL);
 	SDL_ResumeAudioStreamDevice(stream);
 	
-	SDL_AudioSpec src_spec;
-	SDL_AudioSpec dest_spec;
-
-	SDL_GetAudioStreamFormat(stream, &src_spec, &dest_spec);
-
-	// SDL_BindAudioStream(audio_device_id, stream);
-
 	KeyboardConfig k_config{};
 	k_config.a = SDL_SCANCODE_J;
 	k_config.b = SDL_SCANCODE_K;
@@ -786,7 +804,7 @@ int debugger_run(char* rom_path, char* bootrom_path) {
 		if (emu.should_run) {
 			if (step(&emu) < 0) emu.should_run = false; // if step returns negative the operation failed to execute
 			if (emu.apu.buffer_full) {
-				while (SDL_GetAudioStreamQueued(stream) != 0);
+				while (SDL_GetAudioStreamAvailable(stream) != 0);
 				SDL_PutAudioStreamData(stream, get_buffer(&emu.apu), emu.apu.buffer_size * 2 * sizeof(float));
 				emu.apu.buffer_full = false;
 			}
@@ -844,12 +862,12 @@ int debugger_run(char* rom_path, char* bootrom_path) {
 		
 		}
 		else { // emulator isn't running and we go to 60fps
-			LAST = NOW;
-			NOW = SDL_GetPerformanceCounter();
-			deltaTime = ((NOW - LAST) * 1000 / (double)SDL_GetPerformanceFrequency());
-			timer += deltaTime;
+			//LAST = NOW;
+			//NOW = SDL_GetPerformanceCounter();
+			//deltaTime = ((NOW - LAST) * 1000 / (double)SDL_GetPerformanceFrequency());
+			//timer += deltaTime;
 
-			if (timer > 16.6) {
+			// if (timer > 16.6) {
 				while (SDL_PollEvent(&e)) {
 					ImGui_ImplSDL3_ProcessEvent(&e);
 					switch (e.type) {
@@ -874,7 +892,7 @@ int debugger_run(char* rom_path, char* bootrom_path) {
 				run_once = false;
 
 				SDL_Delay(1);
-			}
+		//	}
 		}
 	}
 end:

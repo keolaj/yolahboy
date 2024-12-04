@@ -1,29 +1,12 @@
-#include <stdlib.h>
-#include <assert.h>
 #include "cpu.h"
 #include "../controller/controller.h"
 #include "../debugger/imgui_custom_widget_wrapper.h"
 
 
 void init_cpu(Cpu* cpu) {
-	cpu->registers.af = 0;
-	cpu->registers.bc = 0;
-	cpu->registers.de = 0;
-	cpu->registers.hl = 0;
-	cpu->registers.sp = 0;
-	cpu->registers.pc = 0;
-	cpu->IME = false;
-	cpu->should_update_IME = false;
-	cpu->halted = false; 
+	memset(cpu, 0, sizeof(Cpu));
 }
-void print_registers(Cpu* cpu) {
-	AddLog("af: 0x%04hX\n", cpu->registers.af);
-	AddLog("bc: 0x%04hX\n", cpu->registers.bc);
-	AddLog("de: 0x%04hX\n", cpu->registers.de);
-	AddLog("hl: 0x%04hX\n", cpu->registers.hl);
-	AddLog("sp: 0x%04hX\n", cpu->registers.sp);
-	AddLog("pc: 0x%04hX\n", cpu->registers.pc);
-}
+
 void update_IME(Cpu* cpu, bool value) {
 	cpu->should_update_IME = true;
 	cpu->update_IME_value = value;
@@ -389,7 +372,7 @@ u8 get_dest(Emulator* emu, Operation* op) {
 	switch (op->dest_addr_mode) {
 	case ADDRESS_R8_OFFSET:
 	case REGISTER:
-		destVal = *get_reg_from_type(&emu->cpu, op->dest);
+		destVal = *get_reg_from_type(emu, op->dest);
 		break;
 	case ADDRESS_R16:
 		destVal = read8(emu, *get_reg16_from_type(&emu->cpu, op->dest));
@@ -404,9 +387,6 @@ u8 get_dest(Emulator* emu, Operation* op) {
 		break;
 	default:
 		destVal = 0;
-		AddLog("unimplemented 8 bit dest read\n");
-		print_operation(*op);
-		assert(false);
 	}
 	return destVal;
 }
@@ -430,7 +410,7 @@ u16 get_dest16(Emulator* emu, Operation* op) {
 void write_dest(Emulator* emu, Operation* op, u8 value) {
 	switch (op->dest_addr_mode) {
 	case REGISTER:
-		*get_reg_from_type(&emu->cpu, op->dest) = value;
+		*get_reg_from_type(emu, op->dest) = value;
 		break;
 	case ADDRESS_R16:
 		write8(emu, *get_reg16_from_type(&emu->cpu, op->dest), value);
@@ -512,7 +492,7 @@ void run_secondary(Emulator* emu, Operation* op) {
 }
 
 u16 get_source_16(Emulator* emu, Operation* op) {
-	u16 sourceVal;
+	u16 sourceVal = 0;
 	switch (op->source_addr_mode) {
 	case REGISTER16:
 		if (op->source == SP_ADD_I8) {
@@ -556,8 +536,6 @@ u16 get_source_16(Emulator* emu, Operation* op) {
 		}
 		break;
 	}
-	default:
-		sourceVal = 0;
 	}
 	return sourceVal;
 }
@@ -1014,12 +992,6 @@ Cycles cpu_step(Emulator* emu, Operation op) {
 	case DAA:
 		DAA_impl(emu, &op);
 		break;
-	case UNIMPLEMENTED:
-	default:
-		--emu->cpu.registers.pc;
-		AddLog("\nunimplemented operation\t");
-		print_operation(op);
-		return (Cycles) { -1, -1 };
 	}
 
 	if (emu->cpu.should_update_IME) {
