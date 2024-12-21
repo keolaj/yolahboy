@@ -417,7 +417,7 @@ void draw_debug_ui(SDL_Window* window, SDL_Renderer* renderer, ImGuiContext* ig_
 			memcpy(title_buf, emu->mmu.cartridge.rom + 0x134, 0x10);
 			title_buf[0x10] = '\0';
 			sprintf_s(full_title, "TITLE: %s", title_buf);
-			sprintf_s(type_buf, "TYPE: %d", cart.type);
+			sprintf_s(type_buf, "TYPE: 0x%hX", cart.type);
 			sprintf_s(rom_size_buf, "ROM SIZE: 0x%X", cart.rom_size);
 			sprintf_s(ram_size_buf, "RAM SIZE: 0x%X", cart.ram_size);
 
@@ -820,7 +820,6 @@ int debugger_run(char* rom_path, char* bootrom_path) {
 			if (emu.apu.buffer_full) {
 				while (SDL_GetAudioStreamAvailable(stream) != 0);
 				SDL_PutAudioStreamData(stream, get_buffer(&emu.apu), emu.apu.buffer_size * 2 * sizeof(float));
-				emu.apu.buffer_full = false;
 			}
 		}
 
